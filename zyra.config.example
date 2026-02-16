@@ -1,0 +1,19 @@
+project:
+  name: myapp
+
+build:
+  entry: main
+  out: dist
+  sourcemap: true
+
+strict:
+  no_unused: true
+  no_truthy: true
+  no_undefined: true
+  no_forgotten_promises: true
+  exhaustive_match_enums: true
+
+features:
+  pipeline_placeholder: true
+  await_nullable: true
+  int_division: true
