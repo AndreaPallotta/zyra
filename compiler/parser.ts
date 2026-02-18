@@ -36,6 +36,7 @@ export class Parser {
 
     while (!this.check("eof")) {
       body.push(this.parseStatement());
+      this.match("semicolon");
     }
 
     const end = this.endTok();
@@ -298,6 +299,7 @@ export class Parser {
     const statements: Statement[] = [];
     while (!this.check("rbrace")) {
       statements.push(this.parseStatement());
+      this.match("semicolon");
     }
 
     this.expect("rbrace");
@@ -377,52 +379,48 @@ export class Parser {
 
     if (this.match("identifier")) {
       const t = this.previous("identifier");
+      const name = t.value;
 
-      if (t.value === "_") {
+      if (name === "_") {
         const end = this.endTok();
         return { type: "WildcardPattern", span: this.spanFrom(start, end) };
       }
 
-      const info = this.resolveVariant(t.value);
+      if (this.check("lparen")) {
+        this.expect("lparen");
+        const bind = this.expect("identifier").value;
+        this.expect("rparen");
+        const end = this.endTok();
+
+        const info = this.resolveVariant(name);
+
+        return {
+          type: "VariantPattern",
+          enumName: info ? info.enumName : "",
+          variant: name,
+          payloadField: info ? info.payloadField : null,
+          bind,
+          span: this.spanFrom(start, end),
+        };
+      }
+
+      const info = this.resolveVariant(name);
       if (info) {
-        const { enumName, payloadField } = info;
-
-        if (this.match("lparen")) {
-          const bind = this.expect("identifier").value;
-          this.expect("rparen");
-
-          if (payloadField === null) {
-            throw new Error(`${t.value} has no payload to bind`);
-          }
-
-          const end = this.endTok();
-          return {
-            type: "VariantPattern",
-            enumName,
-            variant: t.value,
-            payloadField,
-            bind,
-            span: this.spanFrom(start, end),
-          };
-        }
-
         const end = this.endTok();
         return {
           type: "VariantPattern",
-          enumName,
-          variant: t.value,
-          payloadField,
+          enumName: info.enumName,
+          variant: name,
+          payloadField: info.payloadField,
           bind: null,
           span: this.spanFrom(start, end),
         };
       }
 
       const end = this.endTok();
-      return {
-        type: "LiteralPattern",
-        value: { type: "Identifier", name: t.value, span: t.span },
-        span: this.spanFrom(start, end),
-      };
+      throw new Error(
+        `Invalid pattern '${t.value}': bare identifier patterns are not supported (use '_' or a literal, or an enum variant like Ok(x))`,
+      );
     }
 
     if (this.match("number")) {

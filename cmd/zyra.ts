@@ -1,4 +1,4 @@
-import { buildProject } from "../compiler/driver";
+import { buildProject } from "../compiler/driver.js";
 
 function usage(): never {
   throw new Error(`Usage:

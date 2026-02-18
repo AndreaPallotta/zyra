@@ -2,18 +2,18 @@ import type { Span } from "./span.js";
 
 type WithSpan = { span: Span };
 
-// =====================
-// Program
-// =====================
+
+
+
 
 export type Program = {
   type: "Program";
   body: Statement[];
 } & WithSpan;
 
-// =====================
-// Statements
-// =====================
+
+
+
 
 export type Statement =
   | ImportDecl
@@ -93,26 +93,26 @@ export type ImportDecl = {
   names: string[];
 } & WithSpan;
 
-// =====================
-// Types
-// =====================
+
+
+
 
 export type TypeNode =
   | ({ type: "AnyType" } & WithSpan)
   | ({ type: "NamedType"; name: string } & WithSpan);
 
-// =====================
-// Blocks
-// =====================
+
+
+
 
 export type Block = {
   type: "Block";
   statements: Statement[];
 } & WithSpan;
 
-// =====================
-// Expressions
-// =====================
+
+
+
 
 export type Expression =
   | Identifier
