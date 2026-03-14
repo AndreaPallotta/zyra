@@ -1,33 +1,23 @@
-import { envSuite } from "./env.test.js";
-import { helpersSuite } from "./helpers.test.js";
-import { coreHelpersSuite } from "./core_helpers.test.js";
-import { exprSuite } from "./expr.test.js";
-import { stmtsSuite } from "./stmts.test.js";
-import { matchSuite } from "./match.test.js";
-import { structSuite } from "./struct.test.js";
-import { enumSuite } from "./enum.test.js";
-import { unreachableSuite } from "./unreachable.test.js";
-import { exprMoreSuite } from "./expr_more.test.js";
-import { stmtsMoreSuite } from "./stmts_more.test.ts";
-import { matchMoreSuite } from "./match_more.test.js";
-import { coreHelpersMoreSuite } from "./core_helpers_more.test.js";
-import { comprehensiveSuite } from "./comprehensive.test.ts";
-import { coreHelpersExtraSuite } from "./core_helpers_extra.test.js";
-import { envMoreSuite } from "./env_more.test.js";
-import { matchMore2Suite } from "./match_more2.test.js";
-import { stmtsMore2Suite } from "./stmts_more2.test.js";
-import { exprEnumMoreSuite } from "./expr_enum_more.test.js";
-import { stmtsMore3Suite } from "./stmts_more3.test.js";
-import { matchMore3Suite } from "./match_more3.test.js";
-import { exprIfMoreSuite } from "./expr_if_more.test.js";
-import { exprStructUpdateMoreSuite } from "./expr_struct_update_more.test.js";
-import { matchAdditionalSuite } from "./match_additional.test.js";
-import { stmtsJoinMoreSuite } from "./stmts_join_more.test.js";
-import { coreHelpersExtra2Suite } from "./core_helpers_extra2.test.js";
-import { exprEnumMore2Suite } from "./expr_enum_more2.test.js";
-import { exprStructMore2Suite } from "./expr_struct_more2.test.js";
-import { consolidatedSuite } from "./consolidated.test.ts";
-  await coreHelpersExtra2Suite.run();
-  await exprEnumMore2Suite.run();
-  await consolidatedSuite.run();
-import { matchNonExhaustiveSuite } from "./match_nonexhaustive.test.js";
+import { readdirSync } from "fs";
+
+// Dynamically import and run all test suites exported from `*.test.ts` files.
+// Each test file exports a suite named like `<something>Suite`.
+const dirPath = new URL("./", import.meta.url).pathname;
+const files = readdirSync(dirPath).filter((f) => f.endsWith(".test.ts") || f.endsWith(".test.js"));
+
+for (const file of files.sort()) {
+  try {
+    const mod = await import(`./${file}`);
+    const suiteKey = Object.keys(mod).find((k) => k.toLowerCase().endsWith("suite"));
+    if (suiteKey && typeof mod[suiteKey]?.run === "function") {
+      // run suites sequentially
+      // eslint-disable-next-line no-await-in-loop
+      await mod[suiteKey].run();
+    }
+  } catch (err) {
+    // show which file failed to import/run, then rethrow so CI/test runner fails clearly
+    // eslint-disable-next-line no-console
+    console.error("Failed running tests for", file, err);
+    throw err;
+  }
+}
