@@ -1,5 +1,5 @@
 {
-  "name": "zyra-compiler",
+  "name": "zyra-ts",
   "version": "0.1.0",
   "description": "Zyra language compiler (source .zy → ESM .js)",
   "main": "dist/cmd/zyra.js",
