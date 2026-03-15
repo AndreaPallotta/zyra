@@ -111,10 +111,10 @@ export function check(program: Program): Diagnostic[] {
     if (a.kind !== b.kind) return false;
 
     if (a.kind === "Struct" || a.kind === "Enum")
-      return a.name === (b as any).name;
+      return a.name === (b as { name: string }).name;
 
     if (a.kind === "Fn") {
-      const fb = b as any as Ty & { kind: "Fn" };
+      const fb = b as Ty & { kind: "Fn" };
       if (a.params.length !== fb.params.length) return false;
       if (!sameType(a.ret, fb.ret)) return false;
       for (let i = 0; i < a.params.length; i++) {

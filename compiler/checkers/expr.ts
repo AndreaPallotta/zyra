@@ -1,5 +1,5 @@
-import type { Expression, Block, MatchExpr } from "../ast.js";
-import type { Scope, Ty } from "./types.js";
+import type { Expression, Block, MatchExpr, TypeNode } from "../ast.js";
+import type { Scope, Ty, StructInfo, EnumInfo, TConst } from "./types.js";
 import type { Span } from "../span.js";
 
 /**
@@ -14,23 +14,23 @@ import type { Span } from "../span.js";
  */
 export function makeExprVisitor(opts: {
   use: (stack: Scope[], name: string, at?: Span) => Ty;
-  T: any;
+  T: TConst;
   sameType: (a: Ty, b: Ty) => boolean;
   typeToString: (t: Ty) => string;
   isBoolish: (t: Ty) => boolean;
   joinConcreteOrError: (tys: Ty[], ctx: string, at?: Span) => Ty;
   requireValue: (ty: Ty, what: string, at?: Span) => void;
   requireBranchValue: (ty: Ty, what: string, at?: Span) => void;
-  resolveTypeNode: (n: any) => Ty;
-  declare: (scope: Scope, name: string, ty: Ty, opts?: any) => void;
+  resolveTypeNode: (n: TypeNode | null) => Ty;
+  declare: (scope: Scope, name: string, ty: Ty, opts?: { used?: boolean; isTopLevel?: boolean; isExported?: boolean } ) => void;
   envEnumOfIdent: Map<string, string>;
-  structs: Map<string, any>;
-  enums: Map<string, any>;
+  structs: Map<string, StructInfo>;
+  enums: Map<string, EnumInfo>;
   visitBlock: (b: Block, stack: Scope[], inFn: boolean, expectedFnRet: Ty | null, valueContext: boolean) => { ty: Ty; alwaysReturns: boolean; };
   visitMatch: (m: MatchExpr, stack: Scope[], inFn: boolean, expectedFnRet: Ty | null, valueContext: boolean) => { ty: Ty };
   mustBe?: (a: Ty, b: Ty, message: string, at?: Span) => void;
   err: (message: string, span?: Span) => void;
-  spanOf: (n: any) => Span | undefined;
+  spanOf: (n: { span?: Span } | null | undefined) => Span | undefined;
 }) {
   const { T, sameType, typeToString } = opts;
 

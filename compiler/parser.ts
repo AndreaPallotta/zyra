@@ -14,6 +14,8 @@ import {
   ImportDecl,
   PrintStmt,
   TypeNode,
+  MatchArm,
+  InterpString,
   FunctionParam,
   ReturnStmt,
 } from "./ast.js";
@@ -349,7 +351,7 @@ export class Parser {
 
     this.expect("lbrace");
 
-    const arms: any[] = [];
+    const arms: MatchArm[] = [];
     while (!this.check("rbrace")) {
       const aStart = this.startTok();
       const pattern = this.parsePattern();
@@ -725,7 +727,7 @@ export class Parser {
 
     if (this.match("match")) {
       const start = this.previous("match");
-      return this.parseMatch(start) as any;
+      return this.parseMatch(start);
     }
 
     if (this.match("if")) {
@@ -738,7 +740,7 @@ export class Parser {
       const expr = this.parseExpression();
       this.expect("rparen");
       const end = this.endTok();
-      return { ...(expr as any), span: this.spanFrom(start, end) };
+      return { ...expr, span: this.spanFrom(start, end) };
     }
 
     if (this.check("lbrace")) {
@@ -749,7 +751,7 @@ export class Parser {
   }
 
   private parseInterpString(raw: string, span: Span): Expression {
-    const parts: any[] = [];
+    const parts: InterpString["parts"] = [];
     let i = 0;
 
     const pushText = (s: string) => {
@@ -901,10 +903,10 @@ export class Parser {
     return this.tokens[this.pos];
   }
 
-  private previous<T extends TokenType>(
-    type?: T,
-  ): T extends TokenType ? TokenOf<T> : Token {
-    return this.tokens[this.pos - 1] as any;
+  private previous<T extends TokenType>(type: T): TokenOf<T>;
+  private previous(): Token;
+  private previous(type?: TokenType) {
+    return this.tokens[this.pos - 1];
   }
 
   private peekOperator(): TokenOf<"operator"> | null {

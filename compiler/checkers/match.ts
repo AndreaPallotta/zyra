@@ -1,7 +1,6 @@
-import type { MatchExpr, MatchArm, Expression } from "../ast.js";
-import type { Scope, Ty } from "./types.js";
+import type { MatchExpr, MatchArm, Expression, TypeNode } from "../ast.js";
+import type { Scope, Ty, EnumInfo } from "./types.js";
 import type { Span } from "../span.js";
-import type { EnumInfo } from "./types.js";
 
 /**
  * Factory that produces a `visitMatch` function bound to the provided
@@ -19,10 +18,10 @@ export function makeMatchVisitor(opts: {
   enums: Map<string, EnumInfo>;
   joinConcreteOrError: (tys: Ty[], ctx: string, at?: Span) => Ty;
   err: (message: string, span?: Span) => void;
-  spanOf: (n: any) => Span | undefined;
+  spanOf: (n: { span?: Span } | null | undefined) => Span | undefined;
   finishScope: (s: Scope) => void;
   declare: (scope: Scope, name: string, ty: Ty, opts?: { used?: boolean; isTopLevel?: boolean; isExported?: boolean }) => void;
-  resolveTypeNode: (n: any) => Ty;
+  resolveTypeNode: (n: TypeNode | null) => Ty;
 }) {
   return function visitMatch(
     m: MatchExpr,

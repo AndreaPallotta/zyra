@@ -11,6 +11,7 @@ import {
   toRelativeImport,
 } from "./module_resolver.js";
 import { Program } from "./ast.js";
+import { warn } from "../lib/logger.js";
 
 type ModuleInfo = {
   zyAbs: string;
@@ -90,8 +91,7 @@ function compileModule(
   if (diags.length) {
     const errs = diags.filter((d) => d.level === "error");
     const warns = diags.filter((d) => d.level === "warn");
-
-    for (const w of warns) console.warn(`warn: ${w.message}`);
+    for (const w of warns) warn(`warn: ${w.message}`);
     if (errs.length) throw new Error(errs.map((e) => e.message).join("\n"));
   }
 

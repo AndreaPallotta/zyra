@@ -1,4 +1,5 @@
 import { buildProject } from "../compiler/driver.js";
+import { setVerbose, info, error } from "../lib/logger.js";
 
 function usage(): never {
   throw new Error(`Usage:
@@ -32,6 +33,9 @@ function main() {
     }
   }
 
+  // set verbosity if requested
+  if (args.includes("--verbose")) setVerbose(true);
+
   buildProject({
     entry,
     outDir: outDir ?? "dist",
@@ -39,12 +43,12 @@ function main() {
     projectRoot: process.cwd(),
   });
 
-  console.log(`Built ${entry} -> ${outDir ?? "dist"}/`);
+  info(`Built ${entry} -> ${outDir ?? "dist"}/`);
 }
 
 try {
   main();
 } catch (err) {
-  console.error(String(err));
+  error(String(err));
   process.exit(1);
 }

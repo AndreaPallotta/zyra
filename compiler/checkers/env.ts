@@ -1,5 +1,5 @@
 import type { Span } from "../span.js";
-import type { Scope, Ty } from "./types.js";
+import type { Scope, Ty, TConst } from "./types.js";
 
 /**
  * Create environment helpers that manage scope entries and diagnostics.
@@ -9,8 +9,8 @@ import type { Scope, Ty } from "./types.js";
  * easier to read and allows unit testing of state logic.
  */
 export function makeEnvHelpers(opts: {
-  diags: Array<any>;
-  T: any;
+  diags: Array<{ level: string; message: string; span?: Span }>;
+  T: TConst;
 }) {
   const { diags } = opts;
 
@@ -28,7 +28,7 @@ export function makeEnvHelpers(opts: {
    * Extract a `span` field from AST nodes where available.
    * Returns `undefined` when the node doesn't carry a span.
    */
-  function spanOf(n: any): Span | undefined {
+  function spanOf(n: { span?: Span } | null | undefined): Span | undefined {
     return n && typeof n === "object" && "span" in n ? (n.span as Span) : undefined;
   }
 

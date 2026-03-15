@@ -36,6 +36,9 @@ export const T = {
   Fn: (params: Ty[], ret: Ty): Ty => ({ kind: "Fn", params, ret }),
 };
 
+/** Runtime shape of the `T` constants object exported above. */
+export type TConst = typeof T;
+
 /** Metadata for variables in a scope. */
 export type ScopeEntry = {
   used: boolean;

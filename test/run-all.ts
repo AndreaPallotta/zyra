@@ -1,4 +1,5 @@
 import { readdirSync } from "fs";
+import { error } from "../lib/logger.js";
 
 // Dynamically import and run all test suites exported from `*.test.ts` files.
 // Each test file exports a suite named like `<something>Suite`.
@@ -16,8 +17,7 @@ for (const file of files.sort()) {
     }
   } catch (err) {
     // show which file failed to import/run, then rethrow so CI/test runner fails clearly
-    // eslint-disable-next-line no-console
-    console.error("Failed running tests for", file, err);
+    error("Failed running tests for", file, err);
     throw err;
   }
 }

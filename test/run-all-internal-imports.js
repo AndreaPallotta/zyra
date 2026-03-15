@@ -18,11 +18,6 @@ import { coreHelpersSuite } from "./core_helpers.combined.test.js";
 import { stmtsMoreCover2Suite } from "./stmts_more_cover2.test.js";
 import { stmtsMoreCover3Suite } from "./stmts_more_cover3.test.js";
 import { matchSuite } from "./match.combined.test.js";
-import { exprMoreFinalSuite } from "./expr_more_final.test.js";
-import { exprStructUpdateFieldAnnSuite } from "./expr_struct_update_fieldann.test.js";
-import { exprBinaryUnknownOpSuite } from "./expr_binary_unknownop.test.js";
-import { exprMatchUnitSuite } from "./expr_match_unit.test.js";
-import { exprIfInitCasesSuite } from "./expr_if_init_cases.test.js";
 import { mergedSmallSuite } from "./merged_small_tests.test.ts";
 
 export async function runAll() {
@@ -43,10 +38,5 @@ export async function runAll() {
   await coreHelpersSuite.run();
   await stmtsMoreCover2Suite.run();
   await stmtsMoreCover3Suite.run();
-  await exprMoreFinalSuite.run();
-  await exprStructUpdateFieldAnnSuite.run();
-  await exprBinaryUnknownOpSuite.run();
-  await exprMatchUnitSuite.run();
-  await exprIfInitCasesSuite.run();
   await mergedSmallSuite.run();
 }

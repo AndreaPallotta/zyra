@@ -7,8 +7,16 @@ import {
   Block,
   Expression,
   BinaryExpr,
+  PrintStmt,
+  InterpString,
+  IfExpr,
+  MatchExpr,
+  MatchArm,
+  StructLiteral,
+  StructUpdateExpr,
 } from "./ast.js";
 import { ZYRA_FMT_HELPER } from "./static.js";
+import type { Span } from "./span.js";
 
 export function print(program: Program, opts?: { entry?: boolean }): string {
   if (opts?.entry) return printEntry(program);
@@ -28,7 +36,7 @@ function printNormal(program: Program): string {
 
 function needsFmt(program: Program): boolean {
   return program.body.some(
-    (st: any) => st.type === "PrintStmt" && st.kind === "print",
+    (st: Statement) => st.type === "PrintStmt" && st.type === "PrintStmt" && (st as PrintStmt).kind === "print",
   );
 }
 
@@ -134,17 +142,13 @@ function printVarDecl(node: VarDecl): string {
   return `${prefix}${node.kind} ${node.name} = ${init};`;
 }
 
-function printPrintStmt(node: any): string {
+function printPrintStmt(node: PrintStmt): string {
   if (node.kind === "print_raw") {
-    const args = node.args
-      .map((a: any) => `JSON.stringify(${printExpr(a)})`)
-      .join(", ");
+    const args = node.args.map((a: Expression) => `JSON.stringify(${printExpr(a)})`).join(", ");
     return `console.log(${args});`;
   }
 
-  const args = node.args
-    .map((a: any) => `__zyra_fmt(${printExpr(a)})`)
-    .join(", ");
+  const args = node.args.map((a: Expression) => `__zyra_fmt(${printExpr(a)})`).join(", ");
   return `console.log(${args});`;
 }
 
@@ -224,7 +228,7 @@ function printExpr(expr: Expression): string {
       return printBlock(expr);
 
     default:
-      throw new Error(`Unknown expression: ${(expr as any).type}`);
+        throw new Error(`Unknown expression: ${(expr as Expression).type}`);
   }
 }
 
@@ -243,7 +247,7 @@ function escapeTemplateText(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
 }
 
-function printInterpString(node: any): string {
+function printInterpString(node: InterpString): string {
   const out: string[] = [];
   out.push("`");
 
@@ -259,7 +263,7 @@ function printInterpString(node: any): string {
   return out.join("");
 }
 
-function printIfExpr(node: any): string {
+function printIfExpr(node: IfExpr): string {
   const lines: string[] = [];
   lines.push("(() => {");
 
@@ -272,15 +276,15 @@ function printIfExpr(node: any): string {
   return lines.join("\n");
 }
 
-function printIfChain(node: any): string {
+function printIfChain(node: IfExpr): string {
   const cond = printExpr(node.condition);
   const thenBlock = printBlock(node.thenBranch);
 
   if (node.elseBranch.type === "IfExpr") {
-    const elseIf = printIfChain(node.elseBranch);
+    const elseIf = printIfChain(node.elseBranch as IfExpr);
     return `if (${cond}) ${thenBlock} else ${elseIf}`;
   } else {
-    const elseBlock = printBlock(node.elseBranch);
+    const elseBlock = printBlock(node.elseBranch as Block);
     return `if (${cond}) ${thenBlock} else ${elseBlock}`;
   }
 }
@@ -293,7 +297,7 @@ function indent(s: string, spaces: number): string {
     .join("\n");
 }
 
-function printMatch(node: any): string {
+function printMatch(node: MatchExpr): string {
   const lines: string[] = [];
   lines.push("(() => {");
   lines.push(`  const __match = ${printExpr(node.value)};`);
@@ -306,7 +310,7 @@ function printMatch(node: any): string {
 
   let hasDefault = false;
 
-  node.arms.forEach((arm: any) => {
+  node.arms.forEach((arm: MatchArm) => {
     if (arm.pattern.type === "WildcardPattern") {
       hasDefault = true;
       lines.push("    default:");
@@ -321,9 +325,7 @@ function printMatch(node: any): string {
       lines.push(`    case "${arm.pattern.variant}": {`);
 
       if (arm.pattern.bind) {
-        lines.push(
-          `      const ${arm.pattern.bind} = __match.${arm.pattern.payloadField};`,
-        );
+        lines.push(`      const ${arm.pattern.bind} = __match.${arm.pattern.payloadField};`);
       }
 
       if (arm.guard) {
@@ -335,10 +337,7 @@ function printMatch(node: any): string {
       return;
     }
 
-    if (
-      arm.pattern.type === "LiteralPattern" &&
-      arm.pattern.value.type === "Identifier"
-    ) {
+    if (arm.pattern.type === "LiteralPattern" && arm.pattern.value.type === "Identifier") {
       lines.push(`    case "${arm.pattern.value.name}":`);
       lines.push(`      return ${printExpr(arm.body)};`);
       return;
@@ -358,11 +357,11 @@ function printMatch(node: any): string {
   return lines.join("\n");
 }
 
-function printStructLiteral(node: any): string {
+function printStructLiteral(node: StructLiteral): string {
   const lines: string[] = [];
   lines.push("{");
   lines.push(`  __t: "${node.name}",`);
-  node.fields.forEach((f: any, i: number) => {
+  node.fields.forEach((f: { name: string; value: Expression; span: Span }, i: number) => {
     const comma = i === node.fields.length - 1 ? "" : ",";
     lines.push(`  ${f.name}: ${printExpr(f.value)}${comma}`);
   });
@@ -370,11 +369,11 @@ function printStructLiteral(node: any): string {
   return lines.join("\n");
 }
 
-function printStructUpdate(node: any): string {
+function printStructUpdate(node: StructUpdateExpr): string {
   const lines: string[] = [];
   lines.push("{");
   lines.push(`  ...${printExpr(node.target)},`);
-  node.fields.forEach((f: any, i: number) => {
+  node.fields.forEach((f: { name: string; value: Expression; span: Span }, i: number) => {
     const comma = i === node.fields.length - 1 ? "" : ",";
     lines.push(`  ${f.name}: ${printExpr(f.value)}${comma}`);
   });

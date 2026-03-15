@@ -1,4 +1,4 @@
-import type { Ty, BlockResult } from "./types.js";
+import type { Ty, BlockResult, TConst } from "./types.js";
 import type { TypeNode } from "../ast.js";
 import type { Span } from "../span.js";
 
@@ -14,7 +14,7 @@ import type { Span } from "../span.js";
  * they are produced by this factory to keep `checker.ts` concise.
  */
 export function makeCoreHelpers(opts: {
-  T: any;
+  T: TConst;
   sameType: (a: Ty, b: Ty) => boolean;
   typeToString: (t: Ty) => string;
   resolveTypeNode: (n: TypeNode | null) => Ty;

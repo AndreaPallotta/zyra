@@ -1,5 +1,5 @@
-import type { Statement, Block } from "../ast.js";
-import type { Scope, Ty, StmtResult, BlockResult } from "./types.js";
+import type { Statement, Block, TypeNode, Expression } from "../ast.js";
+import type { Scope, Ty, StmtResult, BlockResult, TConst } from "./types.js";
 import type { Span } from "../span.js";
 
 /**
@@ -13,17 +13,17 @@ import type { Span } from "../span.js";
  * that perform the same checks as the original in-file visitors.
  */
 export function makeStmtVisitors(opts: {
-  visitExpr: (e: any, stack: Scope[], inFn: boolean, expectedFnRet: Ty | null) => { ty: Ty; alwaysReturns: boolean };
-  declare: (scope: Scope, name: string, ty: Ty, opts?: any) => void;
-  resolveTypeNode: (n: any) => Ty;
+  visitExpr: (e: Expression, stack: Scope[], inFn: boolean, expectedFnRet: Ty | null) => { ty: Ty; alwaysReturns: boolean };
+  declare: (scope: Scope, name: string, ty: Ty, opts?: { used?: boolean; isTopLevel?: boolean; isExported?: boolean }) => void;
+  resolveTypeNode: (n: TypeNode | null) => Ty;
   mustBe?: (a: Ty, b: Ty, message: string, at?: Span) => void;
-  T: any;
+  T: TConst;
   joinConcreteOrError: (tys: Ty[], ctx: string, at?: Span) => Ty;
-  implicitReturnFromBody: (body: BlockResult, fnRetAnn: any, at?: Span) => BlockResult;
+  implicitReturnFromBody: (body: BlockResult, fnRetAnn: TypeNode | null, at?: Span) => BlockResult;
   finishScope: (s: Scope) => void;
   err: (message: string, span?: Span) => void;
-  spanOf: (n: any) => Span | undefined;
-  isEffectfulExpr: (e: any) => boolean;
+  spanOf: (n: { span?: Span } | null | undefined) => Span | undefined;
+  isEffectfulExpr: (e: Expression) => boolean;
   use: (stack: Scope[], name: string, at?: Span) => Ty;
   envEnumOfIdent: Map<string, string>;
   typeToString: (t: Ty) => string;

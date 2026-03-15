@@ -1,5 +1,9 @@
 # Zyra Language Specification (v0)
 
+<p align="center">
+  <img src="assets/zyra_128x128.png" alt="Zyra logo" width="128" />
+</p>
+
 Zyra is a strict, expression-oriented programming language that compiles to modern browser-native JavaScript (ESM) with **zero runtime library**.
 
 It prioritizes:
