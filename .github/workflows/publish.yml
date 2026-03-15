@@ -10,6 +10,11 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: core
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,11 +24,14 @@ jobs:
         with:
           node-version: 18
           registry-url: 'https://registry.npmjs.org/'
+          cache: npm
+          cache-dependency-path: core/package-lock.json
 
       - name: Configure npm auth
         run: |
           if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
-            echo "ERROR: NPM_TOKEN secret is not set"; exit 1
+            echo "ERROR: NPM_TOKEN secret is not set"
+            exit 1
           fi
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
 
@@ -38,6 +46,7 @@ jobs:
 
       - name: Create tag (optional)
         if: ${{ inputs.tag != '' }}
+        working-directory: .
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

@@ -1,9 +1,0 @@
-enum Result { Ok(x: Int), Err(e: String) }
-
-def f() {
-  const v: Any = 0
-  match (v) {
-    Ok(x) => x,
-    Err(e) => 0
-  }
-}
