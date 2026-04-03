@@ -1,0 +1,69 @@
+{
+  "name": "zyra-vscode",
+  "displayName": "Zyra Language",
+  "description": "Language support for Zyra",
+  "version": "0.1.0",
+  "publisher": "andreapallotta",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "icon": "assets/zyra-icon.png",
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "zyra",
+        "extensions": [
+          ".zy"
+        ],
+        "aliases": [
+          "Zyra"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "zyra",
+        "scopeName": "source.zyra",
+        "path": "./syntaxes/zyra.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "zyra.hello",
+        "title": "Zyra: Hello"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "zyra.hello",
+        "key": "ctrl+shift+y",
+        "mac": "cmd+shift+y",
+        "when": "editorTextFocus && editorLangId == zyra"
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AndreaPallotta/zyra"
+  },
+  "license": "ISC",
+  "categories": [
+    "Programming Languages"
+  ],
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "tsx test/runTest.ts"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.1",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^2.4.0",
+    "mocha": "^11.7.5",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

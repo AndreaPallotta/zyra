@@ -1,0 +1,6 @@
+// Sample Zyra file
+let x = 42
+
+fn greet(name: String) -> Unit {
+  return
+}

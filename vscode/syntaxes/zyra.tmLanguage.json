@@ -1,0 +1,93 @@
+{
+  "name": "Zyra",
+  "scopeName": "source.zyra",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#literals" },
+    { "include": "#declarations" },
+    { "include": "#punctuation" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.line.double-slash.zyra", "match": "//.*$" },
+        { "name": "comment.block.zyra", "begin": "/\\*", "end": "\\*/" }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.zyra",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [ { "match": "\\\\.", "name": "constant.character.escape.zyra" } ]
+        },
+        {
+          "name": "string.quoted.single.zyra",
+          "begin": "'",
+          "end": "'",
+          "patterns": [ { "match": "\\\\.", "name": "constant.character.escape.zyra" } ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [ { "name": "constant.numeric.zyra", "match": "\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b" } ]
+    },
+    "keywords": {
+      "patterns": [ { "name": "keyword.control.zyra", "match": "\\b(?:let|const|fn|if|else|match|return|struct|enum|import|export)\\b" } ]
+    },
+    "types": {
+      "patterns": [ { "name": "storage.type.zyra", "match": "\\b(?:Int|Bool|String|Unit)\\b" } ]
+    },
+    "literals": {
+      "patterns": [ { "name": "constant.language.boolean.zyra", "match": "\\b(?:true|false)\\b" } ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "name": "meta.function.zyra",
+          "begin": "\\bfn\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(\\()",
+          "beginCaptures": {
+            "1": { "name": "entity.name.function.zyra" },
+            "2": { "name": "punctuation.definition.parameters.begin.zyra" }
+          },
+          "end": "\\)",
+          "endCaptures": { "0": { "name": "punctuation.definition.parameters.end.zyra" } },
+          "patterns": [
+            {
+              "name": "meta.function.parameters.zyra",
+              "match": "([A-Za-z_][A-Za-z0-9_]*)\\s*:\\s*([A-Za-z_][A-Za-z0-9_]*)",
+              "captures": {
+                "1": { "name": "variable.parameter.zyra" },
+                "2": { "name": "storage.type.zyra" }
+              }
+            }
+          ]
+        },
+        { "name": "meta.type.declaration.zyra", "match": "\\b(?:struct|enum)\\s+([A-Za-z_][A-Za-z0-9_]*)", "captures": { "1": { "name": "entity.name.type.zyra" } } },
+        { "name": "meta.import.zyra", "match": "\\b(?:import|export)\\b\\s+([A-Za-z0-9_./\\-]+)", "captures": { "1": { "name": "string.unquoted.import.zyra" } } },
+        {
+          "name": "meta.match.zyra",
+          "begin": "\\bmatch\\b\\s*\\([^\\n{]+\\)\\s*\\{",
+          "end": "\\}",
+          "patterns": [ { "name": "keyword.control.match.arm.zyra", "match": "\\|\\s*[^=>\\n]+=>" } ]
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [ { "name": "variable.other.zyra", "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b" } ]
+    },
+    "punctuation": {
+      "patterns": [
+        { "name": "keyword.operator.zyra", "match": "->|=>|==|!=|<=|>=|&&|\\|\\|" },
+        { "name": "punctuation.separator.zyra", "match": ":|,|;" },
+        { "name": "punctuation.bracket.zyra", "match": "[\\[\\]{}()]" }
+      ]
+    }
+  }
+}
