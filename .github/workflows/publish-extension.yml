@@ -28,8 +28,8 @@ jobs:
       - name: Build & Package Extension
         run: |
           npm run build -w vscode
-          npx @vscode/vsce package --cwd vscode
+          cd vscode && npx @vscode/vsce package
 
       - name: Publish to Marketplace
         run: |
-          npx @vscode/vsce publish -p ${{ secrets.VSCE_PAT }} --cwd vscode
+          cd vscode && npx @vscode/vsce publish -p ${{ secrets.VSCE_PAT }}

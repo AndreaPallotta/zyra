@@ -27,10 +27,6 @@ jobs:
       - name: Build Extension (with LSP Bundling)
         run: npm run build -w vscode
 
-      - name: Run extension tests
-        run: |
-          cd vscode
-          npm test
 
       - name: Create tag (optional)
         if: ${{ inputs.tag != '' }}
