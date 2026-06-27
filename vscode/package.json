@@ -2,7 +2,7 @@
   "name": "zyra-vscode",
   "displayName": "Zyra Language",
   "description": "Language support for Zyra",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "AndreaPallotta",
   "author": "Andrea Pallotta",
   "engines": {
@@ -10,7 +10,9 @@
   },
   "icon": "assets/zyra-icon.png",
   "main": "./out/extension.js",
-  "activationEvents": ["onLanguage:zyra"],
+  "activationEvents": [
+    "onLanguage:zyra"
+  ],
   "contributes": {
     "languages": [
       {
