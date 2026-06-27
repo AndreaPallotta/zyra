@@ -3,7 +3,8 @@
   "displayName": "Zyra Language",
   "description": "Language support for Zyra",
   "version": "0.1.0",
-  "publisher": "andreapallotta",
+  "publisher": "AndreaPallotta",
+  "author": "Andrea Pallotta",
   "engines": {
     "vscode": "^1.90.0"
   },
