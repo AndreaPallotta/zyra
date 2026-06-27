@@ -1,9 +1,6 @@
 const assert = require('assert');
 const vscode = require('vscode');
 
-declare const suite: any;
-declare const test: any;
-
 suite('Extension Test Suite', () => {
   test('zyra.hello command should execute', async () => {
     await vscode.commands.executeCommand('zyra.hello');

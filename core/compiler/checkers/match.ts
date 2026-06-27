@@ -20,7 +20,7 @@ export function makeMatchVisitor(opts: {
   err: (message: string, span?: Span) => void;
   spanOf: (n: { span?: Span } | null | undefined) => Span | undefined;
   finishScope: (s: Scope) => void;
-  declare: (scope: Scope, name: string, ty: Ty, opts?: { used?: boolean; isTopLevel?: boolean; isExported?: boolean }) => void;
+  declare: (scope: Scope, name: string, ty: Ty, opts?: { used?: boolean; isTopLevel?: boolean; isExported?: boolean; span?: Span }) => void;
   resolveTypeNode: (n: TypeNode | null) => Ty;
 }) {
   return function visitMatch(
@@ -142,6 +142,7 @@ export function makeMatchVisitor(opts: {
               used: false,
               isTopLevel: false,
               isExported: false,
+              span: opts.spanOf(arm.pattern),
             });
           }
         }
@@ -151,6 +152,7 @@ export function makeMatchVisitor(opts: {
             used: false,
             isTopLevel: false,
             isExported: false,
+            span: opts.spanOf(arm.pattern),
           });
         }
       }

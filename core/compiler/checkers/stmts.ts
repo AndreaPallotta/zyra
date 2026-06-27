@@ -14,7 +14,7 @@ import type { Span } from "../span.js";
  */
 export function makeStmtVisitors(opts: {
   visitExpr: (e: Expression, stack: Scope[], inFn: boolean, expectedFnRet: Ty | null) => { ty: Ty; alwaysReturns: boolean };
-  declare: (scope: Scope, name: string, ty: Ty, opts?: { used?: boolean; isTopLevel?: boolean; isExported?: boolean }) => void;
+  declare: (scope: Scope, name: string, ty: Ty, opts?: { used?: boolean; isTopLevel?: boolean; isExported?: boolean; span?: Span }) => void;
   resolveTypeNode: (n: TypeNode | null) => Ty;
   mustBe?: (a: Ty, b: Ty, message: string, at?: Span) => void;
   T: TConst;
@@ -50,6 +50,7 @@ export function makeStmtVisitors(opts: {
             used: false,
             isTopLevel,
             isExported: false,
+            span: opts.spanOf(st),
           });
         }
         return { alwaysReturns: false, returnTy: null, exprTy: null };
@@ -76,6 +77,7 @@ export function makeStmtVisitors(opts: {
           used: !!st.isExported,
           isTopLevel,
           isExported: !!st.isExported,
+          span: opts.spanOf(st),
         });
 
         if (st.initializer.type === "EnumLiteral") {
@@ -96,6 +98,7 @@ export function makeStmtVisitors(opts: {
           used: !!st.isExported,
           isTopLevel,
           isExported: !!st.isExported,
+          span: opts.spanOf(st),
         });
 
         const fnScope: Scope = new Map();
@@ -106,6 +109,7 @@ export function makeStmtVisitors(opts: {
             used: false,
             isTopLevel: false,
             isExported: false,
+            span: opts.spanOf(st.params[i]),
           });
         }
 

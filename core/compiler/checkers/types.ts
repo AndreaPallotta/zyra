@@ -1,4 +1,5 @@
 import type { TypeNode } from "../ast.js";
+import type { Span } from "../span.js";
 
 /** Information about a struct's fields and their annotated types. */
 export type StructInfo = { fields: Map<string, TypeNode | null> };
@@ -45,6 +46,7 @@ export type ScopeEntry = {
   ty: Ty;
   isTopLevel: boolean;
   isExported: boolean;
+  span?: Span;
 };
 
 /** Map of identifier -> metadata for a single lexical scope. */

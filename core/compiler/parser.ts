@@ -54,7 +54,11 @@ export class Parser {
     if (this.match("var")) return this.parseVarDecl("var", isExported, start);
     if (this.match("def")) return this.parseFunction(isExported, start);
 
-    if (isExported) throw new Error("export must be followed by const/var/def");
+    if (isExported) {
+      const err = new Error("export must be followed by const/var/def") as any;
+      err.span = this.peek().span;
+      throw err;
+    }
 
     if (this.match("return")) return this.parseReturnStmt(start);
 
@@ -146,10 +150,13 @@ export class Parser {
         this.expect("rparen");
       }
 
-      if (table.has(vname))
-        throw new Error(
+      if (table.has(vname)) {
+        const err = new Error(
           `Duplicate enum variant '${vname}' in ${nameTok.value}`,
-        );
+        ) as any;
+        err.span = this.peek().span;
+        throw err;
+      }
 
       table.set(vname, payloadField);
       const vEnd = this.endTok();
@@ -188,8 +195,11 @@ export class Parser {
       this.expect("colon");
       const fty = this.parseTypeNode();
 
-      if (seen.has(fname))
-        throw new Error(`Duplicate field '${fname}' in ${nameTok.value}`);
+      if (seen.has(fname)) {
+        const err = new Error(`Duplicate field '${fname}' in ${nameTok.value}`) as any;
+        err.span = this.peek().span;
+        throw err;
+      }
       seen.add(fname);
 
       const fEnd = this.endTok();
@@ -420,9 +430,11 @@ export class Parser {
       }
 
       const end = this.endTok();
-      throw new Error(
+      const err = new Error(
         `Invalid pattern '${t.value}': bare identifier patterns are not supported (use '_' or a literal, or an enum variant like Ok(x))`,
-      );
+      ) as any;
+      err.span = t.span;
+      throw err;
     }
 
     if (this.match("number")) {
@@ -455,7 +467,9 @@ export class Parser {
       };
     }
 
-    throw new Error("Invalid match pattern");
+    const err = new Error("Invalid match pattern") as any;
+    err.span = this.peek().span;
+    throw err;
   }
 
   private parseExpression(): Expression {
@@ -747,7 +761,9 @@ export class Parser {
       return this.parseBlock();
     }
 
-    throw new Error(`Unexpected token: ${JSON.stringify(this.peek())}`);
+    const err = new Error(`Unexpected token: ${JSON.stringify(this.peek())}`) as any;
+    err.span = this.peek().span;
+    throw err;
   }
 
   private parseInterpString(raw: string, span: Span): Expression {
@@ -773,11 +789,18 @@ export class Parser {
       pushText(raw.slice(i, open));
 
       const close = raw.indexOf("}", open + 1);
-      if (close === -1)
-        throw new Error("Unterminated interpolation: missing '}'");
+      if (close === -1) {
+        const err = new Error("Unterminated interpolation: missing '}'") as any;
+        err.span = span;
+        throw err;
+      }
 
       const inside = raw.slice(open + 1, close).trim();
-      if (!inside.length) throw new Error("Empty interpolation: {}");
+      if (!inside.length) {
+        const err = new Error("Empty interpolation: {}") as any;
+        err.span = span;
+        throw err;
+      }
 
       const innerTokens = lex(inside);
       const inner = new Parser(innerTokens).parseExpressionOnly();
@@ -892,7 +915,9 @@ export class Parser {
 
   private expect<T extends TokenType>(type: T): TokenOf<T> {
     if (this.check(type)) return this.tokens[this.pos++] as TokenOf<T>;
-    throw new Error(`Expected ${type} but got ${JSON.stringify(this.peek())}`);
+    const err = new Error(`Expected ${type} but got ${JSON.stringify(this.peek())}`) as any;
+    err.span = this.peek().span;
+    throw err;
   }
 
   private check<T extends TokenType>(type: T): boolean {
@@ -923,10 +948,13 @@ export class Parser {
         hits.push({ enumName, payloadField: table.get(variant)! });
     }
     if (hits.length === 0) return null;
-    if (hits.length > 1)
-      throw new Error(
+    if (hits.length > 1) {
+      const err = new Error(
         `Ambiguous variant '${variant}' (exists in multiple enums)`,
-      );
+      ) as any;
+      err.span = this.peek().span;
+      throw err;
+    }
     return hits[0];
   }
 

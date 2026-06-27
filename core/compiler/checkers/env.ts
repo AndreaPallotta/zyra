@@ -1,5 +1,5 @@
 import type { Span } from "../span.js";
-import type { Scope, Ty, TConst } from "./types.js";
+import type { Scope, Ty, TConst, ScopeEntry } from "./types.js";
 
 /**
  * Create environment helpers that manage scope entries and diagnostics.
@@ -11,6 +11,10 @@ import type { Scope, Ty, TConst } from "./types.js";
 export function makeEnvHelpers(opts: {
   diags: Array<{ level: string; message: string; span?: Span }>;
   T: TConst;
+  options?: {
+    onUseIdentifier?: (name: string, entry: ScopeEntry, useSpan: Span) => void;
+    onDeclareIdentifier?: (name: string, entry: ScopeEntry, declSpan: Span) => void;
+  };
 }) {
   const { diags } = opts;
 
@@ -40,14 +44,19 @@ export function makeEnvHelpers(opts: {
     scope: Scope,
     name: string,
     ty: Ty,
-    opts?: { used?: boolean; isTopLevel?: boolean; isExported?: boolean },
+    declOpts?: { used?: boolean; isTopLevel?: boolean; isExported?: boolean; span?: Span },
   ) {
-    scope.set(name, {
-      used: opts?.used ?? false,
+    const entry: ScopeEntry = {
+      used: declOpts?.used ?? false,
       ty,
-      isTopLevel: opts?.isTopLevel ?? false,
-      isExported: opts?.isExported ?? false,
-    });
+      isTopLevel: declOpts?.isTopLevel ?? false,
+      isExported: declOpts?.isExported ?? false,
+      span: declOpts?.span,
+    };
+    scope.set(name, entry);
+    if (declOpts?.span && opts.options?.onDeclareIdentifier) {
+      opts.options.onDeclareIdentifier(name, entry, declOpts.span);
+    }
   }
 
   /** Lookup a name in a stack of scopes, mark it used and return its type.
@@ -58,6 +67,9 @@ export function makeEnvHelpers(opts: {
       const entry = scopeStack[i].get(name);
       if (entry) {
         entry.used = true;
+        if (at && opts.options?.onUseIdentifier) {
+          opts.options.onUseIdentifier(name, entry, at);
+        }
         return entry.ty;
       }
     }

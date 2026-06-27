@@ -9,6 +9,7 @@
   },
   "icon": "assets/zyra-icon.png",
   "main": "./out/extension.js",
+  "activationEvents": ["onLanguage:zyra"],
   "contributes": {
     "languages": [
       {
@@ -54,14 +55,18 @@
   ],
   "scripts": {
     "vscode:prepublish": "npm run build",
-    "build": "tsc",
+    "build": "tsc && esbuild ../lsp/src/server.ts --bundle --platform=node --outfile=out/server.js",
     "watch": "tsc -w",
     "test": "tsx test/runTest.ts"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.1",
     "@types/vscode": "^1.90.0",
     "@vscode/test-electron": "^2.4.0",
+    "esbuild": "^0.25.0",
     "mocha": "^11.7.5",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

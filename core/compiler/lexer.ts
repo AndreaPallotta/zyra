@@ -300,7 +300,11 @@ export function lex(input: string): Token[] {
 
       while (i < input.length && peek() !== quote) value += advance();
 
-      if (peek() !== quote) throw new Error("Unterminated string");
+      if (peek() !== quote) {
+        const err = new Error("Unterminated string") as any;
+        err.span = makeSpan(start, i, sl, sc);
+        throw err;
+      }
 
       advance();
       tokens.push({
@@ -388,7 +392,9 @@ export function lex(input: string): Token[] {
       continue;
     }
 
-    throw new Error(`Unexpected character: ${c}`);
+    const err = new Error(`Unexpected character: ${c}`) as any;
+    err.span = makeSpan(i, i + 1, line, col);
+    throw err;
   }
 
   tokens.push({ type: "eof", span: { start: i, end: i, line, col } });

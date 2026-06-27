@@ -38,13 +38,20 @@ import { makeStmtVisitors } from "./checkers/stmts.js";
  * are delegated to files under `compiler/checkers/` to keep this file
  * focused on high-level logic.
  */
-export function check(program: Program): Diagnostic[] {
+export interface CheckOptions {
+  onUseIdentifier?: (name: string, entry: ScopeEntry, useSpan: Span) => void;
+  onDeclareIdentifier?: (name: string, entry: ScopeEntry, declSpan: Span) => void;
+  onUseType?: (name: string, type: Ty, useSpan: Span) => void;
+  onDeclareType?: (name: string, declSpan: Span) => void;
+}
+
+export function check(program: Program, options?: CheckOptions): Diagnostic[] {
   const diags: Diagnostic[] = [];
 
   const structs = new Map<string, StructInfo>();
   const enums = new Map<string, EnumInfo>();
 
-  const env = makeEnvHelpers({ diags, T });
+  const env = makeEnvHelpers({ diags, T, options });
   const err = env.err;
   const warn = env.warn;
   const spanOf = env.spanOf;
@@ -66,6 +73,9 @@ export function check(program: Program): Diagnostic[] {
         fmap.set(f.name, f.typeAnn ?? null);
       }
       structs.set(st.name, { fields: fmap });
+      if (options?.onDeclareType && st.span) {
+        options.onDeclareType(st.name, st.span);
+      }
     }
 
     if (st.type === "EnumDecl") {
@@ -80,6 +90,9 @@ export function check(program: Program): Diagnostic[] {
         });
       }
       enums.set(st.name, { variants: vmap });
+      if (options?.onDeclareType && st.span) {
+        options.onDeclareType(st.name, st.span);
+      }
     }
   }
 
@@ -98,8 +111,20 @@ export function check(program: Program): Diagnostic[] {
     if (name === "Bool") return T.Bool;
     if (name === "String") return T.String;
     if (name === "Unit") return T.Unit;
-    if (structs.has(name)) return T.Struct(name);
-    if (enums.has(name)) return T.Enum(name);
+    if (structs.has(name)) {
+      const ty = T.Struct(name);
+      if (options?.onUseType && n.span) {
+        options.onUseType(name, ty, n.span);
+      }
+      return ty;
+    }
+    if (enums.has(name)) {
+      const ty = T.Enum(name);
+      if (options?.onUseType && n.span) {
+        options.onUseType(name, ty, n.span);
+      }
+      return ty;
+    }
 
     err(`Unknown type: ${name}`, spanOf(n));
     return T.Unknown;

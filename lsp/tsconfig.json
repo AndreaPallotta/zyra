@@ -5,10 +5,9 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "outDir": "dist",
-    "rootDir": ".",
-    "types": ["node"],
+    "rootDir": "src",
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["index.ts", "cmd/**/*.ts", "compiler/**/*.ts"]
+  "include": ["src/**/*.ts"]
 }
