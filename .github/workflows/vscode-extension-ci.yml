@@ -1,4 +1,4 @@
-name: VSCode Extension CI
+name: "vscode-ext:ci"
 
 on:
   workflow_dispatch:

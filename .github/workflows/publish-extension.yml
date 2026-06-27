@@ -1,4 +1,4 @@
-name: Publish VS Code Extension
+name: "vscode-ext:publish"
 
 on:
   workflow_dispatch:
