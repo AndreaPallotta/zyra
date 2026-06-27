@@ -1,6 +1,6 @@
 {
-  "name": "zyra-vscode",
-  "displayName": "Zyra Language",
+  "name": "zyra-ts-vscode",
+  "displayName": "Zyra TS",
   "description": "Language support for Zyra",
   "version": "1.0.0",
   "publisher": "AndreaPallotta",
