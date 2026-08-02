@@ -107,7 +107,8 @@ fn handle_repl() {
     println!("==================================================");
 
     use std::io::{self, Write};
-    let mut declarations: Vec<String> = Vec::new();
+    let mut top_declarations: Vec<String> = Vec::new();
+    let mut statements_history: Vec<String> = Vec::new();
     let mut input_buffer = String::new();
     let mut brace_count: i32 = 0;
 
@@ -139,22 +140,22 @@ fn handle_repl() {
                     continue;
                 }
                 ":vars" => {
-                    println!("Active Declarations: {}", declarations.len());
-                    for d in &declarations {
-                        println!("  {}", d);
+                    println!("Active Statements: {}", statements_history.len());
+                    for s in &statements_history {
+                        println!("  {}", s);
                     }
                     continue;
                 }
                 ":funcs" => {
-                    let fn_count = declarations.iter().filter(|d| d.starts_with("fn ") || d.starts_with("def ")).count();
-                    println!("Defined Functions: {}", fn_count);
-                    for d in declarations.iter().filter(|d| d.starts_with("fn ") || d.starts_with("def ")) {
-                        println!("  {}", d);
+                    println!("Defined Functions & Structs: {}", top_declarations.len());
+                    for d in &top_declarations {
+                        println!("  {}", d.replace('\n', " "));
                     }
                     continue;
                 }
                 ":clear" => {
-                    declarations.clear();
+                    top_declarations.clear();
+                    statements_history.clear();
                     input_buffer.clear();
                     brace_count = 0;
                     println!("✔ Cleared REPL session state.");
@@ -187,39 +188,59 @@ fn handle_repl() {
         let code_to_eval = input_buffer.clone();
         input_buffer.clear();
 
-        // Check if declaration (def / fn / struct / const / var)
-        let is_decl = code_to_eval.starts_with("def ") 
+        // Check if top-level declaration (def / fn / struct / enum)
+        let is_top_decl = code_to_eval.starts_with("def ") 
             || code_to_eval.starts_with("fn ") 
             || code_to_eval.starts_with("struct ")
             || code_to_eval.starts_with("enum ");
 
-        if is_decl {
-            // Convert 'def foo()' to Rust 'fn foo()' for compilation
-            let mut rs_decl = code_to_eval.replace("def ", "fn ");
-            rs_decl = rs_decl.replace("): Int", ") -> i64");
-            rs_decl = rs_decl.replace("): String", ") -> String");
-            rs_decl = rs_decl.replace(": Int", ": i64");
-            rs_decl = rs_decl.replace(": String", ": String");
-            rs_decl = rs_decl.replace("print(", "println!(\"{}\", ");
-            declarations.push(rs_decl);
-            println!("✔ Defined: {}", code_to_eval);
+        if is_top_decl {
+            let mut rs_decl = code_to_eval.clone();
+            if rs_decl.starts_with("struct ") {
+                rs_decl = format!("#[derive(Debug, Clone)]\n{}", rs_decl);
+                rs_decl = rs_decl.replace(": Int", ": i64,");
+                rs_decl = rs_decl.replace(": String", ": String,");
+            } else {
+                rs_decl = rs_decl.replace("def ", "fn ");
+                rs_decl = rs_decl.replace("): Int", ") -> i64");
+                rs_decl = rs_decl.replace("): String", ") -> String");
+                rs_decl = rs_decl.replace(": Int", ": i64");
+                rs_decl = rs_decl.replace(": String", ": String");
+                rs_decl = rs_decl.replace("print(", "println!(\"{}\", ");
+            }
+            top_declarations.push(rs_decl);
+            println!("✔ Defined: {}", code_to_eval.replace('\n', " "));
         } else {
-            // Transient evaluation block
+            // Statement or expression evaluation inside fn main()
             let mut rs_code = String::from("#![allow(dead_code, unused_variables, unused_mut, unused_imports)]\n\n");
-            for decl in &declarations {
+            for decl in &top_declarations {
                 rs_code.push_str(decl);
                 rs_code.push('\n');
             }
 
-            let mut eval_stmt = code_to_eval.clone();
-            eval_stmt = eval_stmt.replace("print(", "println!(\"{}\", ");
-            eval_stmt = eval_stmt.replace("(\"", "(String::from(\"");
-            eval_stmt = eval_stmt.replace("\")", "\"))");
-            if !eval_stmt.contains("println!") && !eval_stmt.contains("=") && !eval_stmt.ends_with(';') {
-                eval_stmt = format!("println!(\"=> {{:?}}\", {});", eval_stmt);
+            rs_code.push_str("\nfn main() {\n");
+            for stmt in &statements_history {
+                rs_code.push_str("  ");
+                rs_code.push_str(stmt);
+                rs_code.push('\n');
             }
 
-            rs_code.push_str("\nfn main() {\n  ");
+            let mut eval_stmt = code_to_eval.clone();
+            let is_binding = eval_stmt.starts_with("const ") || eval_stmt.starts_with("var ") || eval_stmt.contains('=');
+
+            eval_stmt = eval_stmt.replace("const ", "let ");
+            eval_stmt = eval_stmt.replace("var ", "let mut ");
+
+            if eval_stmt.starts_with("print(") && eval_stmt.ends_with(')') {
+                let inner = &eval_stmt[6..eval_stmt.len() - 1];
+                eval_stmt = format!("println!(\"{{}}\", {});", inner);
+            } else if !is_binding && !eval_stmt.contains("println!") && !eval_stmt.ends_with(';') {
+                eval_stmt = format!("println!(\"=> {{:?}}\", {});", eval_stmt);
+            } else if !eval_stmt.ends_with(';') {
+                eval_stmt.push(';');
+            }
+
+            rs_code.push_str("  ");
             rs_code.push_str(&eval_stmt);
             rs_code.push_str("\n}\n");
 
@@ -239,6 +260,9 @@ fn handle_repl() {
                     if let Ok(r) = run_out {
                         let res_str = String::from_utf8_lossy(&r.stdout);
                         print!("{}", res_str);
+                    }
+                    if is_binding {
+                        statements_history.push(eval_stmt);
                     }
                 } else {
                     let err_str = String::from_utf8_lossy(&out.stderr);
