@@ -18,7 +18,10 @@ Replace the console-based `ZyraSetup.exe` installer with a modern Windows GUI Se
 - **Install Options Checkboxes**:
   - `[x]` Zyra Core Compiler & Native Executable CLI (`zyra.exe`)
   - `[x]` Add Zyra to Windows System PATH Environment Variable
-  - `[x]` Install Zyra Official VS Code Extension (`zyra-vscode`)
+  - **Smart VS Code Auto-Detection**:
+    - Checks `%PATH%`, `%LocalAppData%\Programs\Microsoft VS Code`, and `%ProgramFiles%\Microsoft VS Code`.
+    - If VS Code IS detected: `[x] Install Zyra Official VS Code Extension` (enabled by default).
+    - If VS Code IS NOT detected: `[ ] Install Zyra Official VS Code Extension (VS Code not detected)` (disabled checkbox with tooltip/message: *"VS Code is not installed on this system. You can install the extension manually later via VSIX."*).
   - `[x]` Create Desktop / Start Menu Shortcuts
 
 ### 3. Installation Progress Screen
