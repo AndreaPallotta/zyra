@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -28,6 +28,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -39,10 +41,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install mkdocs-material pymdown-extensions
 
-      - name: Build MkDocs Documentation Site
+      - name: Build MkDocs Documentation Site & Push gh-pages
         run: |
-          mkdocs build
-          touch ./site/.nojekyll
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          touch ./docs/.nojekyll
+          mkdocs gh-deploy --force
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
