@@ -1,5 +1,5 @@
 site_name: Zyra Documentation
-site_url: https://zyra-lang.dev
+site_url: https://zyra-lang.dev/
 site_description: Official documentation for the Zyra Programming Language — combining the speed of Rust with the simplicity of Go.
 site_author: Andrea Pallotta
 
