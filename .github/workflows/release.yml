@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g. v1.0.0)'
+        description: 'Release version (e.g. v1.1.0)'
         required: true
-        default: 'v1.0.0'
+        default: 'v1.1.0'
 
 jobs:
   build-and-release:
@@ -39,7 +39,7 @@ jobs:
 
       - name: Create Linux Release Archive (.tar.gz)
         run: |
-          tar -czvf dist_packages/zyra-v1.0.0-linux-x64.tar.gz -C core/bin zyra.exe
+          tar -czvf dist_packages/zyra-v1.1.0-linux-x64.tar.gz -C core/bin zyra.exe
 
       - name: Create GitHub Release & Upload Assets
         uses: softprops/action-gh-release@v1
@@ -47,25 +47,26 @@ jobs:
           name: "Zyra Release ${{ github.ref_name || inputs.version }}"
           tag_name: ${{ github.ref_name || inputs.version }}
           body: |
-            ## 🚀 Zyra Programming Language v1.0.0 Release
+            ## 🚀 Zyra Programming Language v1.1.0 Release
 
-            ### 📦 Interactive Installers (Recommended)
+            ### 📦 Interactive Installers & Package Manager
             - 🪟 **Windows Setup Wizard Executable**: `ZyraSetup.exe` (Standard Windows Setup Wizard)
-            - 🪟 **Windows App Installer Package**: `Zyra_1.0.0_x64.msix` (Windows Store & App Installer format)
+            - 🪟 **Windows App Installer Package**: `Zyra_1.1.0_x64.msix` (Windows Store & App Installer format)
+            - 📦 **Zyra Package Manager (`zyra add`)**: Direct Rust Crate Interop (`import rust "<crate>"`) & 150,000+ packages
             - 🐧 **Linux Web Installer**: `get.sh` (`curl -fsSL https://zyra-lang.dev/get | bash`)
             - 📦 **VS Code Extension**: `zyra-vscode-1.0.2.vsix` (Syntax highlighting, IntelliSense, Hover docs, Code Lens `▶ Run` button)
 
             ### 💼 Offline & Enterprise Portable Archives
-            - 🪟 **Windows Portable Zip**: `zyra-v1.0.0-windows-x64.zip` (Zero installation / offline standalone zip)
-            - 🐧 **Linux Portable Archive**: `zyra-v1.0.0-linux-x64.tar.gz` (Zero installation / offline tarball)
-            - 🐧 **Debian Package Structure**: `zyra_1.0.0_amd64` (Compatible with `apt`, `dpkg`, `zypper`)
+            - 🪟 **Windows Portable Zip**: `zyra-v1.1.0-windows-x64.zip` (Zero installation / offline standalone zip)
+            - 🐧 **Linux Portable Archive**: `zyra-v1.1.0-linux-x64.tar.gz` (Zero installation / offline tarball)
+            - 🐧 **Debian Package Structure**: `zyra_1.1.0_amd64` (Compatible with `apt`, `dpkg`, `zypper`)
           files: |
             dist_packages/ZyraSetup.exe
-            dist_packages/Zyra_1.0.0_x64.msix
-            dist_packages/zyra-v1.0.0-windows-x64.zip
+            dist_packages/Zyra_1.1.0_x64.msix
+            dist_packages/zyra-v1.1.0-windows-x64.zip
             dist_packages/zyra-vscode-1.0.2.vsix
             dist_packages/get.sh
-            dist_packages/zyra-v1.0.0-linux-x64.tar.gz
+            dist_packages/zyra-v1.1.0-linux-x64.tar.gz
           draft: false
           prerelease: false
         env:

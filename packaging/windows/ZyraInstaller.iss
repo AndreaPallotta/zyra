@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Zyra Programming Language
-AppVersion=1.0.0
+AppVersion=1.1.0
 AppPublisher=Andrea Pallotta
 AppPublisherURL=https://zyra-lang.dev
 AppSupportURL=https://zyra-lang.dev

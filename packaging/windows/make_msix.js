@@ -44,7 +44,7 @@ const manifestXml = `<?xml version="1.0" encoding="utf-8"?>
   <Identity
     Name="ZyraProgrammingLanguage"
     Publisher="CN=AndreaPallotta"
-    Version="1.0.0.0"
+    Version="1.1.0.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
@@ -87,7 +87,7 @@ console.log('✔ Generated AppxManifest.xml for Windows App Installer');
 
 // 5. Invoke makeappx.exe from Windows SDK
 const makeappxPath = 'C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\makeappx.exe';
-const targetMsix = path.join(distPackagesDir, 'Zyra_1.0.0_x64.msix');
+const targetMsix = path.join(distPackagesDir, 'Zyra_1.1.0_x64.msix');
 
 if (fs.existsSync(targetMsix)) fs.unlinkSync(targetMsix);
 

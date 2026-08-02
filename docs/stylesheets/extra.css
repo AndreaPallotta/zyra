@@ -72,8 +72,21 @@
   color: #f8fafc;
 }
 
-/* Code Blocks Styling */
+/* Code Blocks & Rich Syntax Highlighting */
 .md-typeset pre > code {
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.9em;
 }
+
+/* Pygments Color Coding Theme */
+.highlight .k, .highlight .kd, .highlight .kn, .highlight .kr { color: #ff79c6 !important; font-weight: bold; } /* Keywords */
+.highlight .s, .highlight .s1, .highlight .s2, .highlight .str { color: #f1fa8c !important; } /* Strings */
+.highlight .nf, .highlight .fm { color: #50fa7b !important; font-weight: bold; } /* Functions */
+.highlight .nb, .highlight .kt { color: #8be9fd !important; font-weight: bold; } /* Built-in types */
+.highlight .m, .highlight .mi, .highlight .mf { color: #bd93f9 !important; } /* Numbers */
+.highlight .c, .highlight .c1, .highlight .cm { color: #6272a4 !important; font-style: italic; } /* Comments */
+.highlight .o { color: #ff79c6 !important; } /* Operators */
+.highlight .p { color: #f8f8f2 !important; } /* Punctuation */
+.highlight .n, .highlight .nx { color: #f8f8f2 !important; } /* Variables */

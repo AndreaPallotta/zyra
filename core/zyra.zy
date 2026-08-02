@@ -7,6 +7,8 @@ def print_help(): Int {
   print("  init <project-name>  Initialize a new Zyra project directory")
   print("  build <file.zy>      Compile Zyra file to native binary or JS")
   print("  run <file.zy>        Compile and run Zyra file in one step")
+  print("  add <crate>          Add a Rust crate dependency to zyra.json")
+  print("  pkg                  Resolve & install project dependencies")
   print("  test                 Run test runner test_runner.zy")
   print("  repl                 Launch interactive terminal REPL shell")
   print("  version              Display version information")

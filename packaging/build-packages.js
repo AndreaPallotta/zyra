@@ -97,8 +97,8 @@ fs.copyFileSync(getShSrc, getShDest);
 console.log("✔ Created Linux web installer: dist_packages/get.sh");
 
 // Step 4: Package Debian .deb Structure
-console.log("\n[4/5] Generating Debian Package Structure (zyra_1.0.0_amd64.deb)...");
-const debDir = path.join(distPackages, "zyra_1.0.0_amd64");
+console.log("\n[4/5] Generating Debian Package Structure (zyra_1.1.0_amd64.deb)...");
+const debDir = path.join(distPackages, "zyra_1.1.0_amd64");
 const debUsrBin = path.join(debDir, "usr", "local", "bin");
 const debMeta = path.join(debDir, "DEBIAN");
 
@@ -108,11 +108,11 @@ fs.mkdirSync(debMeta, { recursive: true });
 fs.copyFileSync(path.join(__dirname, "linux", "debian", "control"), path.join(debMeta, "control"));
 const targetBin = fs.existsSync(winExe) ? winExe : zyraExe;
 fs.copyFileSync(targetBin, path.join(debUsrBin, "zyra"));
-console.log("✔ Created Debian package structure: dist_packages/zyra_1.0.0_amd64/");
+console.log("✔ Created Debian package structure: dist_packages/zyra_1.1.0_amd64/");
 
 // Step 5: Package Offline Portable Zip & Tarball Bundles
-console.log("\n[5/5] Packaging Offline Portable Bundles (zyra-v1.0.0-windows-x64.zip)...");
-const winZipPath = path.join(distPackages, "zyra-v1.0.0-windows-x64.zip");
+console.log("\n[5/5] Packaging Offline Portable Bundles (zyra-v1.1.0-windows-x64.zip)...");
+const winZipPath = path.join(distPackages, "zyra-v1.1.0-windows-x64.zip");
 
 const tempZipDir = path.join(distPackages, "temp_win_bundle");
 fs.mkdirSync(tempZipDir, { recursive: true });
