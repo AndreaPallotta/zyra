@@ -3,6 +3,10 @@ name: "Deploy Zyra Documentation Site"
 on:
   push:
     branches: [ main, master ]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/deploy-docs.yml'
   workflow_dispatch:
 
 permissions:
