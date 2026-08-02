@@ -18,32 +18,45 @@ console.log("==================================================");
 fs.mkdirSync(distPackages, { recursive: true });
 fs.mkdirSync(binDir, { recursive: true });
 
-// Step 1: Ensure core/bin/zyra.exe binary exists
-console.log("\n[1/5] Verifying native self-hosted compiler core/bin/zyra.exe...");
-const zyraExe = path.join(binDir, "zyra.exe");
+// Step 1: Ensure native binary exists or compile from core/bin/zyra.rs
+console.log("\n[1/5] Verifying native self-hosted compiler binary...");
+const isWin = process.platform === "win32";
+const exeName = isWin ? "zyra.exe" : "zyra";
+const zyraExe = path.join(binDir, exeName);
+const zyraRs = path.join(binDir, "zyra.rs");
 
 if (!fs.existsSync(zyraExe)) {
-  const zyraRs = path.join(binDir, "zyra.rs");
   if (fs.existsSync(zyraRs)) {
-    console.log("Compiling core/bin/zyra.rs with rustc...");
+    console.log(`Compiling ${zyraRs} with rustc -> ${zyraExe}...`);
     execSync(`rustc "${zyraRs}" -o "${zyraExe}"`, { stdio: "inherit" });
   } else {
-    console.error("Error: Neither zyra.exe nor zyra.rs was found.");
+    console.error(`Error: ${zyraRs} was not found.`);
     process.exit(1);
   }
 }
-console.log("✔ Found native executable: core/bin/zyra.exe");
+
+// On Windows, ensure zyra.exe is also copied to binDir if needed
+const winExe = path.join(binDir, "zyra.exe");
+if (isWin && !fs.existsSync(winExe) && fs.existsSync(zyraRs)) {
+  execSync(`rustc "${zyraRs}" -o "${winExe}"`, { stdio: "inherit" });
+}
+
+console.log(`✔ Native self-hosted executable ready: ${zyraExe}`);
 
 // Step 2: Build Windows Native Installer Executable (ZyraSetup.exe)
 console.log("\n[2/5] Building Windows Standalone Setup Executable (ZyraSetup.exe)...");
 const installerRs = path.join(__dirname, "windows", "installer.rs");
 const setupExeOut = path.join(distPackages, "ZyraSetup.exe");
 
-try {
-  execSync(`rustc "${installerRs}" -o "${setupExeOut}"`, { stdio: "inherit" });
-  console.log(`✔ Generated Windows Setup Executable: ${setupExeOut}`);
-} catch (e) {
-  console.warn("Warning: Could not run rustc for ZyraSetup.exe directly.");
+if (isWin) {
+  try {
+    execSync(`rustc "${installerRs}" -o "${setupExeOut}"`, { stdio: "inherit" });
+    console.log(`✔ Generated Windows Setup Executable: ${setupExeOut}`);
+  } catch (e) {
+    console.warn("Warning: Could not run rustc for ZyraSetup.exe directly.");
+  }
+} else {
+  console.log("ℹ Skipping ZyraSetup.exe build on non-Windows host.");
 }
 
 // Step 3: Package Linux Web Installer (get.sh)
@@ -63,20 +76,19 @@ fs.mkdirSync(debUsrBin, { recursive: true });
 fs.mkdirSync(debMeta, { recursive: true });
 
 fs.copyFileSync(path.join(__dirname, "linux", "debian", "control"), path.join(debMeta, "control"));
-fs.copyFileSync(zyraExe, path.join(debUsrBin, "zyra"));
+const targetBin = fs.existsSync(winExe) ? winExe : zyraExe;
+fs.copyFileSync(targetBin, path.join(debUsrBin, "zyra"));
 console.log("✔ Created Debian package structure: dist_packages/zyra_1.0.0_amd64/");
 
 // Step 5: Package Offline Portable Zip & Tarball Bundles
-console.log("\n[5/5] Packaging Offline Portable Bundles (zyra-v1.0.0-windows-x64.zip & tar.gz)...");
+console.log("\n[5/5] Packaging Offline Portable Bundles (zyra-v1.0.0-windows-x64.zip)...");
 const winZipPath = path.join(distPackages, "zyra-v1.0.0-windows-x64.zip");
 const vsixPath = path.join(distPackages, "zyra-vscode-1.0.2.vsix");
-const specPath = path.join(coreDir, "SPEC.md");
 
 const tempZipDir = path.join(distPackages, "temp_win_bundle");
 fs.mkdirSync(tempZipDir, { recursive: true });
-fs.copyFileSync(zyraExe, path.join(tempZipDir, "zyra.exe"));
+if (fs.existsSync(winExe)) fs.copyFileSync(winExe, path.join(tempZipDir, "zyra.exe"));
 if (fs.existsSync(vsixPath)) fs.copyFileSync(vsixPath, path.join(tempZipDir, "zyra-vscode-1.0.2.vsix"));
-if (fs.existsSync(specPath)) fs.copyFileSync(specPath, path.join(tempZipDir, "SPEC.md"));
 
 try {
   execSync(`tar -a -c -f "${winZipPath}" -C "${tempZipDir}" *`, { stdio: "inherit" });

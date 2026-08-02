@@ -2,7 +2,9 @@ node_modules/
 dist/
 dist_packages/
 dist_test/
-core/bin/
+core/bin/*.exe
+core/bin/*.pdb
+core/bin/*.mjs
 site/
 coverage/
 .vscode/
