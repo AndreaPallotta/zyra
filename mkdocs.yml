@@ -8,6 +8,8 @@ repo_url: https://github.com/AndreaPallotta/zyra
 
 theme:
   name: material
+  logo: assets/zyra_logo.png
+  favicon: assets/favicon.png
   palette:
     # Dark Mode Palette
     - scheme: slate
