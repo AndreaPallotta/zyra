@@ -1,0 +1,79 @@
+/* Custom Modern Aesthetic for Zyra Documentation */
+
+:root {
+  --md-primary-fg-color:        #4f46e5;
+  --md-primary-fg-color--dark:  #4338ca;
+  --md-accent-fg-color:         #06b6d4;
+  --md-typeset-a-color:         #6366f1;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color:               #0f172a;
+  --md-default-bg-color--light:        #1e293b;
+  --md-default-bg-color--lighter:      #334155;
+  --md-default-fg-color:               #f8fafc;
+  --md-default-fg-color--light:        #cbd5e1;
+  --md-code-bg-color:                  #1e1e2e;
+  --md-code-fg-color:                  #f8f8f2;
+}
+
+/* Header Styling */
+.md-header {
+  background-color: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Hero Section Formatting */
+.zyra-hero {
+  padding: 2.5rem 0 1.5rem 0;
+  text-align: center;
+}
+
+.zyra-hero-title {
+  font-size: 3rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #818cf8 0%, #38bdf8 50%, #c084fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+}
+
+.zyra-hero-subtitle {
+  font-size: 1.25rem;
+  color: #94a3b8;
+  max-width: 650px;
+  margin: 0 auto 1.5rem auto;
+}
+
+/* Glassmorphism Cards */
+.zyra-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.25rem;
+  margin: 2rem 0;
+}
+
+.zyra-card {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.zyra-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.zyra-card h3 {
+  margin-top: 0;
+  color: #f8fafc;
+}
+
+/* Code Blocks Styling */
+.md-typeset pre > code {
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
