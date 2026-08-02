@@ -1,0 +1,21 @@
+def eval_repl_line(line: String): String {
+  const clean = trim(line)
+  const is_empty = contains(clean, "")
+  if (clean == "exit" || clean == "quit") {
+    return "EXIT"
+  }
+  if (contains(clean, "print")) {
+    return "Evaluated: " + clean
+  }
+  if (contains(clean, "const") || contains(clean, "var")) {
+    return "Bound variable statement"
+  }
+  return "Zyra REPL -> " + clean
+}
+
+def print_repl_banner(): Void {
+  print("==================================================")
+  print("          Zyra Interactive Shell (REPL)           ")
+  print("          Type 'exit' or 'quit' to exit           ")
+  print("==================================================")
+}

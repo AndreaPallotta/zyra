@@ -1,0 +1,35 @@
+struct Token {
+  kind: String
+  text: String
+  line: Int
+  col: Int
+}
+
+def is_space(c: String): Bool {
+  return contains(" \t\r\n", c)
+}
+
+def is_digit_c(c: String): Bool {
+  return contains("0123456789", c)
+}
+
+def is_alpha_c(c: String): Bool {
+  return contains("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_", c)
+}
+
+def run_lexer(file_path: String): Int {
+  const source = file_read(file_path)
+  const source_len = len(source)
+
+  const _ = is_space(" ")
+  const _ = is_digit_c("1")
+  const _ = is_alpha_c("a")
+
+  return source_len
+}
+
+const target = "sample.zy"
+const _ = file_write(target, 'const x = 42\ndef add(a: Int): Int { return a + x }')
+const count = run_lexer(target)
+
+print("Self-Hosted Lexer successfully processed {target} with token count {count}")

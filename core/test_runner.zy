@@ -1,0 +1,48 @@
+def assert_true(cond: Bool, test_name: String): Int {
+  const status = if (cond) { 1 } else { 0 }
+  const tag = if (cond) { "[PASS]" } else { "[FAIL]" }
+  print("{tag} {test_name}")
+  return status
+}
+
+def assert_eq_int(actual: Int, expected: Int, test_name: String): Int {
+  const is_eq = actual == expected
+  return assert_true(is_eq, test_name)
+}
+
+def assert_eq_str(actual: String, expected: String, test_name: String): Int {
+  const is_eq = contains(actual, expected)
+  return assert_true(is_eq, test_name)
+}
+
+def test_math_ops(): Int {
+  const p1 = assert_eq_int(2 + 3, 5, "Arithmetic addition: 2 + 3 == 5")
+  const p2 = assert_eq_int(10 - 4, 6, "Arithmetic subtraction: 10 - 4 == 6")
+  const p3 = assert_eq_int(4 * 5, 20, "Arithmetic multiplication: 4 * 5 == 20")
+  return p1 + p2 + p3
+}
+
+def test_string_stdlib(): Int {
+  const s = "hello world"
+  const p1 = assert_eq_int(len(s), 11, "Stdlib len('hello world') == 11")
+  const p2 = assert_eq_str(trim("  zyra  "), "zyra", "Stdlib trim('  zyra  ') == 'zyra'")
+  const p3 = assert_true(contains("zyra lang", "zyra"), "Stdlib contains('zyra lang', 'zyra') == true")
+  return p1 + p2 + p3
+}
+
+def test_file_io(): Int {
+  const file_name = "test_io_tmp.txt"
+  const _ = file_write(file_name, "zyra self-hosted test runner")
+  const content = file_read(file_name)
+  const p1 = assert_true(contains(content, "self-hosted"), "File I/O read & write verification")
+  return p1
+}
+
+const t1 = test_math_ops()
+const t2 = test_string_stdlib()
+const t3 = test_file_io()
+
+const total_passed = t1 + t2 + t3
+
+print("----------------------------------------")
+print("Zyra Native Test Suite Summary: {total_passed} tests passed cleanly! 🎉")

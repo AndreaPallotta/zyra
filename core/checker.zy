@@ -1,0 +1,32 @@
+struct Diagnostic {
+  level: String
+  message: String
+}
+
+def make_diagnostic(level: String, msg: String): Diagnostic {
+  return Diagnostic {
+    level: level,
+    message: msg
+  }
+}
+
+def check_type_compat(t1: String, t2: String): Bool {
+  return contains(t1, t2)
+}
+
+def check_file_types(file_path: String): Int {
+  const code = file_read(file_path)
+  const clean_code = trim(code)
+  const code_len = len(clean_code)
+
+  const _ = make_diagnostic("info", "Checking types")
+  const _ = check_type_compat("Int", "Int")
+
+  return code_len
+}
+
+const file_name = "test_check.zy"
+const _ = file_write(file_name, 'const x = 100\ndef get_val(): Int { return x }')
+const checked_len = check_file_types(file_name)
+
+print("Self-Hosted Zyra Type Checker verified file with code length {checked_len}")

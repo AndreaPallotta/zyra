@@ -1,0 +1,57 @@
+{
+  "name": "zyra-vscode",
+  "displayName": "Zyra Programming Language",
+  "description": "Official VS Code Extension for the Zyra Programming Language (syntax highlighting, IntelliSense, autocompletion, snippets, hover docs, Code Lens, custom .zy file icons).",
+  "version": "1.0.2",
+  "publisher": "AndreaPallotta",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AndreaPallotta/zyra"
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:zyra"
+  ],
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "zyra",
+        "aliases": ["Zyra", "zyra"],
+        "extensions": [".zy"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icon.png",
+          "dark": "./icon.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "zyra",
+        "scopeName": "source.zyra",
+        "path": "./syntaxes/zyra.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "zyra",
+        "path": "./snippets/zyra.code-snippets"
+      }
+    ],
+    "iconThemes": [
+      {
+        "id": "zyra-file-icons",
+        "label": "Zyra File Icons",
+        "path": "./icon-theme.json"
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "iconDefinitions": {
+    "_zyra": {
+      "iconPath": "./icon.png"
+    }
+  },
+  "fileExtensions": {
+    "zy": "_zyra"
+  },
+  "languageIds": {
+    "zyra": "_zyra"
+  }
+}

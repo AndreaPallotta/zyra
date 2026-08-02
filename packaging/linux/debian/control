@@ -1,0 +1,9 @@
+Package: zyra
+Version: 1.0.0
+Section: devel
+Priority: optional
+Architecture: amd64
+Maintainer: Andrea Pallotta <andreapallotta.dev@gmail.com>
+Description: Zyra Programming Language Compiler
+ A fast, expressive compiled programming language combining the best features of Rust and Go.
+ Compiles to JavaScript ESM and native standalone binaries via Rust toolchain.

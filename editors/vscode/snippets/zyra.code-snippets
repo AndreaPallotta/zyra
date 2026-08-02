@@ -1,0 +1,91 @@
+{
+  "Main Function": {
+    "prefix": "defmain",
+    "body": [
+      "def main(): Int {",
+      "  $0",
+      "  return 0",
+      "}"
+    ],
+    "description": "Zyra main entry point function"
+  },
+  "Function Declaration": {
+    "prefix": "fn",
+    "body": [
+      "def ${1:name}(${2:arg}: ${3:String}): ${4:Int} {",
+      "  $0",
+      "  return ${5:0}",
+      "}"
+    ],
+    "description": "Zyra function declaration"
+  },
+  "Struct Declaration": {
+    "prefix": "struct",
+    "body": [
+      "struct ${1:User} {",
+      "  ${2:name}: ${3:String}",
+      "  ${4:age}: ${5:Int}",
+      "}"
+    ],
+    "description": "Zyra struct declaration"
+  },
+  "Struct Copy-Update": {
+    "prefix": "structupdate",
+    "body": [
+      "${1:User} { ${2:age}: ${3:31}, ..${4:existing_user} }"
+    ],
+    "description": "Zyra struct copy-update expression"
+  },
+  "Enum Declaration": {
+    "prefix": "enum",
+    "body": [
+      "enum ${1:Option} {",
+      "  Some(${2:val}: ${3:String})",
+      "  None",
+      "}"
+    ],
+    "description": "Zyra enum algebraic declaration"
+  },
+  "Match Expression": {
+    "prefix": "match",
+    "body": [
+      "match (${1:val}) {",
+      "  ${2:Variant}(${3:payload}) => ${4:expr}",
+      "  _ => ${5:default}",
+      "}"
+    ],
+    "description": "Zyra pattern match expression"
+  },
+  "If-Else Statement": {
+    "prefix": "ifelse",
+    "body": [
+      "if (${1:condition}) {",
+      "  $2",
+      "} else {",
+      "  $3",
+      "}"
+    ],
+    "description": "Zyra if-else conditional block"
+  },
+  "File Read Pattern": {
+    "prefix": "fileread",
+    "body": [
+      "const ${1:content} = file_read(${2:file_path})"
+    ],
+    "description": "Zyra file_read standard library call"
+  },
+  "File Write Pattern": {
+    "prefix": "filewrite",
+    "body": [
+      "const ${1:status} = file_write(${2:file_path}, ${3:content})"
+    ],
+    "description": "Zyra file_write standard library call"
+  },
+  "Print Interpolation": {
+    "prefix": "printt",
+    "body": [
+      "print(\"${1:Value is} {${2:var_name}}\")"
+    ],
+    "description": "Zyra print statement with string interpolation"
+  }
+}

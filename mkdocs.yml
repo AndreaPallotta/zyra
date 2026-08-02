@@ -1,0 +1,75 @@
+site_name: Zyra Documentation
+site_url: https://zyra-lang.dev
+site_description: Official documentation for the Zyra Programming Language — combining the speed of Rust with the simplicity of Go.
+site_author: Andrea Pallotta
+
+repo_name: AndreaPallotta/zyra
+repo_url: https://github.com/AndreaPallotta/zyra
+
+theme:
+  name: material
+  palette:
+    # Dark Mode Palette
+    - scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    # Light Mode Palette
+    - scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  analytics:
+    provider: google
+    property: G-Y8H06G2DNQ
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Overview: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quickstart: getting-started/quickstart.md
+  - Language Guide:
+      - Variables & Types: language/variables-types.md
+      - Control Flow & Match: language/control-flow.md
+      - Structs & Enums: language/structs-enums.md
+      - Standard Library: language/stdlib.md
+  - Tooling & IDE:
+      - VS Code Extension: tooling/vscode.md
+      - Self-Hosted Compiler: tooling/self-hosting.md

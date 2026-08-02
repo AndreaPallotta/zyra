@@ -1,9 +1,10 @@
 import { readdirSync } from "fs";
+import { fileURLToPath } from "node:url";
 import { error } from "../lib/logger.js";
 
 // Dynamically import and run all test suites exported from `*.test.ts` files.
 // Each test file exports a suite named like `<something>Suite`.
-const dirPath = new URL("./", import.meta.url).pathname;
+const dirPath = fileURLToPath(new URL("./", import.meta.url));
 const files = readdirSync(dirPath).filter((f) => f.endsWith(".test.ts") || f.endsWith(".test.js"));
 
 for (const file of files.sort()) {

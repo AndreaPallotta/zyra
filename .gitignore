@@ -1,6 +1,12 @@
 node_modules/
 dist/
-.vscode/
+dist_packages/
+dist_test/
+core/bin/
+site/
 coverage/
 .vscode/
 vscode/out
+test_entry.zy
+test_io_tmp.txt
+*.pdb

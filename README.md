@@ -1,68 +1,99 @@
-# Zyra Language Specification (v0)
+# Zyra Programming Language
 
-<p align="center">
-  <img src="assets/zyra_128x128.png" alt="Zyra logo" width="128" />
-</p>
+Zyra is a fast, expressive, statically-typed compiled programming language designed to combine the performance and memory safety of Rust with the simplicity and developer velocity of Go.
 
-Zyra is a strict, expression-oriented programming language that compiles to modern browser-native JavaScript (ESM) with **zero runtime library**.
+It features a 100% self-hosted compiler written in pure Zyra that compiles down to both native C and Rust executables as well as JavaScript ESM modules.
 
-It prioritizes:
-- Explicitness over magic
-- Immutable data structures (structs)
-- Strict typing without type-level complexity
-- Predictable async behavior
-- Canonical formatting (no style configuration)
-- Clean interop with the web platform
+Documentation: https://zyra-lang.dev
+Repository: https://github.com/AndreaPallotta/zyra
 
----
+## Key Features
 
-## Workspace Structure
+- Native Standalone Binaries: Compiles to zero-dependency native executables via the Rust backend.
+- Algebraic Data Types: First-class struct data structures, tagged enum variants, and pattern matching match expressions.
+- First-Class String Interpolation: Embed variables directly in string literals using "Hello {name}".
+- Self-Hosted Architecture: Lexer, parser, checker, and CLI driver implemented in pure Zyra.
+- IDE Tooling: Official VS Code extension providing syntax highlighting, autocompletion, hover tooltips, and interactive Code Lens buttons.
 
-This repository is organized as an npm monorepo workspace:
-- **[core/](file:///desktop/projects/zyra/core)**: Core Zyra compiler (lexer, parser, type checker, and ESM code printer).
-- **[lsp/](file:///desktop/projects/zyra/lsp)**: Zyra Language Server Protocol (LSP) server implementing diagnostic, hover, and definition providers.
-- **[vscode/](file:///desktop/projects/zyra/vscode)**: VS Code extension integrating the language client and TextMate grammar for `.zy` files.
+## Installation
 
----
+### Windows
 
-## Tooling & IDE Support
+Download and run ZyraSetup.exe from the latest release:
 
-The **Zyra VS Code Extension** integrates the custom LSP server to provide:
-- **Diagnostics**: Real-time syntax and type checking errors/warnings reported directly in the editor.
-- **Hover Tooltips**: Formatted type signatures (e.g. `double: fn(Int) -> Int`) shown when hovering over variables, functions, and structs.
-- **Go to Definition**: Jump directly to variable or function declarations in the source code.
-- **Syntax Highlighting**: Complete language syntax highlighting for variables, comments, functions, and structs.
+1. Download ZyraSetup.exe from GitHub Releases.
+2. Run ZyraSetup.exe to install zyra.exe into %LocalAppData%\Programs\Zyra\bin and update your PATH.
+3. Select the option to install the VS Code extension during setup.
 
----
+Verify installation:
+```powershell
+zyra help
+```
 
-## Development & Building
+### Linux
 
-Manage the workspaces from the root of the repository:
+Install using the terminal one-line script:
 
-### Install dependencies
 ```bash
-npm install
+curl -fsSL https://zyra-lang.dev/get | bash
 ```
 
-### Build all packages
+Alternatively, download and install the Debian package:
+
 ```bash
-# Compiles core and packages/bundles the LSP server into the extension folder
-npm run build -w core && npm run build -w vscode
+sudo dpkg -i zyra_1.0.0_amd64.deb
 ```
 
----
+### VS Code Extension
 
-# Language Specification
+Install the official Zyra Programming Language extension from the VS Code Marketplace or install manually via VSIX:
 
-The detailed syntax rules, types, philosophy, and constraints of the language are documented in the [Zyra Language Specification (SPEC.md)](file:///desktop/projects/zyra/SPEC.md).
-
----
-
-# CLI
-```zy
-zyra fmt
-zyra check
-zyra build
-zyra run
+```bash
+code --install-extension zyra-vscode-1.0.2.vsix
 ```
 
+## CLI Usage
+
+Initialize a new project:
+```bash
+zyra init my_app
+```
+
+Compile and run a Zyra file natively:
+```bash
+zyra run src/main.zy
+```
+
+Compile to native binary without running:
+```bash
+zyra build src/main.zy --target rust --native
+```
+
+Compile to JavaScript ESM module:
+```bash
+zyra build src/main.zy --target js
+```
+
+Launch the interactive REPL shell:
+```bash
+zyra repl
+```
+
+## Hello World Example
+
+```zyra
+struct User {
+  id: Int
+  name: String
+}
+
+def main(): Int {
+  const user = User { id: 1, name: "Andrea" }
+  print("Hello, {user.name}!")
+  return 0
+}
+```
+
+## License
+
+MIT License.

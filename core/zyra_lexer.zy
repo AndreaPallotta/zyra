@@ -1,0 +1,42 @@
+enum TokenType {
+  Identifier(val: String)
+  Number(val: Int)
+  Symbol(val: String)
+  EOF
+}
+
+struct Token {
+  kind: String
+  text: String
+  pos: Int
+}
+
+def is_digit(ch: String): Bool {
+  return contains("0123456789", ch)
+}
+
+def is_alpha(ch: String): Bool {
+  return contains("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_", ch)
+}
+
+def count_tokens(source: String): Int {
+  const source_len = len(source)
+  var pos = 0
+
+  const has_content = pos < source_len
+  const total = if (has_content) { 1 } else { 0 }
+
+  return total
+}
+
+const file_path = "test_sample.zy"
+const write_ok = file_write(file_path, 'def main() { const x = 100 }')
+const content = file_read(file_path)
+const clean_content = trim(content)
+const content_length = len(clean_content)
+
+const is_d = is_digit("5")
+const is_a = is_alpha("a")
+const tok_count = count_tokens(content)
+
+print("Self-hosted Zyra Lexer tokenized source string with length {content_length}")

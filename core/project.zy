@@ -1,0 +1,16 @@
+struct ProjectConfig {
+  name: String
+  version: String
+  main: String
+  target: String
+}
+
+def create_project_manifest(name: String): String {
+  const content = "{\n  \"name\": \"" + name + "\",\n  \"version\": \"1.0.0\",\n  \"main\": \"src/main.zy\",\n  \"target\": \"rust\"\n}"
+  return content
+}
+
+def create_main_boilerplate(name: String): String {
+  const content = "// Zyra Application: " + name + "\n\ndef main(): Int {\n  print(\"Hello from Zyra project: " + name + "!\")\n  return 0\n}\n"
+  return content
+}
