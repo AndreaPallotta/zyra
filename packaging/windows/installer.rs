@@ -43,24 +43,13 @@ extern "system" {
     ) -> i32;
 }
 
+const MB_YESNOCANCEL: u32 = 0x00000003;
 const MB_OK: u32 = 0x00000000;
-const MB_YESNO: u32 = 0x00000004;
 const MB_ICONINFORMATION: u32 = 0x00000040;
 const MB_ICONWARNING: u32 = 0x00000030;
-const IDYES: i32 = 6;
 
-fn show_msg_box(title: &str, message: &str, is_yesno: bool, is_warning: bool) -> bool {
-    let w_title = to_wide(title);
-    let w_message = to_wide(message);
-    let mut flags = if is_warning { MB_ICONWARNING } else { MB_ICONINFORMATION };
-    if is_yesno {
-        flags |= MB_YESNO;
-    } else {
-        flags |= MB_OK;
-    }
-    let res = unsafe { MessageBoxW(ptr::null_mut(), w_message.as_ptr(), w_title.as_ptr(), flags) };
-    res == IDYES
-}
+const IDYES: i32 = 6;
+const IDNO: i32 = 7;
 
 fn perform_installation(install_vscode: bool) -> Result<PathBuf, String> {
     let local_app_data = env::var("LOCALAPPDATA").map_err(|_| "LOCALAPPDATA environment variable not found.".to_string())?;
@@ -97,38 +86,90 @@ fn perform_installation(install_vscode: bool) -> Result<PathBuf, String> {
 fn main() {
     let vscode_detected = is_vscode_installed();
 
-    let mut prompt = String::from("Welcome to Zyra Programming Language Setup Wizard!\n\nThe installer will configure the following components:\n\n1. Zyra Core Compiler & Native CLI (zyra.exe)\n2. Windows User PATH Environment Variable Integration\n");
+    let default_install_path = match env::var("LOCALAPPDATA") {
+        Ok(v) => format!("{}\\Programs\\Zyra\\bin", v),
+        Err(_) => String::from("C:\\Users\\Public\\Zyra\\bin"),
+    };
 
-    if vscode_detected {
-        prompt.push_str("3. Zyra Official VS Code Extension (Detected on system)\n\nWould you like to install the VS Code Extension as well?");
-    } else {
-        prompt.push_str("3. Zyra Official VS Code Extension (VS Code NOT detected)\n\nVS Code was not detected on this system. Would you like to proceed with installing Zyra Core Compiler?");
-    }
+    let title_w = to_wide("Zyra Programming Language Setup Wizard");
 
-    let user_agreed = show_msg_box(
-        "Zyra Programming Language Setup",
-        &prompt,
-        true,
-        !vscode_detected,
+    // Wizard Step 1: Welcome Page
+    let welcome_text = format!(
+        "Welcome to the Zyra Setup Wizard\n\nThis wizard will install the Zyra Programming Language v1.0.0 on your computer.\n\nDestination Path:\n  {}\n\nPress YES to proceed with Component Selection, or CANCEL to exit.",
+        default_install_path
     );
+    let welcome_w = to_wide(&welcome_text);
 
-    if !user_agreed && !vscode_detected {
+    let res1 = unsafe {
+        MessageBoxW(
+            ptr::null_mut(),
+            welcome_w.as_ptr(),
+            title_w.as_ptr(),
+            MB_YESNOCANCEL | MB_ICONINFORMATION,
+        )
+    };
+
+    if res1 != IDYES && res1 != IDNO {
         return;
     }
 
-    let install_vscode = vscode_detected && user_agreed;
+    // Wizard Step 2: Component Options Page
+    let vscode_status = if vscode_detected {
+        "✔ Microsoft VS Code detected on system"
+    } else {
+        "ℹ VS Code not detected on PATH (Extension can be installed manually later via VSIX)"
+    };
 
+    let comp_text = format!(
+        "Select Installation Components:\n\nComponents:\n  [✓] 1. Zyra Core Compiler & Native Executable (zyra.exe)\n  [✓] 2. Add Zyra to Windows User PATH\n  [?] 3. Install Zyra Official VS Code Extension\n\n{}\n\n[YES] Install Full Zyra Toolchain & VS Code Extension\n[NO] Install Zyra CLI Only (Skip VS Code Extension)\n[CANCEL] Exit Setup",
+        vscode_status
+    );
+    let comp_w = to_wide(&comp_text);
+
+    let res2 = unsafe {
+        MessageBoxW(
+            ptr::null_mut(),
+            comp_w.as_ptr(),
+            title_w.as_ptr(),
+            MB_YESNOCANCEL | MB_ICONINFORMATION,
+        )
+    };
+
+    if res2 != IDYES && res2 != IDNO {
+        return;
+    }
+
+    let install_vscode = (res2 == IDYES) && vscode_detected;
+
+    // Wizard Step 3: Installation & Completion Page
     match perform_installation(install_vscode) {
         Ok(dir) => {
-            let success_msg = format!(
-                "🎉 Installation Completed Successfully!\n\nInstalled binary: {}\nAdded to User PATH: {}\n\nOpen a new terminal and run 'zyra help' to get started!",
+            let finish_text = format!(
+                "Completing the Zyra Setup Wizard!\n\n🎉 Zyra Programming Language v1.0.0 installed successfully!\n\nInstalled Location: {}\nPATH: Added to User Environment Variables\nVS Code Extension: {}\n\nPress OK to finish setup and launch a new terminal to start using Zyra!",
                 dir.join("zyra.exe").display(),
-                dir.display()
+                if install_vscode { "Installed" } else { "Skipped" }
             );
-            show_msg_box("Zyra Setup Complete", &success_msg, false, false);
+            let finish_w = to_wide(&finish_text);
+            unsafe {
+                MessageBoxW(
+                    ptr::null_mut(),
+                    finish_w.as_ptr(),
+                    title_w.as_ptr(),
+                    MB_OK | MB_ICONINFORMATION,
+                );
+            }
         }
         Err(err) => {
-            show_msg_box("Zyra Installation Error", &format!("Installation failed: {}", err), false, true);
+            let err_msg = format!("Installation failed: {}", err);
+            let err_w = to_wide(&err_msg);
+            unsafe {
+                MessageBoxW(
+                    ptr::null_mut(),
+                    err_w.as_ptr(),
+                    title_w.as_ptr(),
+                    MB_OK | MB_ICONWARNING,
+                );
+            }
         }
     }
 }

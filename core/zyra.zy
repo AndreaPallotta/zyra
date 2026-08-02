@@ -1,6 +1,6 @@
 def print_help(): Int {
   print("==================================================")
-  print("      Zyra Programming Language Compiler CLI     ")
+  print("                   Zyra CLI                       ")
   print("==================================================")
   print("Usage: zyra <command> [options]")
   print("Commands:")

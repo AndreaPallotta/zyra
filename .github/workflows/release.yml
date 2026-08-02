@@ -31,7 +31,10 @@ jobs:
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Build All Release Packages (ZyraSetup.exe, VSIX, get.sh, deb, zip)
+      - name: Install Inno Setup Compiler
+        run: choco install innosetup --no-progress -y
+
+      - name: Build All Release Packages (ZyraSetup.exe, MSIX, VSIX, get.sh, deb, zip)
         run: node packaging/build-packages.js
 
       - name: Create Linux Release Archive (.tar.gz)
@@ -47,7 +50,8 @@ jobs:
             ## 🚀 Zyra Programming Language v1.0.0 Release
 
             ### 📦 Interactive Installers (Recommended)
-            - 🪟 **Windows Installer Executable**: `ZyraSetup.exe` (Automatic PATH registration & VS Code prompt)
+            - 🪟 **Windows Setup Wizard Executable**: `ZyraSetup.exe` (Standard Windows Setup Wizard)
+            - 🪟 **Windows App Installer Package**: `Zyra_1.0.0_x64.msix` (Windows Store & App Installer format)
             - 🐧 **Linux Web Installer**: `get.sh` (`curl -fsSL https://zyra-lang.dev/get | bash`)
             - 📦 **VS Code Extension**: `zyra-vscode-1.0.2.vsix` (Syntax highlighting, IntelliSense, Hover docs, Code Lens `▶ Run` button)
 
@@ -57,6 +61,7 @@ jobs:
             - 🐧 **Debian Package Structure**: `zyra_1.0.0_amd64` (Compatible with `apt`, `dpkg`, `zypper`)
           files: |
             dist_packages/ZyraSetup.exe
+            dist_packages/Zyra_1.0.0_x64.msix
             dist_packages/zyra-v1.0.0-windows-x64.zip
             dist_packages/zyra-vscode-1.0.2.vsix
             dist_packages/get.sh

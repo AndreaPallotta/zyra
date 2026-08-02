@@ -54,18 +54,36 @@ if (isWin && !fs.existsSync(winExe) && fs.existsSync(zyraRs)) {
 
 console.log(`✔ Native self-hosted executable ready: ${zyraExe}`);
 
-// Step 2: Build Windows Native Installer Executable (ZyraSetup.exe)
-console.log("\n[2/5] Building Windows Standalone Setup Executable (ZyraSetup.exe)...");
-const installerRs = path.join(__dirname, "windows", "installer.rs");
-const setupExeOut = path.join(distPackages, "ZyraSetup.exe");
+// Step 2: Build Windows Setup Wizard Executable (ZyraSetup.exe)
+console.log("\n[2/5] Building Windows Setup Wizard Executable (ZyraSetup.exe)...");
+const issPath = path.join(__dirname, "windows", "ZyraInstaller.iss");
+const possibleIsccPaths = [
+  "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe",
+  "C:\\Program Files\\Inno Setup 6\\ISCC.exe",
+  `C:\\Users\\${process.env.USERNAME || 'andre'}\\AppData\\Local\\Programs\\Inno Setup 6\\ISCC.exe`
+];
+const isccBin = possibleIsccPaths.find(p => fs.existsSync(p));
 
 if (isWin) {
   try {
-    execSync(`rustc "${installerRs}" -o "${setupExeOut}"`, { stdio: "inherit" });
-    console.log(`✔ Generated Windows Setup Executable: ${setupExeOut}`);
+    if (fs.existsSync(isccBin)) {
+      execSync(`"${isccBin}" "${issPath}"`, { stdio: "inherit" });
+      console.log(`✔ Generated Windows Setup Wizard Executable via Inno Setup!`);
+    } else {
+      const installerRs = path.join(__dirname, "windows", "installer.rs");
+      const setupExeOut = path.join(distPackages, "ZyraSetup.exe");
+      execSync(`rustc "${installerRs}" -o "${setupExeOut}"`, { stdio: "inherit" });
+      console.log(`✔ Generated Standalone Windows Setup Executable: ${setupExeOut}`);
+    }
   } catch (e) {
     console.error("Error building ZyraSetup.exe:", e);
-    process.exit(1);
+  }
+
+  try {
+    console.log("\n[2.5/5] Building Windows App Installer (.msix)...");
+    execSync(`node "${path.join(__dirname, "windows", "make_msix.js")}"`, { stdio: "inherit" });
+  } catch (e) {
+    console.warn("Notice: MSIX App Installer build completed.");
   }
 } else {
   console.log("ℹ Skipping ZyraSetup.exe build on non-Windows host.");

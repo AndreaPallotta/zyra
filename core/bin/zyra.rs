@@ -7,7 +7,7 @@ use std::process::Command;
 
 fn print_help() {
     println!("==================================================");
-    println!("      Zyra Programming Language Compiler CLI     ");
+    println!("                   Zyra CLI                       ");
     println!("==================================================");
     println!("Usage: zyra <command> [options]\n");
     println!("Commands:");
@@ -99,10 +99,39 @@ fn handle_build(file_path: &str, is_js: bool) {
     }
 }
 
+fn get_completion_candidates(top_decls: &[String], stmts: &[String]) -> Vec<String> {
+    let mut candidates = vec![
+        "def", "fn", "struct", "enum", "const", "var", "return", "if", "else", 
+        "match", "print", "Int", "String", "Boolean", ":help", ":vars", ":funcs", 
+        ":clear", ":exit", "exit", "quit"
+    ].into_iter().map(String::from).collect::<Vec<_>>();
+
+    for d in top_decls {
+        let parts: Vec<&str> = d.split_whitespace().collect();
+        if parts.len() >= 2 {
+            let name = parts[1].split('(').next().unwrap_or(parts[1]).split('{').next().unwrap_or(parts[1]);
+            if !name.is_empty() && !candidates.contains(&name.to_string()) {
+                candidates.push(name.to_string());
+            }
+        }
+    }
+    for s in stmts {
+        let parts: Vec<&str> = s.split_whitespace().collect();
+        if parts.len() >= 2 && (parts[0] == "let" || parts[0] == "const" || parts[0] == "var") {
+            let name = parts[1].trim_matches(':');
+            if !name.is_empty() && !candidates.contains(&name.to_string()) {
+                candidates.push(name.to_string());
+            }
+        }
+    }
+    candidates
+}
+
 fn handle_repl() {
     println!("==================================================");
     println!("          Zyra Interactive Shell (REPL)           ");
     println!("          Type ':help' for REPL commands          ");
+    println!("          Press TAB for symbol autocomplete       ");
     println!("          Type 'exit' or 'quit' to exit           ");
     println!("==================================================");
 
@@ -126,6 +155,19 @@ fn handle_repl() {
         let mut line = String::new();
         if io::stdin().read_line(&mut line).is_err() { break; }
         let raw_line = line.trim();
+
+        if raw_line.ends_with('\t') || raw_line.ends_with('?') {
+            let prefix = raw_line.trim_end_matches('?').trim_end_matches('\t').trim();
+            let matches: Vec<String> = get_completion_candidates(&top_declarations, &statements_history)
+                .into_iter()
+                .filter(|c| c.starts_with(prefix))
+                .collect();
+
+            if !matches.is_empty() {
+                println!(" -> {}", matches.join(" | "));
+                continue;
+            }
+        }
 
         if brace_count == 0 {
             match raw_line {
@@ -158,7 +200,7 @@ fn handle_repl() {
                     statements_history.clear();
                     input_buffer.clear();
                     brace_count = 0;
-                    println!("✔ Cleared REPL session state.");
+                    println!("REPL session state reset.");
                     continue;
                 }
                 _ => {}
@@ -210,7 +252,7 @@ fn handle_repl() {
                 rs_decl = rs_decl.replace("print(", "println!(\"{}\", ");
             }
             top_declarations.push(rs_decl);
-            println!("✔ Defined: {}", code_to_eval.replace('\n', " "));
+            // Silent definition like standard Python/Node/Rust REPLs
         } else {
             // Statement or expression evaluation inside fn main()
             let mut rs_code = String::from("#![allow(dead_code, unused_variables, unused_mut, unused_imports)]\n\n");
@@ -260,7 +302,15 @@ fn handle_repl() {
                     let run_out = Command::new(&exe_file).output();
                     if let Ok(r) = run_out {
                         let res_str = String::from_utf8_lossy(&r.stdout);
-                        print!("{}", res_str);
+                        let clean_res = res_str.trim_end();
+                        if !clean_res.is_empty() && clean_res != "=> ()" {
+                            if clean_res.ends_with("\n=> ()") {
+                                print!("{}", &clean_res[..clean_res.len() - 6]);
+                                println!();
+                            } else {
+                                println!("{}", clean_res);
+                            }
+                        }
                     }
                     if is_binding {
                         statements_history.push(eval_stmt);
