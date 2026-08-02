@@ -18,6 +18,17 @@ console.log("==================================================");
 fs.mkdirSync(distPackages, { recursive: true });
 fs.mkdirSync(binDir, { recursive: true });
 
+// Step 0: Ensure VS Code VSIX extension exists
+const vsixPath = path.join(distPackages, "zyra-vscode-1.0.2.vsix");
+if (!fs.existsSync(vsixPath)) {
+  console.log("\n[0/5] Building VS Code Extension VSIX...");
+  try {
+    execSync("node editors/vscode/build-vsix.js", { cwd: rootDir, stdio: "inherit" });
+  } catch (e) {
+    console.warn("Warning: Could not build VSIX automatically.");
+  }
+}
+
 // Step 1: Ensure native binary exists or compile from core/bin/zyra.rs
 console.log("\n[1/5] Verifying native self-hosted compiler binary...");
 const isWin = process.platform === "win32";
@@ -53,7 +64,8 @@ if (isWin) {
     execSync(`rustc "${installerRs}" -o "${setupExeOut}"`, { stdio: "inherit" });
     console.log(`✔ Generated Windows Setup Executable: ${setupExeOut}`);
   } catch (e) {
-    console.warn("Warning: Could not run rustc for ZyraSetup.exe directly.");
+    console.error("Error building ZyraSetup.exe:", e);
+    process.exit(1);
   }
 } else {
   console.log("ℹ Skipping ZyraSetup.exe build on non-Windows host.");
@@ -83,7 +95,6 @@ console.log("✔ Created Debian package structure: dist_packages/zyra_1.0.0_amd6
 // Step 5: Package Offline Portable Zip & Tarball Bundles
 console.log("\n[5/5] Packaging Offline Portable Bundles (zyra-v1.0.0-windows-x64.zip)...");
 const winZipPath = path.join(distPackages, "zyra-v1.0.0-windows-x64.zip");
-const vsixPath = path.join(distPackages, "zyra-vscode-1.0.2.vsix");
 
 const tempZipDir = path.join(distPackages, "temp_win_bundle");
 fs.mkdirSync(tempZipDir, { recursive: true });
