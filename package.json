@@ -1,13 +1,5 @@
 {
   "name": "zyra-monorepo",
   "private": true,
-  "type": "module",
-  "workspaces": [
-    "core",
-    "lsp",
-    "vscode"
-  ],
-  "dependencies": {
-    "@esbuild/win32-x64": "^0.28.1"
-  }
+  "type": "module"
 }

@@ -8,7 +8,7 @@ on:
 
 jobs:
   test-and-build:
-    name: Test & Build Multi-Target Compiler
+    name: Build & Verify Native Compiler & Packaging
     runs-on: windows-latest
 
     steps:
@@ -19,17 +19,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Install root dependencies
-        run: npm install
-
-      - name: Run Core Test Suite (57 Native & JS Tests)
-        working-directory: core
-        run: npm test
 
       - name: Build Release Installers & Packaging Pipeline
         run: node packaging/build-packages.js

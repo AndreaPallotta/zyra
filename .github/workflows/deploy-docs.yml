@@ -22,12 +22,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
-      - name: Install MkDocs Material & Extensions
+      - name: Install MkDocs Material & PyMdown Extensions
         run: |
           python -m pip install --upgrade pip
-          pip install mkdocs-material pymdownx-extensions
+          pip install mkdocs-material pymdown-extensions
 
       - name: Build & Deploy to GitHub Pages
         run: |

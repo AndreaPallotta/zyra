@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 const ZYRA_BIN_BYTES: &[u8] = include_bytes!("../../core/bin/zyra.exe");
-const VSIX_BYTES: &[u8] = include_bytes!("../../dist_packages/zyra-vscode-1.0.0.vsix");
+const VSIX_BYTES: &[u8] = include_bytes!("../../dist_packages/zyra-vscode-1.0.2.vsix");
 
 fn main() {
     println!("==================================================");
