@@ -205,7 +205,8 @@ fn handle_repl() {
                 rs_decl = rs_decl.replace("): Int", ") -> i64");
                 rs_decl = rs_decl.replace("): String", ") -> String");
                 rs_decl = rs_decl.replace(": Int", ": i64");
-                rs_decl = rs_decl.replace(": String", ": String");
+                rs_decl = rs_decl.replace(": String", ": &str");
+                rs_decl = rs_decl.replace("print(\"", "println!(\"");
                 rs_decl = rs_decl.replace("print(", "println!(\"{}\", ");
             }
             top_declarations.push(rs_decl);
