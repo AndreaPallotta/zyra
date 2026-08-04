@@ -126,6 +126,19 @@ try {
 }
 fs.rmSync(tempZipDir, { recursive: true, force: true });
 
+// Step 6: Verify Conda-Forge Feedstock Recipe
+console.log("\n[6/6] Verifying Conda-Forge Package Recipe (meta.yaml)...");
+const condaRecipeDir = path.join(__dirname, "conda");
+const condaMeta = path.join(condaRecipeDir, "meta.yaml");
+if (fs.existsSync(condaMeta)) {
+  const condaDestDir = path.join(distPackages, "conda-recipe");
+  fs.mkdirSync(condaDestDir, { recursive: true });
+  fs.copyFileSync(condaMeta, path.join(condaDestDir, "meta.yaml"));
+  fs.copyFileSync(path.join(condaRecipeDir, "build.sh"), path.join(condaDestDir, "build.sh"));
+  fs.copyFileSync(path.join(condaRecipeDir, "bld.bat"), path.join(condaDestDir, "bld.bat"));
+  console.log("✔ Created Conda-Forge Package Recipe: dist_packages/conda-recipe/");
+}
+
 console.log("\n==================================================");
 console.log("🎉 All Release Packages Built Successfully!");
 console.log("==================================================");
