@@ -1,9 +1,9 @@
 const vscode = require("vscode");
-const { execSync } = require("child_process");
+const { spawn } = require("child_process");
 const path = require("path");
 
 function activate(context) {
-  // 1. Commands: Run and Build Zyra Files
+  // 1. Commands: Run, Build, Format, Test
   const runCommand = vscode.commands.registerCommand("zyra.run", async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) return;
@@ -13,7 +13,7 @@ function activate(context) {
     const filePath = document.fileName;
     const terminal = vscode.window.createTerminal("Zyra Runner");
     terminal.show();
-    terminal.sendText(`zyra build "${filePath}" --target rust --native`);
+    terminal.sendText(`zyra run "${filePath}"`);
   });
 
   const buildCommand = vscode.commands.registerCommand("zyra.build", async () => {
@@ -25,10 +25,34 @@ function activate(context) {
     const filePath = document.fileName;
     const terminal = vscode.window.createTerminal("Zyra Compiler");
     terminal.show();
-    terminal.sendText(`zyra build "${filePath}" --target js`);
+    terminal.sendText(`zyra build "${filePath}" --target rust --native`);
   });
 
-  // 2. Code Lens Provider (Run & Build Buttons above def main())
+  const fmtCommand = vscode.commands.registerCommand("zyra.fmt", async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+    const document = editor.document;
+    await document.save();
+
+    const filePath = document.fileName;
+    const terminal = vscode.window.createTerminal("Zyra Formatter");
+    terminal.show();
+    terminal.sendText(`zyra fmt "${filePath}"`);
+  });
+
+  const testCommand = vscode.commands.registerCommand("zyra.test", async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+    const document = editor.document;
+    await document.save();
+
+    const filePath = document.fileName;
+    const terminal = vscode.window.createTerminal("Zyra Tester");
+    terminal.show();
+    terminal.sendText(`zyra test "${filePath}"`);
+  });
+
+  // 2. Code Lens Provider (Run, Build, Test Buttons above def main() and @test)
   const codeLensProvider = vscode.languages.registerCodeLensProvider("zyra", {
     provideCodeLenses(document, token) {
       const lenses = [];
@@ -40,12 +64,20 @@ function activate(context) {
           const range = new vscode.Range(i, 0, i, lines[i].length);
           lenses.push(
             new vscode.CodeLens(range, {
-              title: "▶ Run Native Zyra Binary",
+              title: "▶ Run Zyra Application",
               command: "zyra.run",
             }),
             new vscode.CodeLens(range, {
-              title: "⚙ Build JS Target",
+              title: "⚙ Build Native Binary",
               command: "zyra.build",
+            })
+          );
+        } else if (lines[i].includes("@test")) {
+          const range = new vscode.Range(i, 0, i, lines[i].length);
+          lenses.push(
+            new vscode.CodeLens(range, {
+              title: "🧪 Run Unit Test",
+              command: "zyra.test",
             })
           );
         }
@@ -61,33 +93,35 @@ function activate(context) {
       provideCompletionItems(document, position, token, context) {
         const items = [];
 
-        const keywords = ["def", "struct", "enum", "const", "var", "match", "if", "else", "return", "import", "export", "from", "print"];
+        const keywords = [
+          "def", "async", "await", "trait", "impl", "struct", "enum", "const", "var", 
+          "match", "if", "else", "try", "catch", "return", "import", "export", "extern", "print"
+        ];
         keywords.forEach((kw) => {
           items.push(new vscode.CompletionItem(kw, vscode.CompletionItemKind.Keyword));
         });
 
-        const types = ["Int", "String", "Bool", "BigInt", "Void"];
+        const types = ["Int", "String", "Boolean", "Float", "Option", "Result", "Some", "None", "Ok", "Err", "Void"];
         types.forEach((t) => {
           const item = new vscode.CompletionItem(t, vscode.CompletionItemKind.Class);
-          item.detail = `Zyra Built-in Type ${t}`;
+          item.detail = `Zyra Industrial Built-in Type ${t}`;
           items.push(item);
         });
 
         const stdlib = [
-          { name: "len", detail: "(s: String): Int", doc: "Returns the length of string `s`." },
-          { name: "substr", detail: "(s: String, start: Int, len: Int): String", doc: "Returns a substring of `s` starting at index `start`." },
-          { name: "trim", detail: "(s: String): String", doc: "Removes leading and trailing whitespace from string `s`." },
-          { name: "contains", detail: "(s: String, sub: String): Bool", doc: "Returns `true` if `s` contains `sub`." },
-          { name: "file_read", detail: "(path: String): String", doc: "Reads text contents of file at `path`." },
-          { name: "file_write", detail: "(path: String, content: String): Bool", doc: "Writes `content` string to file at `path`." },
-          { name: "str", detail: "(val: Int): String", doc: "Converts integer `val` to string." },
-          { name: "parse_int", detail: "(s: String): Int", doc: "Parses integer value from string `s`." },
+          { name: "std::http", detail: "REST client & requests", doc: "Non-blocking HTTP networking module." },
+          { name: "std::json", detail: "JSON parsing & stringify", doc: "Fast JSON serialization module." },
+          { name: "std::math", detail: "Math routines & random", doc: "Mathematical functions module." },
+          { name: "std::time", detail: "Timestamps & timers", doc: "System timing module." },
+          { name: "std::process", detail: "Process & env vars", doc: "System process management module." },
+          { name: "std::regex", detail: "Pattern matching", doc: "Regular expression matching module." },
+          { name: "std::str", detail: "String manipulation", doc: "Utf-8 string processing module." },
         ];
 
-        stdlib.forEach((fn) => {
-          const item = new vscode.CompletionItem(fn.name, vscode.CompletionItemKind.Function);
-          item.detail = fn.detail;
-          item.documentation = new vscode.MarkdownString(fn.doc);
+        stdlib.forEach((mod) => {
+          const item = new vscode.CompletionItem(mod.name, vscode.CompletionItemKind.Module);
+          item.detail = mod.detail;
+          item.documentation = new vscode.MarkdownString(mod.doc);
           items.push(item);
         });
 
@@ -104,14 +138,12 @@ function activate(context) {
       const word = document.getText(range);
 
       const hovers = {
-        len: "**len**(s: String): Int\n\nReturns string length.",
-        substr: "**substr**(s: String, start: Int, len: Int): String\n\nExtracts substring.",
-        trim: "**trim**(s: String): String\n\nTrims whitespace.",
-        contains: "**contains**(s: String, sub: String): Bool\n\nSubstring search.",
-        file_read: "**file_read**(path: String): String\n\nReads file contents.",
-        file_write: "**file_write**(path: String, content: String): Bool\n\nWrites file contents.",
-        str: "**str**(val: Int): String\n\nConverts Int to String.",
-        parse_int: "**parse_int**(s: String): Int\n\nParses Int from String.",
+        Option: "**Option[T]**\n\nRepresenting optional value (`Some(T)` or `None`).",
+        Result: "**Result[T, E]**\n\nRepresenting error handling (`Ok(T)` or `Err(E)`).",
+        trait: "**trait**\n\nDefines a polymorphic interface contract.",
+        impl: "**impl**\n\nImplements a trait interface for a struct.",
+        async: "**async def**\n\nDefines a non-blocking asynchronous function.",
+        await: "**await**\n\nSuspends execution until async task completes.",
       };
 
       if (hovers[word]) {
@@ -121,7 +153,15 @@ function activate(context) {
     },
   });
 
-  context.subscriptions.push(runCommand, buildCommand, codeLensProvider, completionProvider, hoverProvider);
+  context.subscriptions.push(
+    runCommand, 
+    buildCommand, 
+    fmtCommand, 
+    testCommand, 
+    codeLensProvider, 
+    completionProvider, 
+    hoverProvider
+  );
 }
 
 function deactivate() {}

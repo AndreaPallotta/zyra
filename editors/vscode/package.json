@@ -1,8 +1,8 @@
 {
   "name": "zyra-vscode",
-  "displayName": "Zyra Programming Language",
-  "description": "Official VS Code Extension for the Zyra Programming Language (syntax highlighting, IntelliSense, autocompletion, snippets, hover docs, Code Lens, custom .zy file icons).",
-  "version": "1.0.2",
+  "displayName": "Zyra Programming Language v2.0",
+  "description": "Official VS Code Extension for Zyra v2.0 (LSP language server, autocompletion, hover docs, Code Lens, formatter, debugger, and test runner).",
+  "version": "2.0.0",
   "publisher": "AndreaPallotta",
   "icon": "icon.png",
   "repository": {
@@ -44,6 +44,24 @@
       {
         "language": "zyra",
         "path": "./snippets/zyra.code-snippets"
+      }
+    ],
+    "commands": [
+      {
+        "command": "zyra.run",
+        "title": "Zyra: Run Native Binary"
+      },
+      {
+        "command": "zyra.build",
+        "title": "Zyra: Build Target"
+      },
+      {
+        "command": "zyra.fmt",
+        "title": "Zyra: Format Source Code"
+      },
+      {
+        "command": "zyra.test",
+        "title": "Zyra: Run Unit Tests"
       }
     ],
     "iconThemes": [

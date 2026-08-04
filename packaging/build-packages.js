@@ -19,7 +19,7 @@ fs.mkdirSync(distPackages, { recursive: true });
 fs.mkdirSync(binDir, { recursive: true });
 
 // Step 0: Ensure VS Code VSIX extension exists
-const vsixPath = path.join(distPackages, "zyra-vscode-1.0.2.vsix");
+const vsixPath = path.join(distPackages, "zyra-vscode-2.0.0.vsix");
 if (!fs.existsSync(vsixPath)) {
   console.log("\n[0/5] Building VS Code Extension VSIX...");
   try {
@@ -46,7 +46,6 @@ if (!fs.existsSync(zyraExe)) {
   }
 }
 
-// On Windows, ensure zyra.exe is also copied to binDir if needed
 const winExe = path.join(binDir, "zyra.exe");
 if (isWin && !fs.existsSync(winExe) && fs.existsSync(zyraRs)) {
   execSync(`rustc "${zyraRs}" -o "${winExe}"`, { stdio: "inherit" });
@@ -97,8 +96,8 @@ fs.copyFileSync(getShSrc, getShDest);
 console.log("✔ Created Linux web installer: dist_packages/get.sh");
 
 // Step 4: Package Debian .deb Structure
-console.log("\n[4/5] Generating Debian Package Structure (zyra_1.1.0_amd64.deb)...");
-const debDir = path.join(distPackages, "zyra_1.1.0_amd64");
+console.log("\n[4/5] Generating Debian Package Structure (zyra_2.0.0_amd64.deb)...");
+const debDir = path.join(distPackages, "zyra_2.0.0_amd64");
 const debUsrBin = path.join(debDir, "usr", "local", "bin");
 const debMeta = path.join(debDir, "DEBIAN");
 
@@ -108,16 +107,16 @@ fs.mkdirSync(debMeta, { recursive: true });
 fs.copyFileSync(path.join(__dirname, "linux", "debian", "control"), path.join(debMeta, "control"));
 const targetBin = fs.existsSync(winExe) ? winExe : zyraExe;
 fs.copyFileSync(targetBin, path.join(debUsrBin, "zyra"));
-console.log("✔ Created Debian package structure: dist_packages/zyra_1.1.0_amd64/");
+console.log("✔ Created Debian package structure: dist_packages/zyra_2.0.0_amd64/");
 
 // Step 5: Package Offline Portable Zip & Tarball Bundles
-console.log("\n[5/5] Packaging Offline Portable Bundles (zyra-v1.1.0-windows-x64.zip)...");
-const winZipPath = path.join(distPackages, "zyra-v1.1.0-windows-x64.zip");
+console.log("\n[5/5] Packaging Offline Portable Bundles (zyra-v2.0.0-windows-x64.zip)...");
+const winZipPath = path.join(distPackages, "zyra-v2.0.0-windows-x64.zip");
 
 const tempZipDir = path.join(distPackages, "temp_win_bundle");
 fs.mkdirSync(tempZipDir, { recursive: true });
 if (fs.existsSync(winExe)) fs.copyFileSync(winExe, path.join(tempZipDir, "zyra.exe"));
-if (fs.existsSync(vsixPath)) fs.copyFileSync(vsixPath, path.join(tempZipDir, "zyra-vscode-1.0.2.vsix"));
+if (fs.existsSync(vsixPath)) fs.copyFileSync(vsixPath, path.join(tempZipDir, "zyra-vscode-2.0.0.vsix"));
 
 try {
   execSync(`tar -a -c -f "${winZipPath}" -C "${tempZipDir}" *`, { stdio: "inherit" });

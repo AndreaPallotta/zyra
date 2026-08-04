@@ -1,21 +1,23 @@
-# Zyra Programming Language
+# Zyra Industrial Programming Language v2.0.0
 
-**Zyra** is a fast, expressive, statically-typed compiled programming language designed to combine the performance and safety of **Rust** with the clean simplicity and developer velocity of **Go**.
+**Zyra** is a fast, expressive, statically-typed compiled programming language designed to combine the performance, safety, and type system of **Rust** with the clean simplicity and developer velocity of **Go**.
 
 ![Zyra Code Showcase](https://raw.githubusercontent.com/AndreaPallotta/zyra/main/assets/zyra_512x512.png){ align=left width=150 }
 
-!!! tip "100% Self-Hosted & Multi-Target"
-    Zyra features a **100% self-hosted compiler** written in pure Zyra (`zyra.zy`, `lexer.zy`, `parser.zy`, `checker.zy`). It compiles down to both **native C/Rust binaries** and **JavaScript ESM modules**.
+!!! tip "100% Self-Hosted, WebAssembly & Multi-Target Compiler"
+    Zyra v2.0.0 features a **100% self-hosted compiler** written in pure Zyra. It targets **Native Executables**, **WebAssembly (`wasm32`)**, and **JavaScript ESM Modules**, backed by an interactive CLI suite (debugger, test runner, coverage, linter, dev server, and verified package manager).
 
 ---
 
 ## Key Features
 
-- ⚡ **Zero-Overhead Native Executables**: Compiles down to native machine code binaries via Rust toolchain.
-- 📦 **Algebraic Data Types & Pattern Matching**: First-class `struct` data structures, tagged `enum` variants, and pattern matching `match` expressions.
-- 💬 **First-Class String Interpolation**: Embed variables directly in string literals using `"Hello {name}"`.
-- 🛠 **Official VS Code Extension**: High-quality syntax highlighting, autocompletion, hover tooltips, and interactive **`▶ Run`** Code Lens buttons.
-- 🌐 **Dual Compilation Targets**: Targets both standalone native binaries (`.exe` / ELF) and Node.js / Browser JavaScript ESM modules.
+- ⚡ **Zero-Overhead Native & WASM Executables**: Compiles down to native binaries and standalone `.wasm` WebAssembly modules.
+- ⚠️ **`Option[T]` & `Result[T, E]` Error Handling**: Safe error propagation using `Some(x)`, `None`, `Ok(x)`, `Err(e)`, and `expr?`.
+- 🧩 **Traits & Interfaces (`trait` & `impl`)**: Polymorphic abstraction contracts and type implementation blocks.
+- ⚡ **Async / Await Non-Blocking Concurrency**: Non-blocking asynchronous functions (`async def`) and task execution (`await`).
+- 🔠 **Generics & Monomorphization**: Parametric polymorphism (`struct Box[T]` and `def identity[T](val: T): T`).
+- 🛡 **Verified Package Manager & SHA256 Lockfile**: Supply-chain security with `zyra.lock` and zero-auth GitHub imports (`zyra add github.com/user/repo`).
+- 🛠 **Full Tooling Suite (17 Commands)**: Debugger (`zyra debug`), Test runner (`zyra test`), Code coverage (`zyra coverage`), Dev server (`zyra dev`), Benchmark suite (`zyra bench`), Linter (`zyra lint`), Security auditor (`zyra audit`), Formatter (`zyra fmt`), and LSP server (`zyra lsp`).
 
 ---
 
@@ -36,34 +38,44 @@ Install Zyra on Windows in one click or on Linux via curl:
     Install via curl command:
 
     ```bash
-    curl -fsSL https://zyra-lang.dev/get | bash
+    curl -fsSL https://zyra-lang.dev/get.sh | bash
     ```
 
 ---
 
-## Hello World Example
+## Zyra v2.0 Industrial Example
 
 ```zyra
+trait Printable {
+  def to_string(): String
+}
+
 struct User {
   id: Int
   name: String
 }
 
-def greet(u: User): String {
-  const clean_name = trim(u.name)
-  print("Welcome to Zyra, {clean_name}!")
-  return clean_name
+impl Printable for User {
+  def to_string(): String {
+    return "User({self.name})"
+  }
 }
 
-def main(): Int {
-  const user = User { id: 1, name: "  Andrea  " }
-  const _ = greet(user)
-  return 0
+async def fetch_user(id: Int): Result[User, String] {
+  if (id <= 0) {
+    return Err("Invalid user ID")
+  }
+  return Ok(User { id: id, name: "Andrea" })
+}
+
+async def main(): Result[Int, String] {
+  const user = await fetch_user(1)?
+  print("Fetched user: {user.to_string()}")
+  return Ok(0)
 }
 ```
 
-Run your code natively:
+Run your code:
 ```bash
-zyra build main.zy --target rust --native
-./main.exe
+zyra run src/main.zy
 ```

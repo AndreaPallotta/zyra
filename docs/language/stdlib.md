@@ -1,104 +1,133 @@
-# Standard Library & Package Manager
+# 📚 Zyra Standard Library (API Reference)
 
-Zyra includes built-in primitives for string manipulation, file system I/O, and seamless **Rust Crate Interop** via the `zyra add` package manager.
+Welcome to the **Zyra v2.0 Standard Library API Documentation**. This reference is organized by modules, detailing method signatures, parameter types, return values, exception behavior, and interactive usage examples.
 
 ---
 
-## Package Manager (`zyra add`)
+## 📦 Core Modules Index
 
-Zyra v1.1 introduces native package management, allowing you to import any of the 150,000+ packages on `crates.io` directly into your Zyra application:
+| Module | Description | Stability |
+| :--- | :--- | :--- |
+| [`std::http`](#stdhttp) | Non-blocking REST client & web request handling | **Stable** |
+| [`std::math`](#stdmath) | High-precision mathematical functions & RNG | **Stable** |
+| [`std::time`](#stdtime) | System clocks, precision timestamps & sleep timers | **Stable** |
+| [`std::process`](#stdprocess) | System process management, CLI args & env vars | **Stable** |
+| [`std::regex`](#stdregex) | PCRE regular expression pattern matching | **Stable** |
 
-```bash
-# Add Rust crate dependency to your project manifest (zyra.json)
-zyra add reqwest
-zyra add serde_json
-```
+---
 
-### Rust Crate Interop Syntax
+## `std::http`
 
-Use the `import rust "<crate>"` syntax to bring Rust crates into Zyra scope:
+Networking primitives for making HTTP/HTTPS requests.
+
+### `http::get(url: String): Result[String, String]`
+Executes an asynchronous HTTP GET request to the target `url`.
+
+- **Parameters**: `url` — Absolute target endpoint URL.
+- **Returns**: `Result[String, String]` containing response payload on success (`Ok`), or error details (`Err`).
 
 ```zyra
-import rust "reqwest" as http
-import rust "serde_json" as json
+import std::http
 
-def fetch_user_data(user_id: Int) {
-  const url = "https://api.github.com/users/{user_id}"
-  const res = http::get(url)
-  print("Response payload: {res}")
+async def main(): Result[Int, String] {
+  const payload = await http::get("https://api.github.com/users/AndreaPallotta")?
+  print("Response: {payload}")
+  return Ok(0)
 }
 ```
 
 ---
 
-## Built-in Modules
+## `std::math`
 
-### `std::http`
+Mathematical constants, trigonometric routines, and random number generation.
 
-High-level HTTP networking client powered by `reqwest`:
+### Methods Signature Table
 
-```zyra
-import rust "reqwest" as http
-
-def main() {
-  const data = http::get("https://zyra-lang.dev")
-  print("Documentation page fetched!")
-}
-```
-
-### `std::json`
-
-JSON parsing and serialization powered by `serde_json`:
+| Method | Parameters | Returns | Description |
+| :--- | :--- | :--- | :--- |
+| `math::sqrt(n: Float)` | `n: Float` | `Float` | Returns square root of `n`. |
+| `math::pow(base: Float, exp: Float)` | `base: Float`, `exp: Float` | `Float` | Raises `base` to `exp` power. |
+| `math::abs(n: Int)` | `n: Int` | `Int` | Absolute value of integer `n`. |
+| `math::random()` | *None* | `Float` | Random float in range `[0.0, 1.0)`. |
+| `math::sin(rad: Float)` | `rad: Float` | `Float` | Sine of angle `rad` in radians. |
+| `math::cos(rad: Float)` | `rad: Float` | `Float` | Cosine of angle `rad` in radians. |
 
 ```zyra
-import rust "serde_json" as json
+import std::math
 
-def main() {
-  const parsed = json::parse("{\"name\": \"Zyra\"}")
-  print(parsed)
+def main(): Int {
+  const root = math::sqrt(144.0) // 12.0
+  const rand_val = math::random()
+  print("Sqrt: {root} | Random: {rand_val}")
+  return 0
 }
 ```
 
 ---
 
-## String Functions
+## `std::time`
 
-### `len(s: String): Int`
-Returns string length:
-```zyra
-const length = len("hello world") // 11
-```
+Timekeeping, duration measurement, and thread sleeping.
 
-### `substr(s: String, start: Int, len: Int): String`
-Extracts a substring:
-```zyra
-const sub = substr("zyra language", 0, 4) // "zyra"
-```
+### `time::now(): Int`
+Returns high-resolution UNIX timestamp in milliseconds.
 
-### `trim(s: String): String`
-Trims whitespace:
-```zyra
-const clean = trim("  zyra  ") // "zyra"
-```
+### `time::sleep_ms(duration_ms: Int): Void`
+Suspends execution for `duration_ms` milliseconds.
 
-### `contains(s: String, sub: String): Bool`
-Substring search:
 ```zyra
-const is_found = contains("zyra lang", "zyra") // true
+import std::time
+
+def main(): Int {
+  const start = time::now()
+  time::sleep_ms(100)
+  const elapsed = time::now() - start
+  print("Elapsed time: {elapsed} ms")
+  return 0
+}
 ```
 
 ---
 
-## File System I/O
+## `std::process`
 
-### `file_read(path: String): String`
-Reads entire file text:
+Command-line argument parsing, environment variable retrieval, and process termination.
+
+### `process::args(): Vector[String]`
+Returns command-line invocation arguments.
+
+### `process::env_var(key: String): Option[String]`
+Looks up environment variable `key`.
+
+### `process::exit(code: Int): Void`
+Terminates current process immediately with status `code`.
+
 ```zyra
-const content = file_read("config.txt")
+import std::process
+
+def main(): Int {
+  match process::env_var("PORT") {
+    Some(port) => print("Server listening on port {port}")
+    None => print("PORT env var not set, using default 8080")
+  }
+  return 0
+}
 ```
 
-### `file_write(path: String, content: String): Bool`
-Writes text to file:
+---
+
+## `std::regex`
+
+Regular expression string pattern matching.
+
+### `regex::is_match(pattern: String, text: String): Boolean`
+Returns `true` if `text` matches regex `pattern`.
+
 ```zyra
-const success = file_write("output.txt", "Zyra compiled content")
+import std::regex
+
+def validate_email(email: String): Boolean {
+  return regex::is_match("^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$", email)
+}
 ```

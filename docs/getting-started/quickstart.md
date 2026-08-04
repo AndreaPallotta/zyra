@@ -1,50 +1,59 @@
 # Quickstart Guide
 
-Get up and running with your first Zyra program in 2 minutes!
+Get up and running with your first Zyra v2.0 program in 2 minutes!
 
 ---
 
-## 1. Create a Zyra File
+## 1. Create a Zyra Project
 
-Create a file named `hello.zy`:
+Initialize a new project or scaffold from a template:
 
-```zyra
-def main(): Int {
-  const name = "Zyra Developer"
-  print("Hello, {name}! Welcome to Zyra.")
-  return 0
-}
+```bash
+zyra create web my_web_app
+cd my_web_app
 ```
 
 ---
 
 ## 2. Compile & Run Natively
 
-Compile `hello.zy` into a native standalone binary:
+Run `src/main.zy` in a single step:
 
 ```bash
-zyra build hello.zy --target rust --native
+zyra run src/main.zy
 ```
 
-Run the compiled executable:
+Or start the **hot-reloading dev server**:
 
-=== "Windows"
-    ```powershell
-    .\hello.exe
-    ```
-
-=== "Linux / macOS"
-    ```bash
-    ./hello
-    ```
+```bash
+zyra dev src/main.zy
+```
 
 ---
 
-## 3. Compile to JavaScript ESM
+## 3. Compile to WebAssembly or JavaScript
 
-Target Node.js or browser environments:
+Target WebAssembly or browser environments:
 
 ```bash
-zyra build hello.zy --target js
-node hello.mjs
+# Compile to WebAssembly (.wasm)
+zyra build src/main.zy --target=wasm32
+
+# Compile to JavaScript ESM (.mjs)
+zyra build src/main.zy --target js
+```
+
+---
+
+## 4. Run Unit Tests & Security Audit
+
+```bash
+# Run unit tests
+zyra test
+
+# Check code coverage
+zyra coverage
+
+# Scan for security risks
+zyra audit
 ```

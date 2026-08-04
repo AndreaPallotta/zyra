@@ -67,6 +67,7 @@ markdown_extensions:
 
 nav:
   - Overview: index.md
+  - Interactive Playground: play.md
   - Getting Started:
       - Installation: getting-started/installation.md
       - Quickstart: getting-started/quickstart.md
@@ -78,3 +79,4 @@ nav:
   - Tooling & IDE:
       - VS Code Extension: tooling/vscode.md
       - Self-Hosted Compiler: tooling/self-hosting.md
+      - API Reference: api/API_DOCUMENTATION.md

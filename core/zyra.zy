@@ -26,4 +26,4 @@ def main(): Int {
   return 0
 }
 
-const exit_code = main()
+const _exit_code = main()
