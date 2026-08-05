@@ -1,11 +1,11 @@
-# Zyra Industrial Programming Language v2.0.0
+# Zyra Programming Language
 
 **Zyra** is a fast, expressive, statically-typed compiled programming language designed to combine the performance, safety, and type system of **Rust** with the clean simplicity and developer velocity of **Go**.
 
 ![Zyra Code Showcase](https://raw.githubusercontent.com/AndreaPallotta/zyra/main/assets/zyra_512x512.png){ align=left width=150 }
 
 !!! tip "100% Self-Hosted, WebAssembly & Multi-Target Compiler"
-    Zyra v2.0.0 features a **100% self-hosted compiler** written in pure Zyra. It targets **Native Executables**, **WebAssembly (`wasm32`)**, and **JavaScript ESM Modules**, backed by an interactive CLI suite (debugger, test runner, coverage, linter, dev server, and verified package manager).
+    Zyra features a **100% self-hosted compiler** written in pure Zyra. It targets **Native Executables**, **WebAssembly (`wasm32`)**, and **JavaScript ESM Modules**, backed by an interactive CLI suite (debugger, test runner, coverage, linter, dev server, and verified package manager).
 
 ---
 
@@ -43,7 +43,7 @@ Install Zyra on Windows in one click or on Linux via curl:
 
 ---
 
-## Zyra v2.0 Industrial Example
+## Zyra Example
 
 ```zyra
 trait Printable {

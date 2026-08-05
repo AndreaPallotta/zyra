@@ -1,6 +1,6 @@
 # Quickstart Guide
 
-Get up and running with your first Zyra v2.0 program in 2 minutes!
+Get up and running with your first Zyra program in 2 minutes!
 
 ---
 

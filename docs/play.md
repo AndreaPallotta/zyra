@@ -19,7 +19,7 @@
 
   <div class="zyra-playground-body">
     <div class="zyra-editor-panel">
-      <div class="zyra-panel-header">Source Code (Zyra v2.0)</div>
+      <div class="zyra-panel-header">Source Code</div>
       <textarea id="zyraEditor" class="zyra-textarea-editor" spellcheck="false">struct User {
   id: Int
   name: String
@@ -128,7 +128,7 @@ function runZyraPlayground() {
     env["u.name"] = "  Andrea  ";
     env["user.name"] = "  Andrea  ";
     env["clean_name"] = "Andrea";
-    env["name"] = "Zyra v2.0.0";
+    env["name"] = "Zyra";
     env["speed"] = "100";
     env["p.id"] = "101";
     env["p.name"] = "Zyra Compiler Pro";

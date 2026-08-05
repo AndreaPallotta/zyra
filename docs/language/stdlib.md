@@ -1,6 +1,6 @@
 # Zyra Standard Library (API Reference)
 
-Welcome to the **Zyra v2.0 Standard Library API Documentation**. This reference is organized by modules, detailing method signatures, parameter types, return values, exception behavior, and interactive usage examples.
+Welcome to the **Zyra Standard Library API Documentation**. This reference is organized by modules, detailing method signatures, parameter types, return values, exception behavior, and interactive usage examples.
 
 ---
 
