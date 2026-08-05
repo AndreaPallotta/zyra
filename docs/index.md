@@ -11,13 +11,13 @@
 
 ## Key Features
 
-- ⚡ **Zero-Overhead Native & WASM Executables**: Compiles down to native binaries and standalone `.wasm` WebAssembly modules.
-- ⚠️ **`Option[T]` & `Result[T, E]` Error Handling**: Safe error propagation using `Some(x)`, `None`, `Ok(x)`, `Err(e)`, and `expr?`.
-- 🧩 **Traits & Interfaces (`trait` & `impl`)**: Polymorphic abstraction contracts and type implementation blocks.
-- ⚡ **Async / Await Non-Blocking Concurrency**: Non-blocking asynchronous functions (`async def`) and task execution (`await`).
-- 🔠 **Generics & Monomorphization**: Parametric polymorphism (`struct Box[T]` and `def identity[T](val: T): T`).
-- 🛡 **Verified Package Manager & SHA256 Lockfile**: Supply-chain security with `zyra.lock` and zero-auth GitHub imports (`zyra add github.com/user/repo`).
-- 🛠 **Full Tooling Suite (17 Commands)**: Debugger (`zyra debug`), Test runner (`zyra test`), Code coverage (`zyra coverage`), Dev server (`zyra dev`), Benchmark suite (`zyra bench`), Linter (`zyra lint`), Security auditor (`zyra audit`), Formatter (`zyra fmt`), and LSP server (`zyra lsp`).
+- **Zero-Overhead Native & WASM Executables**: Compiles down to native binaries and standalone `.wasm` WebAssembly modules.
+- **`Option[T]` & `Result[T, E]` Error Handling**: Safe error propagation using `Some(x)`, `None`, `Ok(x)`, `Err(e)`, and `expr?`.
+- **Traits & Interfaces (`trait` & `impl`)**: Polymorphic abstraction contracts and type implementation blocks.
+- **Async / Await Non-Blocking Concurrency**: Non-blocking asynchronous functions (`async def`) and task execution (`await`).
+- **Generics & Monomorphization**: Parametric polymorphism (`struct Box[T]` and `def identity[T](val: T): T`).
+- **Verified Package Manager & SHA256 Lockfile**: Supply-chain security with `zyra.lock` and zero-auth GitHub imports (`zyra add github.com/user/repo`).
+- **Full Tooling Suite (17 Commands)**: Debugger (`zyra debug`), Test runner (`zyra test`), Code coverage (`zyra coverage`), Dev server (`zyra dev`), Benchmark suite (`zyra bench`), Linter (`zyra lint`), Security auditor (`zyra audit`), Formatter (`zyra fmt`), and LSP server (`zyra lsp`).
 
 ---
 

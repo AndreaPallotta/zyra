@@ -90,3 +90,135 @@
 .highlight .o { color: #ff79c6 !important; } /* Operators */
 .highlight .p { color: #f8f8f2 !important; } /* Punctuation */
 .highlight .n, .highlight .nx { color: #f8f8f2 !important; } /* Variables */
+
+/* LeetCode-style Interactive Playground Layout */
+body:has(#zyraEditor) .md-sidebar,
+body:has(#zyraEditor) .md-footer,
+body:has(#zyraEditor) .md-content__button {
+  display: none !important;
+}
+
+body:has(#zyraEditor) .md-content {
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body:has(#zyraEditor) .md-main__inner {
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: 100% !important;
+}
+
+.zyra-playground-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 48px);
+  margin: 0;
+  background: #090d16;
+  color: #f8fafc;
+  overflow: hidden;
+}
+
+@media screen and (min-width: 76.25em) {
+  .zyra-playground-wrapper {
+    margin: -1.5rem -2rem;
+  }
+}
+
+.zyra-playground-toolbar {
+  height: 44px;
+  background: #0f172a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  flex-shrink: 0;
+}
+
+.zyra-playground-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.zyra-playground-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.zyra-playground-body {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  height: calc(100% - 44px);
+  width: 100%;
+  overflow: hidden;
+}
+
+.zyra-editor-panel {
+  flex: 1;
+  width: 50%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.zyra-console-panel {
+  flex: 1;
+  width: 50%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #070a10;
+}
+
+.zyra-panel-header {
+  height: 32px;
+  background: #1e293b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  flex-shrink: 0;
+}
+
+.zyra-textarea-editor {
+  flex: 1;
+  width: 100%;
+  height: calc(100% - 32px);
+  background: #0f172a;
+  color: #f8f8f2;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 1rem;
+  border: none;
+  outline: none;
+  resize: none;
+  tab-size: 2;
+}
+
+.zyra-console-output {
+  flex: 1;
+  width: 100%;
+  height: calc(100% - 32px);
+  background: #070a10;
+  color: #50fa7b;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 1rem;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
