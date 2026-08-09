@@ -595,6 +595,32 @@ fn transform_zyra_line(line: &str) -> String {
         }
     }
 
+    // String dot method syntax conversion: s.len() -> len(&s), s.trim() -> trim(&s), s.contains(pat) -> contains(&s, pat)
+    if s.contains(".len()") {
+        if let Some(dot_idx) = s.find(".len()") {
+            let left_part = &s[..dot_idx];
+            if let Some(var_start) = left_part.rfind(|c: char| !c.is_alphanumeric() && c != '_') {
+                let var_name = &left_part[var_start + 1..];
+                let prefix = &left_part[..var_start + 1];
+                s = format!("{}len(&{}){}", prefix, var_name, &s[dot_idx + 6..]);
+            } else {
+                s = format!("len(&{}){}", left_part, &s[dot_idx + 6..]);
+            }
+        }
+    }
+    if s.contains(".trim()") {
+        if let Some(dot_idx) = s.find(".trim()") {
+            let left_part = &s[..dot_idx];
+            if let Some(var_start) = left_part.rfind(|c: char| !c.is_alphanumeric() && c != '_') {
+                let var_name = &left_part[var_start + 1..];
+                let prefix = &left_part[..var_start + 1];
+                s = format!("{}trim(&{}){}", prefix, var_name, &s[dot_idx + 7..]);
+            } else {
+                s = format!("trim(&{}){}", left_part, &s[dot_idx + 7..]);
+            }
+        }
+    }
+
     if s.contains("contains(") {
         s = s.replace("contains(content, ", "contains(&content, ");
         s = s.replace("contains(actual, ", "contains(&actual, ");
@@ -1027,6 +1053,74 @@ fn handle_profile(file_path: &str) {
     println!("✔ Generated Flamegraph SVG visualization: {}", flame_path.display());
 }
 
+fn transpile_zyra_to_js(_file_path: &str, content: &str) -> String {
+    let mut js = String::from("// Zyra JS ESM Output\nimport fs from 'node:fs';\n\n");
+    js.push_str("function print(...args) { console.log(...args); }\n");
+    js.push_str("function len(s) { return s ? s.length : 0; }\n");
+    js.push_str("function trim(s) { return String(s).trim(); }\n");
+    js.push_str("function contains(h, n) { return String(h).includes(n); }\n");
+    js.push_str("function file_read(path) { try { return fs.readFileSync(path, 'utf8'); } catch { return ''; } }\n");
+    js.push_str("function file_write(path, data) { try { fs.writeFileSync(path, data); return 0; } catch { return -1; } }\n\n");
+
+    let mut inside_func = false;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with("//") {
+            continue;
+        }
+
+        if trimmed.starts_with("def ") {
+            inside_func = true;
+            let fn_line = trimmed.replace("def ", "export function ").replace(": Int", "").replace(": String", "").replace(": Bool", "").replace(": Float", "");
+            js.push_str(&fn_line);
+            js.push('\n');
+            continue;
+        }
+
+        let mut s = trimmed.to_string();
+        if !inside_func {
+            if s.starts_with("const ") {
+                s = s.replacen("const ", "export const ", 1);
+            } else if s.starts_with("var ") {
+                s = s.replacen("var ", "export let ", 1);
+            }
+        } else {
+            if s.starts_with("var ") {
+                s = s.replacen("var ", "let ", 1);
+            }
+        }
+
+        s = s.replace("print(", "console.log(");
+        if s.contains(" = if (") || s.contains(" = if ") {
+            s = s.replace(" = if (", " = (").replace(" = if ", " = (").replace(") {", " ? ").replace(" } else { ", " : ").replace(" }", ")");
+        }
+
+        if s.contains("console.log(\"") && s.contains('{') && s.ends_with("\")") {
+            let inner = &s[13..s.len() - 2];
+            let mut js_tpl = String::from("console.log(`");
+            for c in inner.chars() {
+                if c == '{' {
+                    js_tpl.push_str("${");
+                } else {
+                    js_tpl.push(c);
+                }
+            }
+            js_tpl.push_str("`)");
+            s = js_tpl;
+        }
+
+        js.push_str(&s);
+        js.push('\n');
+
+        if inside_func && trimmed == "}" {
+            inside_func = false;
+        }
+    }
+
+    js
+}
+
 fn handle_build(file_path: &str, is_js: bool, is_wasm: bool, is_workspace: bool, binding: Option<&str>) {
     let out_dir = Path::new("dist");
     let _ = fs::create_dir_all(&out_dir);
@@ -1060,17 +1154,16 @@ fn handle_build(file_path: &str, is_js: bool, is_wasm: bool, is_workspace: bool,
         println!("✔ Compiled WebAssembly binary module (wasm32): {}", wasm_path.display());
     } else if is_js {
         let js_path = out_dir.join("main.mjs");
-        let js_code = format!("console.log('Hello from Zyra JS module ({})!');\n", file_path);
+        let content = fs::read_to_string(file_path).unwrap_or_default();
+        let js_code = transpile_zyra_to_js(file_path, &content);
         let _ = fs::write(&js_path, js_code);
         println!("✔ Compiled JavaScript ESM module: {}", js_path.display());
     } else {
         let exe_name = if cfg!(windows) { "main.exe" } else { "main" };
         let exe_path = out_dir.join(exe_name);
         let rs_path = out_dir.join("main.rs");
-        let rs_code = format!(
-            "#![allow(dead_code, unused_variables, unused_mut, unused_imports)]\n\nfn main() {{\n  println!(\"Hello from Zyra v2.0 Industrial executable ({})!\");\n}}\n",
-            file_path
-        );
+        let content = fs::read_to_string(file_path).unwrap_or_default();
+        let rs_code = transpile_zyra_to_rust(file_path, &content);
         let _ = fs::write(&rs_path, rs_code);
         let _ = Command::new("rustc").arg(&rs_path).arg("-o").arg(&exe_path).status();
         println!("✔ Compiled native executable binary: {}", exe_path.display());
