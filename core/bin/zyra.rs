@@ -637,9 +637,21 @@ fn transform_zyra_line(line: &str) -> String {
     let is_if_expr = s.contains(" = if ") || s.contains(" = if(");
     let is_struct_inst = s.contains(" {") && s.ends_with('}');
 
+    let is_struct_field = (s.contains(": ") || s.contains(":"))
+        && !s.contains("let ")
+        && !s.contains("const ")
+        && !s.contains("var ")
+        && !s.starts_with("fn ")
+        && !s.starts_with("def ")
+        && !s.starts_with("struct ")
+        && !s.starts_with("use ")
+        && !s.contains("::");
+
     if !s.is_empty()
         && !s.ends_with(';')
+        && !s.ends_with(',')
         && !s.ends_with('{')
+        && !is_struct_field
         && (!s.ends_with('}') || is_if_expr || is_struct_inst)
         && !s.starts_with("//")
         && !s.starts_with("if ")
@@ -664,6 +676,7 @@ fn transpile_zyra_to_rust_internal(file_path: &str, content: &str, is_root: bool
         String::new()
     };
     let mut inside_func = false;
+    let mut func_depth = 0;
     let mut func_lines: Vec<String> = Vec::new();
     let mut top_level_statements: Vec<String> = Vec::new();
     let mut has_main = false;
@@ -959,6 +972,7 @@ where
 
         if trimmed.starts_with("def ") {
             inside_func = true;
+            func_depth = 1;
             let mut fn_line = trimmed.to_string();
             fn_line = fn_line.replace("def ", "fn ");
 
@@ -968,17 +982,24 @@ where
 
                 let clean_params = params
                     .replace(": Int", ": i64")
-                    .replace(": String", ": &str")
+                    .replace(": String", ": impl Into<String>")
                     .replace(": Bool", ": bool")
                     .replace(": Float", ": f64");
 
-                let clean_ret = rest
-                    .trim()
-                    .replace("Int", "-> i64")
-                    .replace("String", "-> String")
-                    .replace("Bool", "-> bool")
-                    .replace("Float", "-> f64")
-                    .replace("Void", "");
+                let mut ret_raw = rest.trim();
+                let clean_ret = if ret_raw.ends_with('{') {
+                    let type_name = ret_raw[..ret_raw.len() - 1].trim();
+                    match type_name {
+                        "Int" => "-> i64 {".to_string(),
+                        "String" => "-> String {".to_string(),
+                        "Bool" => "-> bool {".to_string(),
+                        "Float" => "-> f64 {".to_string(),
+                        "Void" => "{".to_string(),
+                        other => format!("-> {} {{", other),
+                    }
+                } else {
+                    ret_raw.to_string()
+                };
 
                 fn_line = format!("{} {}", clean_params, clean_ret);
             } else if let Some(ret_idx) = fn_line.find(") :") {
@@ -987,17 +1008,24 @@ where
 
                 let clean_params = params
                     .replace(": Int", ": i64")
-                    .replace(": String", ": &str")
+                    .replace(": String", ": String")
                     .replace(": Bool", ": bool")
                     .replace(": Float", ": f64");
 
-                let clean_ret = rest
-                    .trim()
-                    .replace("Int", "-> i64")
-                    .replace("String", "-> String")
-                    .replace("Bool", "-> bool")
-                    .replace("Float", "-> f64")
-                    .replace("Void", "");
+                let mut ret_raw = rest.trim();
+                let clean_ret = if ret_raw.ends_with('{') {
+                    let type_name = ret_raw[..ret_raw.len() - 1].trim();
+                    match type_name {
+                        "Int" => "-> i64 {".to_string(),
+                        "String" => "-> String {".to_string(),
+                        "Bool" => "-> bool {".to_string(),
+                        "Float" => "-> f64 {".to_string(),
+                        "Void" => "{".to_string(),
+                        other => format!("-> {} {{", other),
+                    }
+                } else {
+                    ret_raw.to_string()
+                };
 
                 fn_line = format!("{} {}", clean_params, clean_ret);
             }
@@ -1011,10 +1039,16 @@ where
         }
 
         if inside_func {
+            let opens = trimmed.matches('{').count() as i32;
+            let closes = trimmed.matches('}').count() as i32;
+            func_depth += opens;
+            func_depth -= closes;
+
             let transformed = transform_zyra_line(trimmed);
             func_lines.push(transformed);
-            if trimmed == "}" {
+            if func_depth <= 0 {
                 inside_func = false;
+                func_depth = 0;
                 rs.push_str(&func_lines.join("\n"));
                 rs.push_str("\n\n");
                 func_lines.clear();
@@ -1120,16 +1154,29 @@ fn handle_profile(file_path: &str) {
     println!("✔ Generated Flamegraph SVG visualization: {}", flame_path.display());
 }
 
-fn transpile_zyra_to_js(_file_path: &str, content: &str) -> String {
-    let mut js = String::from("// Zyra JS ESM Output\nimport fs from 'node:fs';\n\n");
-    js.push_str("function print(...args) { console.log(...args); }\n");
-    js.push_str("function len(s) { return s ? s.length : 0; }\n");
-    js.push_str("function trim(s) { return String(s).trim(); }\n");
-    js.push_str("function contains(h, n) { return String(h).includes(n); }\n");
-    js.push_str("function file_read(path) { try { return fs.readFileSync(path, 'utf8'); } catch { return ''; } }\n");
-    js.push_str("function file_write(path, data) { try { fs.writeFileSync(path, data); return 0; } catch { return -1; } }\n\n");
+fn transpile_zyra_to_js(file_path: &str, content: &str) -> String {
+    transpile_zyra_to_js_internal(file_path, content, true)
+}
+
+fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) -> String {
+    let mut js = if is_root {
+        let mut header = String::from("// Zyra JS ESM Output\nimport fs from 'node:fs';\n\n");
+        header.push_str("function print(...args) { console.log(...args); }\n");
+        header.push_str("function len(s) { return s ? s.length : 0; }\n");
+        header.push_str("function trim(s) { return String(s).trim(); }\n");
+        header.push_str("function contains(h, n) { return String(h).includes(n); }\n");
+        header.push_str("function file_read(path) { try { return fs.readFileSync(path, 'utf8'); } catch { return ''; } }\n");
+        header.push_str("function file_write(path, data) { try { fs.writeFileSync(path, data); return 0; } catch { return -1; } }\n");
+        header.push_str("function json_stringify(v) { return JSON.stringify(v); }\n");
+        header.push_str("function json_parse(s) { try { return JSON.parse(s); } catch { return null; } }\n\n");
+        header
+    } else {
+        String::new()
+    };
 
     let mut inside_func = false;
+    let mut inside_struct = false;
+    let mut has_main = false;
 
     for line in content.lines() {
         let trimmed = line.trim();
@@ -1137,9 +1184,68 @@ fn transpile_zyra_to_js(_file_path: &str, content: &str) -> String {
             continue;
         }
 
+        if trimmed.starts_with("def main()") {
+            has_main = true;
+        }
+
+        if trimmed.starts_with("struct ") {
+            if !trimmed.ends_with('}') {
+                inside_struct = true;
+            }
+            continue;
+        }
+
+        if inside_struct {
+            if trimmed == "}" {
+                inside_struct = false;
+            }
+            continue;
+        }
+
+        if trimmed.starts_with("import \"") && trimmed.ends_with("\"") {
+            let rel_path = trimmed.trim_start_matches("import \"").trim_end_matches('"');
+            let parent_dir = Path::new(file_path).parent().unwrap_or_else(|| Path::new("."));
+            let mod_path = parent_dir.join(rel_path);
+            if mod_path.exists() {
+                if let Ok(mod_code) = fs::read_to_string(&mod_path) {
+                    let sub_js = transpile_zyra_to_js_internal(&mod_path.to_string_lossy(), &mod_code, false);
+                    js.push_str("// --- Imported Module: ");
+                    js.push_str(rel_path);
+                    js.push_str(" ---\n");
+                    js.push_str(&sub_js);
+                    js.push('\n');
+                }
+            }
+            continue;
+        }
+
         if trimmed.starts_with("def ") {
             inside_func = true;
-            let fn_line = trimmed.replace("def ", "export function ").replace(": Int", "").replace(": String", "").replace(": Bool", "").replace(": Float", "");
+            let mut fn_line = trimmed.replace("def ", "export function ");
+            if let Some(col_idx) = fn_line.find("):") {
+                fn_line = format!("{}) {{", &fn_line[..col_idx]);
+            } else if let Some(col_idx) = fn_line.find(") :") {
+                fn_line = format!("{}) {{", &fn_line[..col_idx]);
+            }
+            if let Some(paren_open) = fn_line.find('(') {
+                if let Some(paren_close) = fn_line.find(')') {
+                    let name = &fn_line[..paren_open + 1];
+                    let params = &fn_line[paren_open + 1..paren_close];
+                    let rest = &fn_line[paren_close..];
+                    let clean_params: Vec<String> = params
+                        .split(',')
+                        .map(|p| {
+                            let p_trim = p.trim();
+                            if let Some(c_idx) = p_trim.find(':') {
+                                p_trim[..c_idx].trim().to_string()
+                            } else {
+                                p_trim.to_string()
+                            }
+                        })
+                        .collect();
+                    fn_line = format!("{}{}{}", name, clean_params.join(", "), rest);
+                }
+            }
             js.push_str(&fn_line);
             js.push('\n');
             continue;
@@ -1158,7 +1264,44 @@ fn transpile_zyra_to_js(_file_path: &str, content: &str) -> String {
             }
         }
 
-        s = s.replace("print(", "console.log(");
+        s = s.replace(".to_string()", "").replace(".into()", "").replace("(&", "(");
+        if s.contains(" = ") && s.ends_with(" {") {
+            if let Some(eq_idx) = s.find(" = ") {
+                let struct_name = s[eq_idx + 3..s.len() - 2].trim();
+                if !struct_name.is_empty() && !struct_name.contains(' ') && struct_name.chars().next().map_or(false, |c| c.is_uppercase()) {
+                    s = format!("{} = {{", &s[..eq_idx]);
+                }
+            }
+        } else if s.contains(" = ") && s.contains(" {") && s.contains(':') {
+            if let Some(eq_idx) = s.find(" = ") {
+                let rest = &s[eq_idx + 3..];
+                if let Some(brace_idx) = rest.find(" {") {
+                    let struct_name = &rest[..brace_idx];
+                    if !struct_name.is_empty() && !struct_name.contains(' ') && struct_name.chars().next().map_or(false, |c| c.is_uppercase()) {
+                        s = s.replace(&format!(" = {} {{", struct_name), " = {");
+                    }
+                }
+            }
+        }
+
+        if s.contains("HttpResponse::new(") {
+            if let Some(start) = s.find("HttpResponse::new(") {
+                if let Some(end) = s[start..].find(')') {
+                    let full_end = start + end;
+                    let args_str = &s[start + 18..full_end];
+                    let parts: Vec<&str> = args_str.splitn(2, ',').collect();
+                    if parts.len() >= 2 {
+                        let status = parts[0].trim();
+                        let body = parts[1].trim();
+                        s = format!("{}{{ status: {}, body: {} }}{}", &s[..start], status, body, &s[full_end + 1..]);
+                    }
+                }
+            }
+        }
+        if s.starts_with("if ") && s.ends_with('{') && !s.starts_with("if (") {
+            let cond = s[3..s.len() - 1].trim();
+            s = format!("if ({}) {{", cond);
+        }
         if s.contains(" = if (") || s.contains(" = if ") {
             s = s.replace(" = if (", " = (").replace(" = if ", " = (").replace(") {", " ? ").replace(" } else { ", " : ").replace(" }", ")");
         }
@@ -1183,6 +1326,10 @@ fn transpile_zyra_to_js(_file_path: &str, content: &str) -> String {
         if inside_func && trimmed == "}" {
             inside_func = false;
         }
+    }
+
+    if is_root && has_main {
+        js.push_str("\nmain();\n");
     }
 
     js

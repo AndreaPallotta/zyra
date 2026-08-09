@@ -4,15 +4,19 @@ on:
   push:
     branches: [ main, master ]
     paths-ignore:
+      - 'CHANGELOG.md'
       - 'docs/**'
       - 'mkdocs.yml'
       - 'README.md'
+      - '**.md'
   pull_request:
     branches: [ main, master ]
     paths-ignore:
+      - 'CHANGELOG.md'
       - 'docs/**'
       - 'mkdocs.yml'
       - 'README.md'
+      - '**.md'
 
 jobs:
   test-and-build:
