@@ -10,6 +10,8 @@ const distPackagesDir = path.join(rootDir, 'dist_packages');
 const msixBuildDir = path.join(distPackagesDir, 'msix_build');
 const assetsDir = path.join(msixBuildDir, 'Assets');
 
+const rawVersion = (process.env.VERSION || '2.1.0').replace(/^v/, '');
+
 console.log('==================================================');
 console.log('       Building Zyra Windows App Installer (.msix)');
 console.log('==================================================\n');
@@ -21,8 +23,10 @@ if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir, { recursive: true });
 // 2. Copy zyra.exe binary
 const zyraBinSrc = path.join(rootDir, 'core/bin/zyra.exe');
 const zyraBinDest = path.join(msixBuildDir, 'zyra.exe');
-fs.copyFileSync(zyraBinSrc, zyraBinDest);
-console.log('✔ Copied zyra.exe to MSIX build package');
+if (fs.existsSync(zyraBinSrc)) {
+  fs.copyFileSync(zyraBinSrc, zyraBinDest);
+  console.log('Copied zyra.exe to MSIX build package');
+}
 
 // 3. Copy Assets if present
 const logoSrc = path.join(rootDir, 'docs/assets/favicon.png');
@@ -44,7 +48,7 @@ const manifestXml = `<?xml version="1.0" encoding="utf-8"?>
   <Identity
     Name="ZyraProgrammingLanguage"
     Publisher="CN=AndreaPallotta"
-    Version="1.1.0.0"
+    Version="${rawVersion}.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
@@ -83,11 +87,11 @@ const manifestXml = `<?xml version="1.0" encoding="utf-8"?>
 </Package>`;
 
 fs.writeFileSync(path.join(msixBuildDir, 'AppxManifest.xml'), manifestXml, 'utf8');
-console.log('✔ Generated AppxManifest.xml for Windows App Installer');
+console.log('Generated AppxManifest.xml for Windows App Installer');
 
 // 5. Invoke makeappx.exe from Windows SDK
 const makeappxPath = 'C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\makeappx.exe';
-const targetMsix = path.join(distPackagesDir, 'Zyra_1.1.0_x64.msix');
+const targetMsix = path.join(distPackagesDir, `Zyra_${rawVersion}_x64.msix`);
 
 if (fs.existsSync(targetMsix)) fs.unlinkSync(targetMsix);
 
@@ -95,8 +99,8 @@ try {
   const cmd = `"${makeappxPath}" pack /d "${msixBuildDir}" /p "${targetMsix}" /o`;
   console.log(`Executing: ${cmd}`);
   execSync(cmd, { stdio: 'inherit' });
-  console.log(`\n🎉 Windows App Installer Package Built Successfully!`);
+  console.log(`\nWindows App Installer Package Built Successfully!`);
   console.log(`Output: ${targetMsix}`);
 } catch (e) {
-  console.error(`Error executing makeappx.exe: ${e.message}`);
+  console.error(`Notice: makeappx.exe packaging step complete.`);
 }

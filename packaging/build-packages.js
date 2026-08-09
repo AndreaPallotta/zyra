@@ -11,15 +11,18 @@ const coreDir = path.join(rootDir, "core");
 const distPackages = path.join(rootDir, "dist_packages");
 const binDir = path.join(coreDir, "bin");
 
+const rawVersion = (process.env.VERSION || "2.1.0").replace(/^v/, "");
+const versionTag = `v${rawVersion}`;
+
 console.log("==================================================");
-console.log("       Building Zyra Multi-Platform Release Packages       ");
+console.log(`       Building Zyra Release Packages (${versionTag})      `);
 console.log("==================================================");
 
 fs.mkdirSync(distPackages, { recursive: true });
 fs.mkdirSync(binDir, { recursive: true });
 
 // Step 0: Ensure VS Code VSIX extension exists
-const vsixPath = path.join(distPackages, "zyra-vscode-2.0.0.vsix");
+const vsixPath = path.join(distPackages, `zyra-vscode-${rawVersion}.vsix`);
 if (!fs.existsSync(vsixPath)) {
   console.log("\n[0/5] Building VS Code Extension VSIX...");
   try {
@@ -51,7 +54,7 @@ if (isWin && !fs.existsSync(winExe) && fs.existsSync(zyraRs)) {
   execSync(`rustc "${zyraRs}" -o "${winExe}"`, { stdio: "inherit" });
 }
 
-console.log(`✔ Native self-hosted executable ready: ${zyraExe}`);
+console.log(`Native self-hosted executable ready: ${zyraExe}`);
 
 // Step 2: Build Windows Setup Wizard Executable (ZyraSetup.exe)
 console.log("\n[2/5] Building Windows Setup Wizard Executable (ZyraSetup.exe)...");
@@ -67,12 +70,12 @@ if (isWin) {
   try {
     if (fs.existsSync(isccBin)) {
       execSync(`"${isccBin}" "${issPath}"`, { stdio: "inherit" });
-      console.log(`✔ Generated Windows Setup Wizard Executable via Inno Setup!`);
+      console.log(`Generated Windows Setup Wizard Executable via Inno Setup.`);
     } else {
       const installerRs = path.join(__dirname, "windows", "installer.rs");
       const setupExeOut = path.join(distPackages, "ZyraSetup.exe");
       execSync(`rustc "${installerRs}" -o "${setupExeOut}"`, { stdio: "inherit" });
-      console.log(`✔ Generated Standalone Windows Setup Executable: ${setupExeOut}`);
+      console.log(`Generated Standalone Windows Setup Executable: ${setupExeOut}`);
     }
   } catch (e) {
     console.error("Error building ZyraSetup.exe:", e);
@@ -85,7 +88,7 @@ if (isWin) {
     console.warn("Notice: MSIX App Installer build completed.");
   }
 } else {
-  console.log("ℹ Skipping ZyraSetup.exe build on non-Windows host.");
+  console.log("Notice: Skipping ZyraSetup.exe build on non-Windows host.");
 }
 
 // Step 3: Package Linux Web Installer (get.sh)
@@ -93,53 +96,42 @@ console.log("\n[3/5] Packaging Linux Web Installer (get.sh)...");
 const getShSrc = path.join(__dirname, "linux", "get.sh");
 const getShDest = path.join(distPackages, "get.sh");
 fs.copyFileSync(getShSrc, getShDest);
-console.log("✔ Created Linux web installer: dist_packages/get.sh");
+console.log("Created Linux web installer: dist_packages/get.sh");
 
 // Step 4: Package Debian .deb Structure
-console.log("\n[4/5] Generating Debian Package Structure (zyra_2.0.0_amd64.deb)...");
-const debDir = path.join(distPackages, "zyra_2.0.0_amd64");
+console.log(`\n[4/5] Generating Debian Package Structure (zyra_${rawVersion}_amd64.deb)...`);
+const debDir = path.join(distPackages, `zyra_${rawVersion}_amd64`);
 const debUsrBin = path.join(debDir, "usr", "local", "bin");
 const debMeta = path.join(debDir, "DEBIAN");
 
 fs.mkdirSync(debUsrBin, { recursive: true });
 fs.mkdirSync(debMeta, { recursive: true });
 
-fs.copyFileSync(path.join(__dirname, "linux", "debian", "control"), path.join(debMeta, "control"));
+if (fs.existsSync(path.join(__dirname, "linux", "debian", "control"))) {
+  fs.copyFileSync(path.join(__dirname, "linux", "debian", "control"), path.join(debMeta, "control"));
+}
 const targetBin = fs.existsSync(winExe) ? winExe : zyraExe;
 fs.copyFileSync(targetBin, path.join(debUsrBin, "zyra"));
-console.log("✔ Created Debian package structure: dist_packages/zyra_2.0.0_amd64/");
+console.log(`Created Debian package structure: dist_packages/zyra_${rawVersion}_amd64/`);
 
 // Step 5: Package Offline Portable Zip & Tarball Bundles
-console.log("\n[5/5] Packaging Offline Portable Bundles (zyra-v2.0.0-windows-x64.zip)...");
-const winZipPath = path.join(distPackages, "zyra-v2.0.0-windows-x64.zip");
+const winZipPath = path.join(distPackages, `zyra-${versionTag}-windows-x64.zip`);
+console.log(`\n[5/5] Packaging Offline Portable Bundles (${path.basename(winZipPath)})...`);
 
 const tempZipDir = path.join(distPackages, "temp_win_bundle");
 fs.mkdirSync(tempZipDir, { recursive: true });
 if (fs.existsSync(winExe)) fs.copyFileSync(winExe, path.join(tempZipDir, "zyra.exe"));
-if (fs.existsSync(vsixPath)) fs.copyFileSync(vsixPath, path.join(tempZipDir, "zyra-vscode-2.0.0.vsix"));
+if (fs.existsSync(vsixPath)) fs.copyFileSync(vsixPath, path.join(tempZipDir, `zyra-vscode-${rawVersion}.vsix`));
 
 try {
   execSync(`tar -a -c -f "${winZipPath}" -C "${tempZipDir}" *`, { stdio: "inherit" });
-  console.log(`✔ Generated Windows Offline Portable Bundle: ${winZipPath}`);
+  console.log(`Generated Windows Offline Portable Bundle: ${winZipPath}`);
 } catch (e) {
   console.warn("Notice: WinZip bundle compression complete.");
 }
 fs.rmSync(tempZipDir, { recursive: true, force: true });
 
-// Step 6: Verify Conda-Forge Feedstock Recipe
-console.log("\n[6/6] Verifying Conda-Forge Package Recipe (meta.yaml)...");
-const condaRecipeDir = path.join(__dirname, "conda");
-const condaMeta = path.join(condaRecipeDir, "meta.yaml");
-if (fs.existsSync(condaMeta)) {
-  const condaDestDir = path.join(distPackages, "conda-recipe");
-  fs.mkdirSync(condaDestDir, { recursive: true });
-  fs.copyFileSync(condaMeta, path.join(condaDestDir, "meta.yaml"));
-  fs.copyFileSync(path.join(condaRecipeDir, "build.sh"), path.join(condaDestDir, "build.sh"));
-  fs.copyFileSync(path.join(condaRecipeDir, "bld.bat"), path.join(condaDestDir, "bld.bat"));
-  console.log("✔ Created Conda-Forge Package Recipe: dist_packages/conda-recipe/");
-}
-
 console.log("\n==================================================");
-console.log("🎉 All Release Packages Built Successfully!");
+console.log("All Release Packages Built Successfully!");
 console.log("==================================================");
 console.log(`Output Directory: ${distPackages}\n`);
