@@ -255,6 +255,12 @@ fn handle_add(package_input: &str) {
         let modules_dir = Path::new(".zyra_modules").join(pkg_name).join(version);
         let _ = fs::create_dir_all(&modules_dir);
         println!("🌐 Fetching Go-style Zyra Git repository: {}@{}...", pkg_name, version);
+        if is_direct_url {
+            let repo_url = format!("https://{}", pkg_name);
+            let _ = Command::new("git")
+                .args(["clone", "--depth", "1", &repo_url, &modules_dir.to_string_lossy()])
+                .status();
+        }
     } else {
         println!("📦 Registering Cargo ecosystem dependency: {} = \"{}\"", pkg_name, version);
     }
@@ -603,11 +609,12 @@ fn transform_zyra_line(line: &str) -> String {
     }
 
     let is_if_expr = s.contains(" = if ") || s.contains(" = if(");
+    let is_struct_inst = s.contains(" {") && s.ends_with('}');
 
     if !s.is_empty()
         && !s.ends_with(';')
         && !s.ends_with('{')
-        && (!s.ends_with('}') || is_if_expr)
+        && (!s.ends_with('}') || is_if_expr || is_struct_inst)
         && !s.starts_with("//")
         && !s.starts_with("if ")
         && !s.starts_with("else")
@@ -684,15 +691,114 @@ fn command_exec(cmd: impl AsRef<str>) -> String {
         .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
         .unwrap_or_default()
 }
+#[allow(unused)]
+fn json_stringify<T: std::fmt::Debug>(val: &T) -> String {
+    format!("{:?}", val)
+}
+#[allow(unused)]
+fn json_parse(json_str: impl AsRef<str>) -> String {
+    json_str.as_ref().to_string()
+}
 "#);
     }
 
     let mut inside_rust_block = false;
+    let mut inside_type_block = false;
+    let mut type_block_depth = 0;
     let mut imported_crates: Vec<(String, String)> = Vec::new();
 
     for line in content.lines() {
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with("//") {
+            continue;
+        }
+
+        if inside_type_block {
+            let mut type_line = trimmed.to_string();
+            if type_line.starts_with("def ") || type_line.starts_with("fn ") {
+                type_line = type_line.replace("def ", "fn ");
+                if let Some(ret_idx) = type_line.find("):") {
+                    let params = &type_line[..ret_idx + 1];
+                    let rest = &type_line[ret_idx + 2..];
+                    let clean_params = params.replace(": Int", ": i64").replace(": String", ": &str").replace(": Bool", ": bool").replace(": Float", ": f64");
+                    let clean_ret = rest.trim().replace("Int", "-> i64").replace("String", "-> String").replace("Bool", "-> bool").replace("Float", "-> f64").replace("Void", "");
+                    type_line = format!("{} {}", clean_params, clean_ret);
+                } else if let Some(ret_idx) = type_line.find(") :") {
+                    let params = &type_line[..ret_idx + 1];
+                    let rest = &type_line[ret_idx + 3..];
+                    let clean_params = params.replace(": Int", ": i64").replace(": String", ": &str").replace(": Bool", ": bool").replace(": Float", ": f64");
+                    let clean_ret = rest.trim().replace("Int", "-> i64").replace("String", "-> String").replace("Bool", "-> bool").replace("Float", "-> f64").replace("Void", "");
+                    type_line = format!("{} {}", clean_params, clean_ret);
+                }
+                if !type_line.ends_with('{') && !type_line.ends_with(';') {
+                    type_line.push(';');
+                }
+            } else if type_line.contains(": ") {
+                type_line = type_line.replace(": Int", ": i64").replace(": String", ": String").replace(": Bool", ": bool").replace(": Float", ": f64");
+                type_line = type_line.trim_end_matches(';').to_string();
+                if !type_line.ends_with(',') && !type_line.ends_with('{') && !type_line.ends_with('}') {
+                    type_line.push(',');
+                }
+            }
+
+            if type_line.starts_with("return \"") && type_line.ends_with('"') {
+                type_line = format!("{}.to_string();", type_line);
+            }
+
+            rs.push_str(&type_line);
+            rs.push('\n');
+            type_block_depth += type_line.matches('{').count() as i32;
+            type_block_depth -= type_line.matches('}').count() as i32;
+            if type_block_depth <= 0 {
+                inside_type_block = false;
+                type_block_depth = 0;
+                rs.push('\n');
+            }
+            continue;
+        }
+
+        if trimmed.starts_with("struct ") {
+            inside_type_block = true;
+            type_block_depth = trimmed.matches('{').count() as i32 - trimmed.matches('}').count() as i32;
+            let mut struct_line = trimmed.to_string();
+            struct_line = struct_line.replace(": Int", ": i64");
+            struct_line = struct_line.replace(": String", ": String");
+            struct_line = struct_line.replace(": Bool", ": bool");
+            struct_line = struct_line.replace(": Float", ": f64");
+            rs.push_str("#[derive(Debug, Clone, PartialEq, Default)]\npub ");
+            rs.push_str(&struct_line);
+            rs.push('\n');
+            if type_block_depth <= 0 {
+                inside_type_block = false;
+                type_block_depth = 0;
+            }
+            continue;
+        }
+
+        if trimmed.starts_with("trait ") {
+            inside_type_block = true;
+            type_block_depth = trimmed.matches('{').count() as i32 - trimmed.matches('}').count() as i32;
+            let trait_line = trimmed.replace("def ", "fn ").replace(": Int", ": i64").replace(": String", ": String").replace(": Bool", ": bool");
+            rs.push_str("pub ");
+            rs.push_str(&trait_line);
+            rs.push('\n');
+            if type_block_depth <= 0 {
+                inside_type_block = false;
+                type_block_depth = 0;
+            }
+            continue;
+        }
+
+        if trimmed.starts_with("impl ") {
+            inside_type_block = true;
+            type_block_depth = trimmed.matches('{').count() as i32 - trimmed.matches('}').count() as i32;
+            let impl_line = trimmed.replace("def ", "fn ").replace(": Int", ": i64").replace(": String", ": String").replace(": Bool", ": bool");
+            rs.push_str(&impl_line);
+            rs.push('\n');
+            if type_block_depth <= 0 {
+                inside_type_block = false;
+                type_block_depth = 0;
+            }
             continue;
         }
 
