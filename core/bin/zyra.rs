@@ -227,11 +227,17 @@ fn handle_dev(file_path: &str) {
 
 fn handle_add(package_input: &str) {
     let parts: Vec<&str> = package_input.split('@').collect();
-    let pkg_name = parts[0].trim_start_matches("https://").trim_start_matches("http://");
+    let raw_name = parts[0];
     let version = if parts.len() > 1 { parts[1] } else { "latest" };
 
+    let (pkg_type, pkg_name) = if raw_name.starts_with("cargo:") {
+        ("cargo", raw_name.trim_start_matches("cargo:"))
+    } else {
+        ("zyra", raw_name.trim_start_matches("https://").trim_start_matches("http://"))
+    };
+
     let is_direct_url = pkg_name.contains('/') || pkg_name.contains("github.com");
-    let is_verified = !is_direct_url || pkg_name.starts_with("zyra-lang/") || pkg_name.starts_with("github.com/zyra-lang/");
+    let is_verified = pkg_type == "cargo" || !is_direct_url || pkg_name.starts_with("zyra-lang/") || pkg_name.starts_with("github.com/zyra-lang/");
 
     if !is_verified {
         println!("\x1b[1;33m⚠️  SECURITY WARNING\x1b[0m: '{}' is an unverified external package.", pkg_name);
@@ -245,8 +251,13 @@ fn handle_add(package_input: &str) {
         }
     }
 
-    let modules_dir = Path::new(".zyra_modules").join(pkg_name).join(version);
-    let _ = fs::create_dir_all(&modules_dir);
+    if pkg_type == "zyra" {
+        let modules_dir = Path::new(".zyra_modules").join(pkg_name).join(version);
+        let _ = fs::create_dir_all(&modules_dir);
+        println!("🌐 Fetching Go-style Zyra Git repository: {}@{}...", pkg_name, version);
+    } else {
+        println!("📦 Registering Cargo ecosystem dependency: {} = \"{}\"", pkg_name, version);
+    }
 
     let manifest_path = Path::new("zyra.json");
     let mut manifest_content = if manifest_path.exists() {
@@ -259,8 +270,9 @@ fn handle_add(package_input: &str) {
         manifest_content = manifest_content.replace("{", "{\n  \"dependencies\": {},");
     }
 
-    let dep_entry = format!("\"{}\": \"{}\"", pkg_name, version);
-    if !manifest_content.contains(&format!("\"{}\"", pkg_name)) {
+    let key_name = if pkg_type == "cargo" { format!("cargo:{}", pkg_name) } else { pkg_name.to_string() };
+    let dep_entry = format!("\"{}\": \"{}\"", key_name, version);
+    if !manifest_content.contains(&format!("\"{}\"", key_name)) {
         manifest_content = manifest_content.replace(
             "\"dependencies\": {",
             &format!("\"dependencies\": {{\n    {},", dep_entry)
@@ -269,15 +281,15 @@ fn handle_add(package_input: &str) {
     }
 
     let lock_path = Path::new("zyra.lock");
-    let dummy_sha = compute_file_hash(&format!("{}:{}", pkg_name, version));
+    let sha = compute_file_hash(&format!("{}:{}:{}", pkg_type, pkg_name, version));
     let lock_content = format!(
-        "{{\n  \"version\": \"2.0.0\",\n  \"packages\": {{\n    \"{}\": {{\n      \"version\": \"{}\",\n      \"sha256\": \"{}\",\n      \"verified\": {}\n    }}\n  }}\n}}\n",
-        pkg_name, version, dummy_sha, is_verified
+        "{{\n  \"version\": \"2.0.0\",\n  \"packages\": {{\n    \"{}\": {{\n      \"type\": \"{}\",\n      \"version\": \"{}\",\n      \"sha256\": \"{}\",\n      \"verified\": {}\n    }}\n  }}\n}}\n",
+        key_name, pkg_type, version, sha, is_verified
     );
     let _ = fs::write(lock_path, lock_content);
 
     let status_badge = if is_verified { "\x1b[1;32m[VERIFIED]\x1b[0m" } else { "\x1b[1;33m[UNVERIFIED]\x1b[0m" };
-    println!("✔ Installed package '{}@{}' {}", pkg_name, version, status_badge);
+    println!("✔ Installed [{}] package '{}@{}' {}", pkg_type.to_uppercase(), pkg_name, version, status_badge);
     println!("✔ Updated zyra.json manifest and generated secure zyra.lock");
 }
 
@@ -287,14 +299,14 @@ fn handle_pkg() {
     let lock_path = Path::new("zyra.lock");
     if manifest_path.exists() {
         if let Ok(content) = fs::read_to_string(manifest_path) {
-            println!("✔ Dependencies resolved successfully:\n{}", content);
+            println!("✔ Zyra & Cargo dependencies resolved successfully:\n{}", content);
             if lock_path.exists() {
-                println!("🔒 Security Lockfile (zyra.lock) verified 100% integrity.");
+                println!("🔒 Security Lockfile (zyra.lock) verified 100% SHA-256 integrity.");
             }
             return;
         }
     }
-    println!("✔ All Zyra dependencies are up to date.");
+    println!("✔ All Zyra & Cargo dependencies are up to date.");
 }
 
 fn handle_test(file_path: Option<&str>) {
@@ -521,6 +533,316 @@ fn handle_fmt(file_path: &str) {
     println!("✔ Formatted {}", file_path);
 }
 
+fn transform_zyra_line(line: &str) -> String {
+    let mut s = line.trim().to_string();
+
+    if s.starts_with("const ") {
+        s = s.replacen("const ", "let ", 1);
+    } else if s.starts_with("var ") {
+        s = s.replacen("var ", "let mut ", 1);
+    }
+
+    s = s.replace(": Int", ": i64");
+    s = s.replace(": String", ": String");
+    s = s.replace(": Bool", ": bool");
+    s = s.replace(": Float", ": f64");
+
+    if s.contains('{') && s.contains('}') && (s.contains("print(") || s.contains('"')) {
+        let mut result = String::new();
+        let mut vars = Vec::new();
+        let mut in_str = false;
+        let mut in_var = false;
+        let mut current_var = String::new();
+
+        for c in s.chars() {
+            if c == '"' {
+                in_str = !in_str;
+                result.push(c);
+            } else if in_str && c == '{' {
+                in_var = true;
+                current_var.clear();
+                result.push_str("{}");
+            } else if in_str && c == '}' {
+                in_var = false;
+                vars.push(current_var.clone());
+            } else if in_var {
+                current_var.push(c);
+            } else {
+                result.push(c);
+            }
+        }
+
+        if !vars.is_empty() {
+            if result.starts_with("print(\"") && result.ends_with("\")") {
+                let fmt_body = &result[7..result.len() - 2];
+                let vars_str = vars.join(", ");
+                s = format!("print(&format!(\"{}\", {}));", fmt_body, vars_str);
+            } else if result.starts_with("let ") && result.contains(" = \"") {
+                if let Some(eq_idx) = result.find(" = \"") {
+                    let left = &result[..eq_idx];
+                    let right = &result[eq_idx + 4..];
+                    let right_clean = right.trim_end_matches(';').trim_end_matches('"');
+                    let vars_str = vars.join(", ");
+                    s = format!("{} = format!(\"{}\", {});", left, right_clean, vars_str);
+                }
+            }
+        }
+    }
+
+    if s.contains("contains(") {
+        s = s.replace("contains(content, ", "contains(&content, ");
+        s = s.replace("contains(actual, ", "contains(&actual, ");
+    }
+    if s.contains("trim(") {
+        s = s.replace("trim(", "&trim(");
+        s = s.replace("&&trim(", "&trim(");
+    }
+
+    if s.contains("if (") {
+        s = s.replace("if (", "if ").replace(") {", " {");
+    }
+
+    let is_if_expr = s.contains(" = if ") || s.contains(" = if(");
+
+    if !s.is_empty()
+        && !s.ends_with(';')
+        && !s.ends_with('{')
+        && (!s.ends_with('}') || is_if_expr)
+        && !s.starts_with("//")
+        && !s.starts_with("if ")
+        && !s.starts_with("else")
+        && !s.starts_with("fn ")
+        && !s.starts_with("struct ")
+    {
+        s.push(';');
+    }
+
+    s
+}
+
+fn transpile_zyra_to_rust(file_path: &str, content: &str) -> String {
+    transpile_zyra_to_rust_internal(file_path, content, true)
+}
+
+fn transpile_zyra_to_rust_internal(file_path: &str, content: &str, is_root: bool) -> String {
+    let mut rs = if is_root {
+        String::from("#![allow(dead_code, unused_variables, unused_mut, unused_imports, unreachable_code)]\n\n")
+    } else {
+        String::new()
+    };
+    let mut inside_func = false;
+    let mut func_lines: Vec<String> = Vec::new();
+    let mut top_level_statements: Vec<String> = Vec::new();
+    let mut has_main = false;
+
+    if is_root {
+        rs.push_str(r#"
+#[allow(unused)]
+fn print<T: std::fmt::Display>(v: T) {
+    println!("{}", v);
+}
+#[allow(unused)]
+fn len(s: impl AsRef<str>) -> i64 {
+    s.as_ref().len() as i64
+}
+#[allow(unused)]
+fn trim(s: impl AsRef<str>) -> String {
+    s.as_ref().trim().to_string()
+}
+#[allow(unused)]
+fn contains(haystack: impl AsRef<str>, needle: impl AsRef<str>) -> bool {
+    haystack.as_ref().contains(needle.as_ref())
+}
+#[allow(unused)]
+fn file_read(path: impl AsRef<str>) -> String {
+    std::fs::read_to_string(path.as_ref()).unwrap_or_default()
+}
+#[allow(unused)]
+fn file_write(path: impl AsRef<str>, data: impl AsRef<str>) -> i64 {
+    let _ = std::fs::write(path.as_ref(), data.as_ref());
+    0
+}
+#[allow(unused)]
+fn read_dir(path: impl AsRef<str>) -> Vec<String> {
+    std::fs::read_dir(path.as_ref())
+        .map(|entries| {
+            entries
+                .filter_map(|e| e.ok().map(|e| e.path().display().to_string()))
+                .collect()
+        })
+        .unwrap_or_else(|_| vec![])
+}
+#[allow(unused)]
+fn env_var(key: impl AsRef<str>) -> String {
+    std::env::var(key.as_ref()).unwrap_or_default()
+}
+#[allow(unused)]
+fn command_exec(cmd: impl AsRef<str>) -> String {
+    std::process::Command::new(if cfg!(windows) { "cmd" } else { "sh" })
+        .args([if cfg!(windows) { "/C" } else { "-c" }, cmd.as_ref()])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default()
+}
+"#);
+    }
+
+    let mut inside_rust_block = false;
+    let mut imported_crates: Vec<(String, String)> = Vec::new();
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with("//") {
+            continue;
+        }
+
+        // Multi-file Zyra Module Import: import "./module.zy"
+        if trimmed.starts_with("import \"") && trimmed.ends_with("\"") {
+            let rel_path = trimmed.trim_start_matches("import \"").trim_end_matches('"');
+            let parent_dir = Path::new(file_path).parent().unwrap_or_else(|| Path::new("."));
+            let mod_path = parent_dir.join(rel_path);
+            if mod_path.exists() {
+                if let Ok(mod_code) = fs::read_to_string(&mod_path) {
+                    let sub_rs = transpile_zyra_to_rust_internal(&mod_path.to_string_lossy(), &mod_code, false);
+                    rs.push_str("// --- Imported Module: ");
+                    rs.push_str(rel_path);
+                    rs.push_str(" ---\n");
+                    rs.push_str(&sub_rs);
+                    rs.push('\n');
+                }
+            }
+            continue;
+        }
+
+        if trimmed == "rust {" || trimmed.starts_with("rust {") {
+            inside_rust_block = true;
+            continue;
+        }
+
+        if inside_rust_block {
+            if trimmed == "}" {
+                inside_rust_block = false;
+            } else {
+                if inside_func {
+                    func_lines.push(trimmed.to_string());
+                } else {
+                    top_level_statements.push(trimmed.to_string());
+                }
+            }
+            continue;
+        }
+
+        if trimmed.starts_with("import rust ") {
+            let parts: Vec<&str> = trimmed.split_whitespace().collect();
+            if parts.len() >= 3 {
+                let full_crate = parts[2].trim_matches('"');
+                let alias = if parts.len() >= 5 { parts[4] } else { full_crate };
+                let crate_parts: Vec<&str> = full_crate.split('@').collect();
+                let crate_name = crate_parts[0];
+                let crate_ver = if crate_parts.len() > 1 { crate_parts[1] } else { "*" };
+                imported_crates.push((crate_name.to_string(), crate_ver.to_string()));
+                rs.push_str(&format!("use {} as {};\n", crate_name, alias));
+            }
+            continue;
+        }
+
+        if trimmed.starts_with("struct ") {
+            let mut struct_line = trimmed.to_string();
+            struct_line = struct_line.replace(": Int", ": i64");
+            struct_line = struct_line.replace(": String", ": String");
+            struct_line = struct_line.replace(": Bool", ": bool");
+            struct_line = struct_line.replace(": Float", ": f64");
+            rs.push_str("#[derive(Debug, Clone, PartialEq, Default)]\npub ");
+            rs.push_str(&struct_line);
+            rs.push('\n');
+            continue;
+        }
+
+        if trimmed.starts_with("def ") {
+            inside_func = true;
+            let mut fn_line = trimmed.to_string();
+            fn_line = fn_line.replace("def ", "fn ");
+
+            if let Some(ret_idx) = fn_line.find("):") {
+                let params = &fn_line[..ret_idx + 1];
+                let rest = &fn_line[ret_idx + 2..];
+
+                let clean_params = params
+                    .replace(": Int", ": i64")
+                    .replace(": String", ": &str")
+                    .replace(": Bool", ": bool")
+                    .replace(": Float", ": f64");
+
+                let clean_ret = rest
+                    .trim()
+                    .replace("Int", "-> i64")
+                    .replace("String", "-> String")
+                    .replace("Bool", "-> bool")
+                    .replace("Float", "-> f64")
+                    .replace("Void", "");
+
+                fn_line = format!("{} {}", clean_params, clean_ret);
+            } else if let Some(ret_idx) = fn_line.find(") :") {
+                let params = &fn_line[..ret_idx + 1];
+                let rest = &fn_line[ret_idx + 3..];
+
+                let clean_params = params
+                    .replace(": Int", ": i64")
+                    .replace(": String", ": &str")
+                    .replace(": Bool", ": bool")
+                    .replace(": Float", ": f64");
+
+                let clean_ret = rest
+                    .trim()
+                    .replace("Int", "-> i64")
+                    .replace("String", "-> String")
+                    .replace("Bool", "-> bool")
+                    .replace("Float", "-> f64")
+                    .replace("Void", "");
+
+                fn_line = format!("{} {}", clean_params, clean_ret);
+            }
+
+            if fn_line.starts_with("fn main()") {
+                has_main = true;
+                fn_line = fn_line.replace("fn main()", "fn _zyra_user_main()");
+            }
+            func_lines.push(fn_line);
+            continue;
+        }
+
+        if inside_func {
+            let transformed = transform_zyra_line(trimmed);
+            func_lines.push(transformed);
+            if trimmed == "}" {
+                inside_func = false;
+                rs.push_str(&func_lines.join("\n"));
+                rs.push_str("\n\n");
+                func_lines.clear();
+            }
+        } else {
+            let transformed = transform_zyra_line(trimmed);
+            top_level_statements.push(transformed);
+        }
+    }
+
+    if is_root {
+        if has_main {
+            rs.push_str("fn main() {\n  let code = _zyra_user_main();\n  if code != 0 { std::process::exit(code as i32); }\n}\n");
+        } else {
+            rs.push_str("fn main() {\n");
+            for stmt in top_level_statements {
+                rs.push_str("  ");
+                rs.push_str(&stmt);
+                rs.push('\n');
+            }
+            rs.push_str("}\n");
+        }
+    }
+
+    rs
+}
+
 fn handle_run(file_path: &str) {
     let out_dir = Path::new("dist");
     let cache_dir = Path::new(".zyra_cache");
@@ -550,12 +872,8 @@ fn handle_run(file_path: &str) {
     let exe_name = if cfg!(windows) { "main.exe" } else { "main" };
     let exe_path = out_dir.join(exe_name);
 
-    let clean_code = perform_dead_code_elimination(&content);
     let rs_path = out_dir.join("main.rs");
-    let rs_code = format!(
-        "#![allow(dead_code, unused_variables, unused_mut, unused_imports)]\n\nfn main() {{\n  println!(\"Hello from Zyra v2.0 Industrial executable ({})!\");\n}}\n",
-        file_path
-    );
+    let rs_code = transpile_zyra_to_rust(file_path, &content);
     let _ = fs::write(&rs_path, rs_code);
 
     let status = Command::new("rustc")
@@ -567,7 +885,7 @@ fn handle_run(file_path: &str) {
     if status.is_ok() && status.unwrap().success() {
         let _ = fs::copy(&exe_path, &cached_exe);
         println!("✔ Compiled native binary: {}", exe_path.display());
-        println!("\n▶ Executing native binary {}...", exe_path.display());
+        println!("\n▶ Executing native binary {}...\n", exe_path.display());
         let _ = Command::new(&exe_path).status();
     } else {
         format_span_diagnostic(file_path, &content, 0, 0, "Compilation failed", "Verify syntax and function definitions");

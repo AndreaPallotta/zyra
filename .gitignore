@@ -11,4 +11,6 @@ coverage/
 vscode/out
 test_entry.zy
 test_io_tmp.txt
+.zyra_cache/
+.zyra_modules/
 *.pdb
