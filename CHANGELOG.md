@@ -4,6 +4,12 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
 
 ---
 
+## [Unreleased] - v2.1.1
+
+- [`3417688`](https://github.com/AndreaPallotta/zyra/commit/3417688): Add native HttpRequest, HttpResponse, and net_listen HTTP web server primitives
+
+---
+
 ## [v2.1.0] - 2026-08-09
 
 - [`69b4be3`](https://github.com/AndreaPallotta/zyra/commit/69b4be3): Bump VS Code extension and Conda package recipe version numbers to 2.1.0
