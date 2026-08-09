@@ -12,6 +12,7 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
 
 ## [v2.1.0] - 2026-08-09
 
+- [`c745102`](https://github.com/AndreaPallotta/zyra/commit/c745102): Resolve multi-module struct return types, JS parameter type stripping, and add CI paths-ignore
 - [`69b4be3`](https://github.com/AndreaPallotta/zyra/commit/69b4be3): Bump VS Code extension and Conda package recipe version numbers to 2.1.0
 - [`a0bb50c`](https://github.com/AndreaPallotta/zyra/commit/a0bb50c): Fix release workflow asset filenames, remove emojis, and add manual changelog
 - [`bb1970b`](https://github.com/AndreaPallotta/zyra/commit/bb1970b): Update documentation and website highlights for v2.1.0 release
