@@ -7,6 +7,7 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
 ## [Unreleased] - v2.1.1
 
 - [`3417688`](https://github.com/AndreaPallotta/zyra/commit/3417688): Add native HttpRequest, HttpResponse, and net_listen HTTP web server primitives
+- Minify generated JS ESM modules (`.mjs`) output
 
 ---
 
