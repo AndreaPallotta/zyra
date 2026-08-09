@@ -4,20 +4,20 @@
 
 ![Zyra Code Showcase](https://raw.githubusercontent.com/AndreaPallotta/zyra/main/assets/zyra_512x512.png){ align=left width=150 }
 
-!!! tip "100% Self-Hosted, WebAssembly & Multi-Target Compiler"
-    Zyra features a **100% self-hosted compiler** written in pure Zyra. It targets **Native Executables**, **WebAssembly (`wasm32`)**, and **JavaScript ESM Modules**, backed by an interactive CLI suite (debugger, test runner, coverage, linter, dev server, and verified package manager).
+!!! tip "Zyra v2.1 Industrial Compiler Core & Toolchain"
+    Zyra features a **100% self-hosted compiler core** written in pure Zyra. It targets **Native Standalone Binaries**, **WebAssembly (`wasm32`)**, and **JavaScript ESM Modules (`.mjs`)**, backed by dual package management for **150,000+ Cargo crates** and **Go-style Zyra Git packages** (`zyra.lock`).
 
 ---
 
 ## Key Features
 
-- **Zero-Overhead Native & WASM Executables**: Compiles down to native binaries and standalone `.wasm` WebAssembly modules.
-- **`Option[T]` & `Result[T, E]` Error Handling**: Safe error propagation using `Some(x)`, `None`, `Ok(x)`, `Err(e)`, and `expr?`.
+- **Zero-Overhead Native & JS ESM Executables**: Compiles down to native binaries via `rustc` and standalone `.mjs` JavaScript ESM modules.
+- **Seamless Rust & Cargo Ecosystem Bridging**: Import any Cargo crate directly (`import rust "reqwest@0.12"`) or write inline `rust { ... }` blocks inside Zyra functions.
+- **Go-Style Zyra Package Resolution**: Install remote Git repositories (`zyra add github.com/user/repo`) with SHA-256 integrity lockfiles (`zyra.lock`).
+- **Multi-File Module Imports**: Link complex project directory trees with `import "./module.zy"`.
 - **Traits & Interfaces (`trait` & `impl`)**: Polymorphic abstraction contracts and type implementation blocks.
-- **Async / Await Non-Blocking Concurrency**: Non-blocking asynchronous functions (`async def`) and task execution (`await`).
-- **Generics & Monomorphization**: Parametric polymorphism (`struct Box[T]` and `def identity[T](val: T): T`).
-- **Verified Package Manager & SHA256 Lockfile**: Supply-chain security with `zyra.lock` and zero-auth GitHub imports (`zyra add github.com/user/repo`).
-- **Full Tooling Suite (17 Commands)**: Debugger (`zyra debug`), Test runner (`zyra test`), Code coverage (`zyra coverage`), Dev server (`zyra dev`), Benchmark suite (`zyra bench`), Linter (`zyra lint`), Security auditor (`zyra audit`), Formatter (`zyra fmt`), and LSP server (`zyra lsp`).
+- **Native JSON & System Stdlib**: Reflection-based `json_stringify`/`json_parse`, environment variables (`env_var`), directory listing (`read_dir`), and command execution (`command_exec`).
+- **Full Tooling Suite**: Interactive REPL (`zyra repl`), test runner (`zyra test`), coverage inspector (`zyra coverage`), hot-reloading dev server (`zyra dev`), security auditor (`zyra audit`), linter (`zyra lint`), and LSP server (`zyra lsp`).
 
 ---
 
