@@ -637,15 +637,22 @@ fn transform_zyra_line(line: &str) -> String {
     let is_if_expr = s.contains(" = if ") || s.contains(" = if(");
     let is_struct_inst = s.contains(" {") && s.ends_with('}');
 
-    let is_struct_field = (s.contains(": ") || s.contains(":"))
-        && !s.contains("let ")
-        && !s.contains("const ")
-        && !s.contains("var ")
-        && !s.starts_with("fn ")
-        && !s.starts_with("def ")
-        && !s.starts_with("struct ")
-        && !s.starts_with("use ")
-        && !s.contains("::");
+    let is_struct_field = if let Some(col_idx) = s.find(':') {
+        let prefix = s[..col_idx].trim();
+        !prefix.is_empty()
+            && prefix.chars().all(|c| c.is_alphanumeric() || c == '_')
+            && !s.contains("let ")
+            && !s.contains("const ")
+            && !s.contains("var ")
+            && !s.starts_with("fn ")
+            && !s.starts_with("def ")
+            && !s.starts_with("struct ")
+            && !s.starts_with("use ")
+            && !s.contains("::")
+            && !s.contains('"')
+    } else {
+        false
+    };
 
     if !s.is_empty()
         && !s.ends_with(';')
