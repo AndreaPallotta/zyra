@@ -47,6 +47,20 @@ jobs:
           echo "VERSION=v${RAW_VER}" >> $GITHUB_OUTPUT
           echo "RAW_VERSION=${RAW_VER}" >> $GITHUB_OUTPUT
 
+      - name: Extract Changelog Section from CHANGELOG.md
+        id: changelog
+        shell: bash
+        run: |
+          VERSION_TAG="${{ env.VERSION }}"
+          if [ -f CHANGELOG.md ]; then
+            CHANGELOG_BODY=$(awk "/## \\[${VERSION_TAG}\\]/{flag=1; next} /## \\[/ {flag=0} flag" CHANGELOG.md | sed '/^---$/d')
+            echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGELOG_BODY" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "CHANGELOG=No changelog entry found in CHANGELOG.md" >> $GITHUB_OUTPUT
+          fi
+
       - name: Build All Release Packages
         run: node packaging/build-packages.js
         env:
@@ -78,14 +92,7 @@ jobs:
             - Debian Package Structure: zyra_${{ env.RAW_VERSION }}_amd64 (Compatible with apt, dpkg, zypper)
 
             ### Changelog
-            - Compiler Core: Full AST Rust code generator (transpile_zyra_to_rust) producing zero-warning native executables (main.exe).
-            - JavaScript ESM Target: Standalone ES6 JavaScript ESM module generator (zyra build --target js) tested natively in Node.js (main.mjs).
-            - Multi-File Module Imports: Support for linking multi-file project directories (import "./module.zy").
-            - Traits & Implementation Blocks: Polymorphic trait contracts (trait) and struct implementation blocks (impl) with nested depth parsing.
-            - Inline Rust Blocks: Low-level native Rust code blocks (rust { ... }) embedded directly inside Zyra function bodies.
-            - Dual Package Manager: Integrated support for Cargo ecosystem dependencies (import rust "<crate>" / zyra add cargo:<crate>) and Go-style Zyra Git packages (zyra add github.com/user/repo) with SHA-256 lockfile verification (zyra.lock).
-            - System & JSON Stdlib: Native JSON serialization (json_stringify, json_parse), environment variables (env_var), directory listing (read_dir), and OS command execution (command_exec).
-            - Method Dispatch: Automatic dot method syntax dispatch (str.len(), str.trim()).
+            ${{ steps.changelog.outputs.CHANGELOG }}
           files: |
             dist_packages/ZyraSetup.exe
             dist_packages/Zyra_${{ env.RAW_VERSION }}_x64.msix
