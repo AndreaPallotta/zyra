@@ -725,6 +725,73 @@ fn json_stringify<T: std::fmt::Debug>(val: &T) -> String {
 fn json_parse(json_str: impl AsRef<str>) -> String {
     json_str.as_ref().to_string()
 }
+
+#[allow(unused)]
+#[derive(Debug, Clone)]
+struct HttpRequest {
+    method: String,
+    path: String,
+    body: String,
+}
+
+#[allow(unused)]
+#[derive(Debug, Clone)]
+struct HttpResponse {
+    status: i64,
+    body: String,
+}
+
+impl HttpResponse {
+    #[allow(unused)]
+    fn new(status: i64, body: impl Into<String>) -> Self {
+        HttpResponse { status, body: body.into() }
+    }
+}
+
+#[allow(unused)]
+fn net_listen<F>(addr: impl AsRef<str>, handler: F) -> i64
+where
+    F: Fn(HttpRequest) -> HttpResponse + Send + Sync + 'static,
+{
+    use std::io::{Read, Write};
+    let listener = match std::net::TcpListener::bind(addr.as_ref()) {
+        Ok(l) => l,
+        Err(_) => return -1,
+    };
+    let handler = std::sync::Arc::new(handler);
+    for stream in listener.incoming() {
+        if let Ok(mut stream) = stream {
+            let handler = handler.clone();
+            std::thread::spawn(move || {
+                let mut buffer = [0u8; 1024];
+                let bytes_read = stream.read(&mut buffer).unwrap_or(0);
+                let request_str = String::from_utf8_lossy(&buffer[..bytes_read]);
+                let lines: Vec<&str> = request_str.lines().collect();
+                let (method, path) = if !lines.is_empty() {
+                    let parts: Vec<&str> = lines[0].split_whitespace().collect();
+                    if parts.len() >= 2 {
+                        (parts[0].to_string(), parts[1].to_string())
+                    } else {
+                        ("GET".to_string(), "/".to_string())
+                    }
+                } else {
+                    ("GET".to_string(), "/".to_string())
+                };
+
+                let req = HttpRequest { method, path, body: request_str.to_string() };
+                let resp = handler(req);
+                let http_response = format!(
+                    "HTTP/1.1 {} OK\r\nContent-Length: {}\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n{}",
+                    resp.status,
+                    resp.body.len(),
+                    resp.body
+                );
+                let _ = stream.write_all(http_response.as_bytes());
+            });
+        }
+    }
+    0
+}
 "#);
     }
 
