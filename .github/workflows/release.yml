@@ -74,10 +74,10 @@ jobs:
       - name: Create GitHub Release & Upload Assets
         uses: softprops/action-gh-release@v1
         with:
-          name: "Zyra Programming Language ${{ env.VERSION }} Release"
+          name: "Zyra Release ${{ env.VERSION }}"
           tag_name: ${{ env.VERSION }}
           body: |
-            ## Zyra Programming Language ${{ env.VERSION }} Release
+            ## Zyra Release ${{ env.VERSION }}
 
             ### Installers & Package Manager
             - Windows Setup Wizard Executable: ZyraSetup.exe (Standard Windows Setup Wizard)
