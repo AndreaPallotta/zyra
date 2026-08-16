@@ -60,18 +60,18 @@ fn perform_installation(install_vscode: bool) -> Result<PathBuf, String> {
     let target_exe = install_dir.join("zyra.exe");
     fs::write(&target_exe, ZYRA_BIN_BYTES).map_err(|e| format!("Failed to write zyra.exe: {}", e))?;
 
-    // Update PATH
+    // Update PATH cleanly (only if not already present in User PATH)
     let install_dir_str = install_dir.to_string_lossy();
     let ps_cmd = format!(
-        "[Environment]::SetEnvironmentVariable('PATH', [Environment]::GetEnvironmentVariable('PATH', 'User') + ';{}', 'User')",
-        install_dir_str
+        "$cur = [Environment]::GetEnvironmentVariable('PATH', 'User'); if (-not $cur.Contains('{}')) {{ [Environment]::SetEnvironmentVariable('PATH', $cur + ';{}', 'User') }}",
+        install_dir_str, install_dir_str
     );
     let _ = Command::new("powershell")
         .args(&["-NoProfile", "-Command", &ps_cmd])
         .output();
 
     if install_vscode {
-        let temp_vsix = env::temp_dir().join("zyra-vscode-1.0.2.vsix");
+        let temp_vsix = env::temp_dir().join("zyra-vscode.vsix");
         if fs::write(&temp_vsix, VSIX_BYTES).is_ok() {
             let _ = Command::new("code")
                 .args(&["--install-extension", &temp_vsix.to_string_lossy(), "--force"])

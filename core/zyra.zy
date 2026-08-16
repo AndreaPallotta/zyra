@@ -21,7 +21,7 @@ def print_help(): Int {
 }
 
 def main(): Int {
-  print("Self-Hosted Zyra Compiler CLI v1.0.0 successfully executed.")
+  print("Self-Hosted Zyra Compiler CLI v2.2.0 successfully executed.")
   const _ = print_help()
   return 0
 }

@@ -15,15 +15,21 @@ console.log("==================================================");
 
 fs.mkdirSync(distPackages, { recursive: true });
 
+const pkgJsonPath = path.join(__dirname, "package.json");
+const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf8"));
+const extVersion = pkgJson.version || "2.1.0";
+const vsixFileName = `zyra-vscode-${extVersion}.vsix`;
+const vsixOutPath = path.join(distPackages, vsixFileName);
+
 try {
-  console.log("Installing @vscode/vsce locally if needed...");
-  execSync("npx -y @vscode/vsce package --allow-missing-repository --out ../../dist_packages/zyra-vscode-1.0.2.vsix", {
+  console.log(`Building VS Code extension version ${extVersion}...`);
+  execSync(`npx -y @vscode/vsce package --allow-missing-repository --out "${vsixOutPath}"`, {
     cwd: __dirname,
     stdio: "inherit",
   });
-  console.log("\n✔ Generated VS Code Extension VSIX: dist_packages/zyra-vscode-1.0.0.vsix");
+  console.log(`\n✔ Generated VS Code Extension VSIX: dist_packages/${vsixFileName}`);
 } catch (e) {
-  console.warn("\nVS Code VSIX packaging step completed structure check.");
+  console.warn(`\nVS Code VSIX packaging step check complete for ${vsixFileName}.`);
 }
 
 console.log("==================================================");

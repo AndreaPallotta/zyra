@@ -1,0 +1,8 @@
+{
+  "name": "zyra_test_app",
+  "version": "2.1.1",
+  "main": "src/main.zy",
+  "dependencies": {
+    "github.com/zyra-lang/sample-lib": "v1.0.0"
+  }
+}

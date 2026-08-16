@@ -1,6 +1,6 @@
 {
   "name": "zyra-ts",
-  "version": "1.0.1",
+  "version": "2.2.0",
   "description": "Zyra language (source .zy → ESM .js)",
   "main": "dist/index.js",
   "scripts": {

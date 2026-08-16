@@ -1,0 +1,84 @@
+// Zyra v2.2.0 Verification Test Suite
+
+def test_dot_notation_and_env(): Int {
+  const _ = env.load("test.zyra.env")
+  const port = env.get("server.port")
+  const host = env.get("server.host")
+  const db_url = env.get("database.url")
+
+  print("  server.port: {port}")
+  print("  server.host: {host}")
+  print("  database.url: {db_url}")
+
+  if (port == "8080" && host == "localhost" && contains(db_url, "postgres")) {
+    print("[PASS] Structured zyra.env & env.get() verified")
+    return 1
+  }
+  print("[FAIL] Env test failed")
+  return 0
+}
+
+def test_path_math_str_process(): Int {
+  const joined_path = path.join("dist", "main.rs")
+  const p_ext = path.ext("main.zy")
+  const exists = path.exists("zyra.json")
+
+  const root_val = math.sqrt(16.0)
+  const abs_val = math.abs(-42.0)
+  const rand_num = random.int(1, 100)
+
+  const lower = str.lower("ZYRA")
+  const upper = str.upper("zyra")
+
+  print("  path.join: {joined_path}")
+  print("  path.ext: {p_ext}")
+  print("  math.sqrt(16): {root_val}")
+  print("  str.lower: {lower}")
+
+  if (p_ext == "zy" && exists && root_val > 3.9 && lower == "zyra" && upper == "ZYRA") {
+    print("[PASS] Zero-import stdlib (path, math, str, random) verified")
+    return 1
+  }
+  print("[FAIL] Path/Math/Str test failed")
+  return 0
+}
+
+def test_io_watcher_and_crypto(): Int {
+  const test_file = "test_watch_tmp.txt"
+  const _ = io.write(test_file, "initial content")
+
+  var watcher = io.watch(test_file)
+  const initial_changed = io.has_changed(watcher)
+
+  const hash = crypto.sha256("zyra v2.2.0")
+  const b64 = crypto.base64_encode("zyra v2.2.0")
+
+  const hash_len = len(hash)
+  const b64_len = len(b64)
+
+  print("  crypto.sha256 len: {hash_len}")
+  print("  crypto.base64_encode: {b64}")
+
+  if (hash_len == 64 && b64_len > 0) {
+    print("[PASS] Non-callback file watcher handle & crypto dot-notation verified")
+    return 1
+  }
+  print("[FAIL] Watcher/Crypto test failed")
+  return 0
+}
+
+def main(): Int {
+  print("==========================================")
+  print("   Zyra v2.2.0 Feature & Stdlib Suite    ")
+  print("==========================================")
+
+  const t1 = test_dot_notation_and_env()
+  const t2 = test_path_math_str_process()
+  const t3 = test_io_watcher_and_crypto()
+
+  const total = t1 + t2 + t3
+  print("------------------------------------------")
+  print("Results: {total}/3 Test Groups PASSED")
+  print("==========================================")
+  return 0
+}

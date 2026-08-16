@@ -22,7 +22,13 @@ fs.mkdirSync(distPackages, { recursive: true });
 fs.mkdirSync(binDir, { recursive: true });
 
 // Step 0: Ensure VS Code VSIX extension exists
-const vsixPath = path.join(distPackages, `zyra-vscode-${rawVersion}.vsix`);
+let vscodeExtVer = "2.1.0";
+try {
+  const vscodePkgJson = JSON.parse(fs.readFileSync(path.join(rootDir, "editors", "vscode", "package.json"), "utf8"));
+  if (vscodePkgJson.version) vscodeExtVer = vscodePkgJson.version;
+} catch (e) {}
+
+const vsixPath = path.join(distPackages, `zyra-vscode-${vscodeExtVer}.vsix`);
 if (!fs.existsSync(vsixPath)) {
   console.log("\n[0/5] Building VS Code Extension VSIX...");
   try {

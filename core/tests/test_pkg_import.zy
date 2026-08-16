@@ -1,0 +1,12 @@
+import "github.com/zyra-lang/sample-lib"
+
+def main(): Int {
+  const msg = greet_from_pkg("Zyra Developer")
+  print(msg)
+  if (contains(msg, "Hello from package")) {
+    print("[PASS] Manifest-driven Go-style 3rd party package import verified!")
+    return 0
+  }
+  print("[FAIL] Package import test failed")
+  return 1
+}

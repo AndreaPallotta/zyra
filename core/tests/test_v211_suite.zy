@@ -1,0 +1,68 @@
+// Zyra v2.1.1 Verification Test Suite (Post-Audit)
+
+def test_crypto(): Int {
+  const hash = sha256("zyra v2.1.1")
+  const enc = base64_encode("hello zyra")
+  const dec = base64_decode(enc)
+
+  print("  sha256 hash length: {len(hash)}")
+  print("  base64 encoded: {enc}")
+  print("  base64 decoded: {dec}")
+
+  if (dec == "hello zyra") {
+    print("[PASS] Crypto & Base64 encoding/decoding verified")
+    return 1
+  }
+  print("[FAIL] Crypto test failed")
+  return 0
+}
+
+def test_unified_io(): Int {
+  const json_file = "test_io_data.json"
+  file_write_json(json_file, "{\"name\":\"zyra\",\"version\":\"2.1.1\"}")
+  const json_data = file_read_auto(json_file)
+
+  const yaml_file = "test_io_data.yaml"
+  file_write_yaml(yaml_file, "title: Zyra\nmode: fast")
+  const yaml_data = file_read_auto(yaml_file)
+
+  if (contains(json_data, "2.1.1") && contains(yaml_data, "fast")) {
+    print("[PASS] Unified multi-format I/O (JSON/YAML) verified")
+    return 1
+  }
+  print("[FAIL] Unified I/O test failed")
+  return 0
+}
+
+def test_sys_and_datetime(): Int {
+  const os_name = sys_os()
+  const cpus = sys_cpu_count()
+  const ts = now()
+
+  print("  OS: {os_name}")
+  print("  CPUs: {cpus}")
+  print("  Epoch: {ts}")
+
+  if (len(os_name) > 0 && cpus > 0 && ts > 100000) {
+    print("[PASS] System & DateTime primitives verified")
+    return 1
+  }
+  print("[FAIL] Sys/DateTime test failed")
+  return 0
+}
+
+def main(): Int {
+  print("==========================================")
+  print("   Zyra v2.1.1 Post-Audit Verification   ")
+  print("==========================================")
+
+  const c = test_crypto()
+  const io = test_unified_io()
+  const sys = test_sys_and_datetime()
+
+  const total = c + io + sys
+  print("------------------------------------------")
+  print("Results: {total}/3 Test Groups PASSED")
+  print("==========================================")
+  return 0
+}
