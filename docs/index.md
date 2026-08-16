@@ -4,20 +4,22 @@
 
 ![Zyra Code Showcase](https://raw.githubusercontent.com/AndreaPallotta/zyra/main/assets/zyra_512x512.png){ align=left width=150 }
 
-!!! tip "Zyra v2.1 Industrial Compiler Core & Toolchain"
-    Zyra features a **100% self-hosted compiler core** written in pure Zyra. It targets **Native Standalone Binaries**, **WebAssembly (`wasm32`)**, and **JavaScript ESM Modules (`.mjs`)**, backed by dual package management for **150,000+ Cargo crates** and **Go-style Zyra Git packages** (`zyra.lock`).
+!!! tip "Zyra Compiler Core and Toolchain"
+    Zyra features a **100% self-hosted compiler core** written in pure Zyra. It targets **Native Standalone Binaries**, **WebAssembly (`wasm32`)**, and **JavaScript ESM Modules (`.mjs`)**.
 
 ---
 
 ## Key Features
 
-- **Zero-Overhead Native & JS ESM Executables**: Compiles down to native binaries via `rustc` and standalone `.mjs` JavaScript ESM modules.
-- **Seamless Rust & Cargo Ecosystem Bridging**: Import any Cargo crate directly (`import rust "reqwest@0.12"`) or write inline `rust { ... }` blocks inside Zyra functions.
-- **Go-Style Zyra Package Resolution**: Install remote Git repositories (`zyra add github.com/user/repo`) with SHA-256 integrity lockfiles (`zyra.lock`).
+- **Zero-Import Dot-Notation Namespacing**: Access standard library routines directly (`env.get()`, `path.join()`, `math.sqrt()`, `str.split()`, `io.read()`, `crypto.sha256()`, `http.get()`) without explicit import headers.
+- **Structured `zyra.env` Environment Configuration**: Parse hierarchical YAML-style configuration files (`server.port`, `database.url`) natively via `env.load("zyra.env")`.
+- **Non-Callback Async File Watcher**: Monitor file system updates asynchronously (`io.watch()`, `io.has_changed()`) without callback nesting.
+- **Zero-Overhead Native and JS ESM Executables**: Compiles down to native binaries via `rustc` and standalone `.mjs` JavaScript ESM modules.
+- **Go-Style Package Resolution**: Install remote Git repositories (`zyra add github.com/user/repo`) with SHA-256 integrity lockfiles (`zyra.lock`).
+- **Seamless Rust and Cargo Ecosystem Bridging**: Import any Cargo crate directly (`import rust "reqwest@0.12"`) or write inline `rust { ... }` blocks inside Zyra functions.
 - **Multi-File Module Imports**: Link complex project directory trees with `import "./module.zy"`.
-- **Traits & Interfaces (`trait` & `impl`)**: Polymorphic abstraction contracts and type implementation blocks.
-- **Native JSON & System Stdlib**: Reflection-based `json_stringify`/`json_parse`, environment variables (`env_var`), directory listing (`read_dir`), and command execution (`command_exec`).
-- **Full Tooling Suite**: Interactive REPL (`zyra repl`), test runner (`zyra test`), coverage inspector (`zyra coverage`), hot-reloading dev server (`zyra dev`), security auditor (`zyra audit`), linter (`zyra lint`), and LSP server (`zyra lsp`).
+- **Traits and Interfaces (`trait` and `impl`)**: Polymorphic abstraction contracts and type implementation blocks.
+- **Full Tooling Suite**: Interactive REPL (`zyra repl`), test runner (`zyra test`), coverage inspector (`zyra coverage`), hot-reloading dev server (`zyra watch`), security auditor (`zyra audit`), linter (`zyra fmt`), and LSP server (`zyra lsp`).
 
 ---
 

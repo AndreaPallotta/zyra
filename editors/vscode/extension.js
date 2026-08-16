@@ -104,7 +104,7 @@ function activate(context) {
         const types = ["Int", "String", "Boolean", "Float", "Option", "Result", "Some", "None", "Ok", "Err", "Void"];
         types.forEach((t) => {
           const item = new vscode.CompletionItem(t, vscode.CompletionItemKind.Class);
-          item.detail = `Zyra Industrial Built-in Type ${t}`;
+          item.detail = `Zyra Built-in Type ${t}`;
           items.push(item);
         });
 

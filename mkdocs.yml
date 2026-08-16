@@ -1,6 +1,6 @@
 site_name: Zyra Documentation
 site_url: https://zyra-lang.dev/
-site_description: Official documentation for the Zyra Programming Language — combining the speed of Rust with the simplicity of Go.
+site_description: "Official documentation for the Zyra Programming Language: combining the speed of Rust with the simplicity of Go."
 site_author: Andrea Pallotta
 
 repo_name: AndreaPallotta/zyra
@@ -67,6 +67,7 @@ markdown_extensions:
 
 nav:
   - Overview: index.md
+  - Releases & Changelog: releases.md
   - Interactive Playground: play.md
   - Getting Started:
       - Installation: getting-started/installation.md
@@ -75,8 +76,20 @@ nav:
       - Variables & Types: language/variables-types.md
       - Control Flow & Match: language/control-flow.md
       - Structs & Enums: language/structs-enums.md
-      - Standard Library: language/stdlib.md
+      - Functions & Modules: language/functions-modules.md
+      - Traits & Generics: language/traits-generics.md
+  - Standard Library:
+      - Overview: language/stdlib/index.md
+      - Environment (env): language/stdlib/env.md
+      - Path (path): language/stdlib/path.md
+      - Math & Random: language/stdlib/math.md
+      - String (str): language/stdlib/str.md
+      - Process (process): language/stdlib/process.md
+      - File I/O & Watcher (io): language/stdlib/io.md
+      - Cryptography (crypto): language/stdlib/crypto.md
+      - Networking & HTTP (http): language/stdlib/http.md
   - Tooling & IDE:
+      - CLI Commands & Driver: tooling/cli.md
       - VS Code Extension: tooling/vscode.md
       - Self-Hosted Compiler: tooling/self-hosting.md
       - API Reference: api/API_DOCUMENTATION.md

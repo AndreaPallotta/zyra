@@ -11,7 +11,7 @@ const VERSION: &str = "2.2.0";
 
 fn print_help() {
     println!("==================================================");
-    println!("        Zyra Industrial CLI v2.2.0               ");
+    println!("        Zyra CLI v2.2.0                           ");
     println!("==================================================");
     println!("Usage: zyra <command> [options]\n");
     println!("Commands:");
@@ -157,7 +157,7 @@ fn handle_init(project_name: &str) {
         project_name, VERSION
     );
     let main_code = format!(
-        "// Zyra Industrial v{} Application: {}\n\nasync def main(): Result[Int, String] {{\n  print(\"Hello from Zyra v{} project: {}!\")\n  return Ok(0)\n}}\n",
+        "// Zyra v{} Application: {}\n\nasync def main(): Result[Int, String] {{\n  print(\"Hello from Zyra v{} project: {}!\")\n  return Ok(0)\n}}\n",
         VERSION, project_name, VERSION, project_name
     );
 
@@ -2114,7 +2114,7 @@ fn get_completion_candidates(top_decls: &[String], stmts: &[String]) -> Vec<Stri
 
 fn handle_repl() {
     println!("==================================================");
-    println!("    \x1b[1;36mZyra Interactive Shell (REPL) v2.0 Industrial\x1b[0m  ");
+    println!("    \x1b[1;36mZyra Interactive Shell (REPL) v2.2.0\x1b[0m  ");
     println!("    Type \x1b[1;33m:help\x1b[0m for REPL inspection commands      ");
     println!("    Press \x1b[1;32mTAB\x1b[0m for symbol autocomplete          ");
     println!("    Type \x1b[1;31mexit\x1b[0m or \x1b[1;31mquit\x1b[0m to exit              ");
@@ -2375,7 +2375,7 @@ fn handle_lsp() {
             let _ = writer.flush();
         } else if body.contains("\"method\":\"textDocument/hover\"") {
             let id = extract_lsp_id(&body);
-            let resp = format!("{{\"jsonrpc\":\"2.0\",\"id\":{},\"result\":{{\"contents\":{{\"kind\":\"markdown\",\"value\":\"**Zyra Industrial Language Server v{}**: Traits, Options, Results & Type hover tooltips\"}}}}}}", id, VERSION);
+            let resp = format!("{{\"jsonrpc\":\"2.0\",\"id\":{},\"result\":{{\"contents\":{{\"kind\":\"markdown\",\"value\":\"**Zyra Language Server v{}**: Traits, Options, Results & Type hover tooltips\"}}}}}}", id, VERSION);
             let header = format!("Content-Length: {}\r\n\r\n", resp.len());
             let _ = writer.write_all(header.as_bytes());
             let _ = writer.write_all(resp.as_bytes());
@@ -2480,7 +2480,7 @@ fn main() {
             handle_pkg();
         }
         "version" | "-v" | "--version" => {
-            println!("Zyra Industrial v{} (Self-Hosted Compiler & Standard Library)", VERSION);
+            println!("Zyra v{} (Self-Hosted Compiler & Standard Library)", VERSION);
         }
         _ => {
             print_help();
