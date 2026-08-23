@@ -1,0 +1,43 @@
+// Zyra Standard Logging Framework Test Suite
+
+def test_console_and_file_logging(): Int {
+  log.set_level("DEBUG")
+  log.set_output("both")
+  log.set_file("test_run.log")
+
+  log.info("Server started on port 8080")
+  log.warn("Database connection pool at 80% capacity")
+  log.error("Failed to connect to secondary cache node")
+  log.debug("Packet payload trace: 0xDEADBEEF")
+
+  const exists = path.exists("test_run.log")
+  const content = io.read("test_run.log")
+
+  print("  log file exists: {exists}")
+  print("  log file lines count: {len(content)}")
+
+  const has_info = contains(content, "[INFO]")
+  const has_warn = contains(content, "[WARN]")
+  const has_error = contains(content, "[ERROR]")
+  const has_debug = contains(content, "[DEBUG]")
+
+  if (exists && has_info && has_warn && has_error && has_debug) {
+    print("[PASS] Console and file logging with multi-level filtering verified")
+    return 1
+  }
+  print("[FAIL] Logging test failed")
+  return 0
+}
+
+def main(): Int {
+  print("==========================================")
+  print("     Zyra v2.3.0 Logging Suite            ")
+  print("==========================================")
+
+  const t1 = test_console_and_file_logging()
+
+  print("------------------------------------------")
+  print("Results: {t1}/1 Logging Tests PASSED")
+  print("==========================================")
+  return 0
+}

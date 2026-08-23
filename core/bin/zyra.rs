@@ -797,6 +797,13 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("url.get_param(", "url_get_param(&")
          .replace("url.encode(", "url_encode(")
          .replace("url.decode(", "url_decode(")
+         .replace("log.info(", "log_info(")
+         .replace("log.warn(", "log_warn(")
+         .replace("log.error(", "log_error(")
+         .replace("log.debug(", "log_debug(")
+         .replace("log.set_level(", "log_set_level(")
+         .replace("log.set_output(", "log_set_output(")
+         .replace("log.set_file(", "log_set_file(")
          .replace("chan.new()", "chan_new()")
          .replace("chan.clone(", "chan_clone(&")
          .replace("chan.send(", "chan_send(&")
@@ -891,6 +898,7 @@ fn transform_zyra_line(line: &str) -> String {
         "map_set", "map_get", "map_has", "map_delete", "map_keys", "map_values", "map_len", "map_clear",
         "vec_filter", "vec_map", "vec_sort", "vec_reverse", "vec_unique", "vec_join", "vec_contains", "vec_find", "vec_slice",
         "url_get", "url_get_param", "url_encode", "url_decode",
+        "log_info", "log_warn", "log_error", "log_debug", "log_set_level", "log_set_output", "log_set_file",
     ];
     for func in &auto_borrow_fns {
         let pat = format!("{}(", func);
@@ -2768,6 +2776,81 @@ fn url_decode(s: impl AsRef<str>) -> String {
 }
 
 #[allow(unused)]
+struct ZyraLoggerState {
+    level: std::sync::atomic::AtomicI32,
+    output: std::sync::Arc<std::sync::RwLock<String>>,
+    file_path: std::sync::Arc<std::sync::RwLock<String>>,
+}
+
+static ZYRA_LOGGER: std::sync::LazyLock<ZyraLoggerState> = std::sync::LazyLock::new(|| {
+    ZyraLoggerState {
+        level: std::sync::atomic::AtomicI32::new(1),
+        output: std::sync::Arc::new(std::sync::RwLock::new("console".to_string())),
+        file_path: std::sync::Arc::new(std::sync::RwLock::new("app.log".to_string())),
+    }
+});
+
+#[allow(unused)]
+fn log_set_level(level: impl AsRef<str>) {
+    let lvl = match level.as_ref().to_uppercase().as_str() {
+        "DEBUG" => 0,
+        "INFO" => 1,
+        "WARN" | "WARNING" => 2,
+        "ERROR" => 3,
+        _ => 1,
+    };
+    ZYRA_LOGGER.level.store(lvl, std::sync::atomic::Ordering::SeqCst);
+}
+
+#[allow(unused)]
+fn log_set_output(target: impl AsRef<str>) {
+    if let Ok(mut out) = ZYRA_LOGGER.output.write() {
+        *out = target.as_ref().to_lowercase();
+    }
+}
+
+#[allow(unused)]
+fn log_set_file(path: impl AsRef<str>) {
+    if let Ok(mut f) = ZYRA_LOGGER.file_path.write() {
+        *f = path.as_ref().to_string();
+    }
+}
+
+#[allow(unused)]
+fn log_write(lvl_num: i32, lvl_str: &str, msg: impl AsRef<str>) {
+    let min_lvl = ZYRA_LOGGER.level.load(std::sync::atomic::Ordering::SeqCst);
+    if lvl_num < min_lvl { return; }
+
+    let timestamp = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(d) => d.as_secs(),
+        Err(_) => 0,
+    };
+    let formatted = format!("[{}] [{}] {}", timestamp, lvl_str, msg.as_ref());
+
+    let output_mode = ZYRA_LOGGER.output.read().map(|o| o.clone()).unwrap_or_else(|_| "console".to_string());
+    if output_mode == "console" || output_mode == "both" {
+        println!("{}", formatted);
+    }
+    if output_mode == "file" || output_mode == "both" {
+        use std::io::Write;
+        if let Ok(path) = ZYRA_LOGGER.file_path.read() {
+            if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&*path) {
+                let _ = writeln!(f, "{}", formatted);
+            }
+        }
+    }
+}
+
+#[allow(unused)]
+fn log_info(msg: impl AsRef<str>) { log_write(1, "INFO", msg); }
+#[allow(unused)]
+fn log_warn(msg: impl AsRef<str>) { log_write(2, "WARN", msg); }
+#[allow(unused)]
+fn log_error(msg: impl AsRef<str>) { log_write(3, "ERROR", msg); }
+#[allow(unused)]
+fn log_debug(msg: impl AsRef<str>) { log_write(0, "DEBUG", msg); }
+
+#[allow(unused)]
 fn net_listen<F>(addr: impl AsRef<str>, handler: F) -> i64
 where
     F: Fn(HttpRequest) -> HttpResponse + Send + Sync + 'static,
@@ -3331,6 +3414,14 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function url_get_param(u, k) { return u.get_param(k); }\n");
         header.push_str("function url_encode(s) { return encodeURIComponent(String(s)); }\n");
         header.push_str("function url_decode(s) { try { return decodeURIComponent(String(s).replace(/\\+/g, ' ')); } catch { return String(s); } }\n");
+        header.push_str("const zyra_logger = { level: 1, output: 'console', file: 'app.log', write(lvl_num, lvl_str, msg) { if (lvl_num < this.level) return; const ts = Math.floor(Date.now() / 1000); const formatted = `[${ts}] [${lvl_str}] ${msg}`; if (this.output === 'console' || this.output === 'both') { console.log(formatted); } if (this.output === 'file' || this.output === 'both') { try { fs.appendFileSync(this.file, formatted + '\\n'); } catch {} } } };\n");
+        header.push_str("function log_set_level(lvl) { const l = String(lvl).toUpperCase(); zyra_logger.level = l === 'DEBUG' ? 0 : l === 'WARN' ? 2 : l === 'ERROR' ? 3 : 1; }\n");
+        header.push_str("function log_set_output(tgt) { zyra_logger.output = String(tgt).toLowerCase(); }\n");
+        header.push_str("function log_set_file(p) { zyra_logger.file = String(p); }\n");
+        header.push_str("function log_info(m) { zyra_logger.write(1, 'INFO', m); }\n");
+        header.push_str("function log_warn(m) { zyra_logger.write(2, 'WARN', m); }\n");
+        header.push_str("function log_error(m) { zyra_logger.write(3, 'ERROR', m); }\n");
+        header.push_str("function log_debug(m) { zyra_logger.write(0, 'DEBUG', m); }\n");
         header.push_str("function thread_spawn(fn) { try { fn(); } catch {} }\n\n");
         header
     } else {
@@ -3494,6 +3585,13 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("url.get_param(", "url_get_param(")
              .replace("url.encode(", "url_encode(")
              .replace("url.decode(", "url_decode(")
+             .replace("log.info(", "log_info(")
+             .replace("log.warn(", "log_warn(")
+             .replace("log.error(", "log_error(")
+             .replace("log.debug(", "log_debug(")
+             .replace("log.set_level(", "log_set_level(")
+             .replace("log.set_output(", "log_set_output(")
+             .replace("log.set_file(", "log_set_file(")
              .replace("chan.new()", "chan_new()")
              .replace("chan.clone(", "chan_clone(")
              .replace("chan.send(", "chan_send(")
