@@ -88,6 +88,15 @@ nav:
       - File I/O & Watcher (io): language/stdlib/io.md
       - Cryptography (crypto): language/stdlib/crypto.md
       - Networking & HTTP (http): language/stdlib/http.md
+      - JSON Parser & AST (json): language/stdlib/json.md
+      - Regular Expressions (regex): language/stdlib/regex.md
+      - Worker Pool (pool): language/stdlib/pool.md
+      - Concurrency & Channels (chan): language/stdlib/chan.md
+      - Key-Value Store (db): language/stdlib/db.md
+      - In-Memory Map (map): language/stdlib/map.md
+      - Vector Utilities (vec): language/stdlib/vec.md
+      - URL & Query Parser (url): language/stdlib/url.md
+      - Logging Framework (log): language/stdlib/log.md
   - Tooling & IDE:
       - CLI Commands & Driver: tooling/cli.md
       - VS Code Extension: tooling/vscode.md
