@@ -755,6 +755,14 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("db.has(", "db_has(&")
          .replace("db.delete(", "db_delete(&")
          .replace("db.keys(", "db_keys(&")
+         .replace("json.parse(", "json_parse(")
+         .replace("json.read(", "json_read(")
+         .replace("json.get(", "json_get(&")
+         .replace("json.set(", "json_set(&")
+         .replace("json.has(", "json_has(&")
+         .replace("json.keys(", "json_keys(&")
+         .replace("json.stringify(", "json_stringify(&")
+         .replace("json.pretty(", "json_pretty(&")
          .replace("chan.new()", "chan_new()")
          .replace("chan.clone(", "chan_clone(&")
          .replace("chan.send(", "chan_send(&")
@@ -843,6 +851,7 @@ fn transform_zyra_line(line: &str) -> String {
         "str_split", "str_lower", "str_upper", "process_exec", "io_watch", "io_has_changed",
         "chan_send", "chan_recv", "chan_try_recv", "io_walk", "io_glob",
         "db_set", "db_get", "db_has", "db_delete", "db_keys",
+        "json_get", "json_set", "json_has", "json_keys", "json_stringify", "json_pretty",
     ];
     for func in &auto_borrow_fns {
         let pat = format!("{}(", func);
@@ -1333,18 +1342,6 @@ fn sys_arch() -> String {
 fn sys_cpu_count() -> i64 {
     std::thread::available_parallelism().map(|n| n.get() as i64).unwrap_or(1)
 }
-#[allow(unused)]
-fn json_stringify<T: std::fmt::Debug>(val: &T) -> String {
-    // #22: Uses Rust Debug format — matches JSON for primitives/strings/arrays.
-    // Struct output will differ from JS JSON.stringify(); full parity requires serde.
-    format!("{:?}", val)
-}
-#[allow(unused)]
-fn json_parse(json_str: impl AsRef<str>) -> String {
-    // #23: Passthrough — Rust has no built-in JSON parser without serde.
-    // Returns raw string for manual field extraction. JS target uses JSON.parse().
-    json_str.as_ref().to_string()
-}
 
 #[allow(unused)]
 #[derive(Debug, Clone)]
@@ -1693,6 +1690,345 @@ fn db_has(db: &ZyraKvDb, key: impl AsRef<str>) -> bool { db.has(key) }
 fn db_delete(db: &ZyraKvDb, key: impl AsRef<str>) -> bool { db.delete(key) }
 #[allow(unused)]
 fn db_keys(db: &ZyraKvDb) -> Vec<String> { db.keys() }
+
+#[allow(unused)]
+#[derive(Clone, PartialEq)]
+enum ZyraJsonValue {
+    Null,
+    Bool(bool),
+    Number(f64),
+    Str(String),
+    Array(Vec<ZyraJsonValue>),
+    Object(std::collections::BTreeMap<String, ZyraJsonValue>),
+}
+
+impl std::fmt::Display for ZyraJsonValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", json_stringify(self))
+    }
+}
+
+impl std::fmt::Debug for ZyraJsonValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", json_stringify(self))
+    }
+}
+
+struct ZyraJsonParser<'a> {
+    chars: std::iter::Peekable<std::str::Chars<'a>>,
+}
+
+impl<'a> ZyraJsonParser<'a> {
+    fn new(input: &'a str) -> Self {
+        ZyraJsonParser {
+            chars: input.chars().peekable(),
+        }
+    }
+
+    fn skip_ws(&mut self) {
+        while let Some(&c) = self.chars.peek() {
+            if c.is_whitespace() {
+                self.chars.next();
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn parse_value(&mut self) -> ZyraJsonValue {
+        self.skip_ws();
+        match self.chars.peek() {
+            Some('{') => self.parse_object(),
+            Some('[') => self.parse_array(),
+            Some('"') => self.parse_string(),
+            Some('t') | Some('f') => self.parse_bool(),
+            Some('n') => self.parse_null(),
+            Some(c) if *c == '-' || c.is_ascii_digit() => self.parse_number(),
+            _ => ZyraJsonValue::Null,
+        }
+    }
+
+    fn parse_object(&mut self) -> ZyraJsonValue {
+        self.chars.next();
+        let mut map = std::collections::BTreeMap::new();
+        loop {
+            self.skip_ws();
+            if let Some(&'}') = self.chars.peek() {
+                self.chars.next();
+                break;
+            }
+            if let Some(&',') = self.chars.peek() {
+                self.chars.next();
+                self.skip_ws();
+                if let Some(&'}') = self.chars.peek() {
+                    self.chars.next();
+                    break;
+                }
+            }
+            let key = match self.parse_string() {
+                ZyraJsonValue::Str(s) => s,
+                _ => break,
+            };
+            self.skip_ws();
+            if let Some(&':') = self.chars.peek() {
+                self.chars.next();
+            }
+            let val = self.parse_value();
+            map.insert(key, val);
+            self.skip_ws();
+            if let Some(&',') = self.chars.peek() {
+                self.chars.next();
+            } else if let Some(&'}') = self.chars.peek() {
+                self.chars.next();
+                break;
+            } else {
+                break;
+            }
+        }
+        ZyraJsonValue::Object(map)
+    }
+
+    fn parse_array(&mut self) -> ZyraJsonValue {
+        self.chars.next();
+        let mut list = Vec::new();
+        loop {
+            self.skip_ws();
+            if let Some(&']') = self.chars.peek() {
+                self.chars.next();
+                break;
+            }
+            let val = self.parse_value();
+            list.push(val);
+            self.skip_ws();
+            if let Some(&',') = self.chars.peek() {
+                self.chars.next();
+            } else if let Some(&']') = self.chars.peek() {
+                self.chars.next();
+                break;
+            } else {
+                break;
+            }
+        }
+        ZyraJsonValue::Array(list)
+    }
+
+    fn parse_string(&mut self) -> ZyraJsonValue {
+        self.chars.next();
+        let mut s = String::new();
+        while let Some(c) = self.chars.next() {
+            if c == '"' {
+                break;
+            } else if c == '\\' {
+                if let Some(esc) = self.chars.next() {
+                    match esc {
+                        'n' => s.push('\n'),
+                        't' => s.push('\t'),
+                        'r' => s.push('\r'),
+                        '\\' => s.push('\\'),
+                        '"' => s.push('"'),
+                        other => s.push(other),
+                    }
+                }
+            } else {
+                s.push(c);
+            }
+        }
+        ZyraJsonValue::Str(s)
+    }
+
+    fn parse_bool(&mut self) -> ZyraJsonValue {
+        let mut s = String::new();
+        while let Some(&c) = self.chars.peek() {
+            if c.is_alphabetic() {
+                s.push(self.chars.next().unwrap());
+            } else {
+                break;
+            }
+        }
+        if s == "true" {
+            ZyraJsonValue::Bool(true)
+        } else {
+            ZyraJsonValue::Bool(false)
+        }
+    }
+
+    fn parse_null(&mut self) -> ZyraJsonValue {
+        for _ in 0..4 {
+            self.chars.next();
+        }
+        ZyraJsonValue::Null
+    }
+
+    fn parse_number(&mut self) -> ZyraJsonValue {
+        let mut s = String::new();
+        while let Some(&c) = self.chars.peek() {
+            if c.is_ascii_digit() || c == '.' || c == '-' || c == 'e' || c == 'E' || c == '+' {
+                s.push(self.chars.next().unwrap());
+            } else {
+                break;
+            }
+        }
+        let num: f64 = s.parse().unwrap_or(0.0);
+        ZyraJsonValue::Number(num)
+    }
+}
+
+#[allow(unused)]
+fn json_parse(input: impl AsRef<str>) -> ZyraJsonValue {
+    let s = input.as_ref().trim();
+    let text = if (!s.starts_with('{') && !s.starts_with('[') && !s.starts_with('"')) && (std::path::Path::new(s).exists() || s.ends_with(".json")) {
+        std::fs::read_to_string(s).unwrap_or_else(|_| s.to_string())
+    } else {
+        s.to_string()
+    };
+    let mut parser = ZyraJsonParser::new(&text);
+    parser.parse_value()
+}
+
+#[allow(unused)]
+fn json_read(path: impl AsRef<str>) -> ZyraJsonValue {
+    let p = path.as_ref();
+    let content = std::fs::read_to_string(p).unwrap_or_default();
+    let mut parser = ZyraJsonParser::new(&content);
+    parser.parse_value()
+}
+
+#[allow(unused)]
+fn json_get(val: &ZyraJsonValue, path: impl AsRef<str>) -> String {
+    let parts: Vec<&str> = path.as_ref().split('.').collect();
+    let mut current = val;
+    for part in parts {
+        match current {
+            ZyraJsonValue::Object(map) => {
+                if let Some(next) = map.get(part) {
+                    current = next;
+                } else {
+                    return String::new();
+                }
+            }
+            ZyraJsonValue::Array(arr) => {
+                if let Ok(idx) = part.parse::<usize>() {
+                    if idx < arr.len() {
+                        current = &arr[idx];
+                    } else {
+                        return String::new();
+                    }
+                } else {
+                    return String::new();
+                }
+            }
+            _ => return String::new(),
+        }
+    }
+    match current {
+        ZyraJsonValue::Str(s) => s.clone(),
+        ZyraJsonValue::Number(n) => {
+            if n.fract() == 0.0 {
+                format!("{}", *n as i64)
+            } else {
+                format!("{}", n)
+            }
+        }
+        ZyraJsonValue::Bool(b) => format!("{}", b),
+        ZyraJsonValue::Null => "null".to_string(),
+        other => json_stringify(other),
+    }
+}
+
+#[allow(unused)]
+fn json_set(val: &ZyraJsonValue, path: impl AsRef<str>, new_val: impl AsRef<str>) -> ZyraJsonValue {
+    let mut root = val.clone();
+    let parts: Vec<&str> = path.as_ref().split('.').collect();
+    fn set_rec(current: &mut ZyraJsonValue, parts: &[&str], val_str: &str) {
+        if parts.is_empty() { return; }
+        if parts.len() == 1 {
+            let key = parts[0];
+            let parsed_leaf = json_parse(val_str);
+            let leaf = match parsed_leaf {
+                ZyraJsonValue::Null if val_str != "null" => ZyraJsonValue::Str(val_str.to_string()),
+                other => other,
+            };
+            if let ZyraJsonValue::Object(ref mut map) = current {
+                map.insert(key.to_string(), leaf);
+            }
+            return;
+        }
+        let key = parts[0];
+        if let ZyraJsonValue::Object(ref mut map) = current {
+            let entry = map.entry(key.to_string()).or_insert_with(|| ZyraJsonValue::Object(std::collections::BTreeMap::new()));
+            set_rec(entry, &parts[1..], val_str);
+        }
+    }
+    set_rec(&mut root, &parts, new_val.as_ref());
+    root
+}
+
+#[allow(unused)]
+fn json_has(val: &ZyraJsonValue, key: impl AsRef<str>) -> bool {
+    match val {
+        ZyraJsonValue::Object(map) => map.contains_key(key.as_ref()),
+        _ => false,
+    }
+}
+
+#[allow(unused)]
+fn json_keys(val: &ZyraJsonValue) -> Vec<String> {
+    match val {
+        ZyraJsonValue::Object(map) => map.keys().cloned().collect(),
+        _ => Vec::new(),
+    }
+}
+
+#[allow(unused)]
+fn json_stringify(val: &ZyraJsonValue) -> String {
+    match val {
+        ZyraJsonValue::Null => "null".to_string(),
+        ZyraJsonValue::Bool(b) => format!("{}", b),
+        ZyraJsonValue::Number(n) => {
+            if n.fract() == 0.0 {
+                format!("{}", *n as i64)
+            } else {
+                format!("{}", n)
+            }
+        }
+        ZyraJsonValue::Str(s) => format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n").replace('\t', "\\t")),
+        ZyraJsonValue::Array(arr) => {
+            let items: Vec<String> = arr.iter().map(json_stringify).collect();
+            format!("[{}]", items.join(","))
+        }
+        ZyraJsonValue::Object(map) => {
+            let items: Vec<String> = map.iter().map(|(k, v)| format!("\"{}\":{}", k, json_stringify(v))).collect();
+            format!("{{{}}}", items.join(","))
+        }
+    }
+}
+
+#[allow(unused)]
+fn json_pretty(val: &ZyraJsonValue) -> String {
+    fn pretty_rec(val: &ZyraJsonValue, indent: usize) -> String {
+        let pad = "  ".repeat(indent);
+        let inner_pad = "  ".repeat(indent + 1);
+        match val {
+            ZyraJsonValue::Null => "null".to_string(),
+            ZyraJsonValue::Bool(b) => format!("{}", b),
+            ZyraJsonValue::Number(n) => {
+                if n.fract() == 0.0 { format!("{}", *n as i64) } else { format!("{}", n) }
+            }
+            ZyraJsonValue::Str(s) => format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\"")),
+            ZyraJsonValue::Array(arr) => {
+                if arr.is_empty() { return "[]".to_string(); }
+                let items: Vec<String> = arr.iter().map(|i| format!("{}{}", inner_pad, pretty_rec(i, indent + 1))).collect();
+                format!("[\n{}\n{}]", items.join(",\n"), pad)
+            }
+            ZyraJsonValue::Object(map) => {
+                if map.is_empty() { return "{}".to_string(); }
+                let items: Vec<String> = map.iter().map(|(k, v)| format!("{}\"{}\": {}", inner_pad, k, pretty_rec(v, indent + 1))).collect();
+                format!("{{\n{}\n{}}}", items.join(",\n"), pad)
+            }
+        }
+    }
+    pretty_rec(val, 0)
+}
 
 
 
@@ -2113,7 +2449,7 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
     let mut js = if is_root {
         let mut header = String::from("// Zyra JS ESM Output\nimport fs from 'node:fs';\nimport http from 'node:http';\nimport crypto from 'node:crypto';\nimport os from 'node:os';\nimport path from 'node:path';\nimport child_process from 'node:child_process';\n\n");
         header.push_str("function print(...args) { console.log(...args); }\n");
-        header.push_str("function len(s) { return s ? s.length : 0; }\n");
+        header.push_str("function len(v) { return v ? (typeof v.length === 'number' ? v.length : Object.keys(v).length) : 0; }\n");
         header.push_str("function trim(s) { return String(s).trim(); }\n");
         header.push_str("function contains(h, n) { const str = (typeof h === 'object' && h !== null) ? JSON.stringify(h) : String(h); return str.includes(n); }\n");
         header.push_str("function file_read(path) { try { return fs.readFileSync(path, 'utf8'); } catch { return ''; } }\n");
@@ -2127,8 +2463,6 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function file_read_csv(path) { try { return fs.readFileSync(path, 'utf8').split('\\n'); } catch { return []; } }\n");
         header.push_str("function file_write_csv(path, data) { return file_write(path, Array.isArray(data) ? data.join('\\n') : data); }\n");
         header.push_str("function file_read_auto(path) { if (String(path).endsWith('.json')) return file_read_json(path); if (String(path).endsWith('.yaml') || String(path).endsWith('.yml')) return file_read_yaml(path); if (String(path).endsWith('.toml')) return file_read_toml(path); return file_read(path); }\n");
-        header.push_str("function json_stringify(v) { return JSON.stringify(v); }\n");
-        header.push_str("function json_parse(s) { try { return JSON.parse(s); } catch { return null; } }\n");
         header.push_str("function sha256(s) { return crypto.createHash('sha256').update(String(s)).digest('hex'); }\n");
         header.push_str("function md5(s) { return crypto.createHash('md5').update(String(s)).digest('hex'); }\n");
         header.push_str("function base64_encode(s) { return Buffer.from(String(s)).toString('base64'); }\n");
@@ -2177,6 +2511,14 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function db_has(db, k) { return db.has(k); }\n");
         header.push_str("function db_delete(db, k) { return db.delete(k); }\n");
         header.push_str("function db_keys(db) { return db.keys(); }\n");
+        header.push_str("function json_parse(input) { let s = String(input).trim(); if (!s.startsWith('{') && !s.startsWith('[') && fs.existsSync(s)) { try { s = fs.readFileSync(s, 'utf8').trim(); } catch {} } try { return JSON.parse(s); } catch { return {}; } }\n");
+        header.push_str("function json_read(p) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return {}; } }\n");
+        header.push_str("function json_get(obj, path) { try { const parts = String(path).split('.'); let cur = obj; for (const p of parts) { if (cur === null || cur === undefined) return ''; cur = cur[p]; } if (cur === null || cur === undefined) return ''; if (typeof cur === 'object') return JSON.stringify(cur); return String(cur); } catch { return ''; } }\n");
+        header.push_str("function json_set(obj, path, val) { try { const copy = JSON.parse(JSON.stringify(obj)); const parts = String(path).split('.'); let cur = copy; for (let i = 0; i < parts.length - 1; i++) { const p = parts[i]; if (!cur[p] || typeof cur[p] !== 'object') cur[p] = {}; cur = cur[p]; } cur[parts[parts.length - 1]] = val; return copy; } catch { return obj; } }\n");
+        header.push_str("function json_has(obj, k) { return obj && typeof obj === 'object' && String(k) in obj; }\n");
+        header.push_str("function json_keys(obj) { return obj && typeof obj === 'object' ? Object.keys(obj) : []; }\n");
+        header.push_str("function json_stringify(obj) { try { return JSON.stringify(obj); } catch { return ''; } }\n");
+        header.push_str("function json_pretty(obj) { try { return JSON.stringify(obj, null, 2); } catch { return ''; } }\n");
         header.push_str("function thread_spawn(fn) { try { fn(); } catch {} }\n\n");
         header
     } else {
@@ -2300,6 +2642,14 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("db.has(", "db_has(")
              .replace("db.delete(", "db_delete(")
              .replace("db.keys(", "db_keys(")
+             .replace("json.parse(", "json_parse(")
+             .replace("json.read(", "json_read(")
+             .replace("json.get(", "json_get(")
+             .replace("json.set(", "json_set(")
+             .replace("json.has(", "json_has(")
+             .replace("json.keys(", "json_keys(")
+             .replace("json.stringify(", "json_stringify(")
+             .replace("json.pretty(", "json_pretty(")
              .replace("chan.new()", "chan_new()")
              .replace("chan.clone(", "chan_clone(")
              .replace("chan.send(", "chan_send(")
@@ -2327,24 +2677,51 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
                  .replacen("let _ = ", "", 1);
         }
 
-        if s.contains('{') && s.contains('}') && (s.contains("print(") || s.contains('"')) {
+        if s.contains('{') && s.contains('}') && (s.contains("print(") || s.contains("return \"")) {
             let mut result = String::new();
-            let mut has_interp = false;
             let mut in_str = false;
+            let mut i = 0;
+            let chars: Vec<char> = s.chars().collect();
+            let mut changed = false;
 
-            for c in s.chars() {
+            while i < chars.len() {
+                let c = chars[i];
                 if c == '"' {
                     in_str = !in_str;
-                    result.push('`');
+                    result.push(c);
+                    i += 1;
                 } else if in_str && c == '{' {
-                    has_interp = true;
-                    result.push_str("${");
+                    let mut j = i + 1;
+                    let mut var_name = String::new();
+                    while j < chars.len() && chars[j] != '}' && chars[j] != '"' && chars[j] != '\n' {
+                        var_name.push(chars[j]);
+                        j += 1;
+                    }
+                    if j < chars.len() && chars[j] == '}' && !var_name.is_empty() && var_name.chars().all(|ch| ch.is_alphanumeric() || ch == '_' || ch == '.' || ch == '(' || ch == ')') {
+                        changed = true;
+                        result.push_str("${");
+                        result.push_str(&var_name);
+                        result.push('}');
+                        i = j + 1;
+                    } else {
+                        result.push(c);
+                        i += 1;
+                    }
                 } else {
                     result.push(c);
+                    i += 1;
                 }
             }
-            if has_interp {
-                s = result;
+            if changed {
+                if result.starts_with("print(\"") && result.ends_with("\")") {
+                    let inner = &result[7..result.len() - 2];
+                    s = format!("print(`{}`)", inner);
+                } else if result.starts_with("return \"") && result.ends_with('"') {
+                    let inner = &result[8..result.len() - 1];
+                    s = format!("return `{}`", inner);
+                } else {
+                    s = result;
+                }
             }
         }
 

@@ -1,0 +1,65 @@
+// Zyra JSON AST & Serializer Test Suite
+
+def test_json_parsing_and_querying(): Int {
+  const raw_json = "{\"server\": {\"port\": 8080, \"host\": \"127.0.0.1\", \"ssl\": true}, \"tags\": [\"api\", \"v2\"]}"
+  const data = json.parse(raw_json)
+
+  const port = json.get(data, "server.port")
+  const host = json.get(data, "server.host")
+  const ssl = json.get(data, "server.ssl")
+  const first_tag = json.get(data, "tags.0")
+  const has_server = json.has(data, "server")
+  const keys = json.keys(data)
+
+  print("  json.get server.port: {port}")
+  print("  json.get server.host: {host}")
+  print("  json.get server.ssl: {ssl}")
+  print("  json.get tags.0: {first_tag}")
+  print("  json.keys count: {len(keys)}")
+
+  if (port == "8080" && host == "127.0.0.1" && ssl == "true" && first_tag == "api" && has_server && len(keys) == 2) {
+    print("[PASS] JSON parsing and query path extraction verified")
+    return 1
+  }
+  print("[FAIL] JSON parsing test failed")
+  return 0
+}
+
+def test_json_mutation_and_file_read(): Int {
+  const sample_file = "test_config.json"
+  const _ = io.write(sample_file, "{\"app\": {\"name\": \"ZyraService\", \"version\": \"2.3.0\"}}")
+
+  const file_data = json.read(sample_file)
+  const app_name = json.get(file_data, "app.name")
+  print("  json.read app.name: {app_name}")
+
+  const updated = json.set(file_data, "app.env", "production")
+  const env_val = json.get(updated, "app.env")
+  print("  json.set app.env: {env_val}")
+
+  const out_str = json.stringify(updated)
+  const pretty_str = json.pretty(updated)
+  print("  json.stringify: {out_str}")
+
+  if (app_name == "ZyraService" && env_val == "production" && contains(out_str, "production") && len(pretty_str) > len(out_str)) {
+    print("[PASS] JSON file reading, AST mutation, and serialization verified")
+    return 1
+  }
+  print("[FAIL] JSON mutation/file test failed")
+  return 0
+}
+
+def main(): Int {
+  print("==========================================")
+  print("     Zyra v2.3.0 JSON AST & Engine Suite  ")
+  print("==========================================")
+
+  const t1 = test_json_parsing_and_querying()
+  const t2 = test_json_mutation_and_file_read()
+
+  const total = t1 + t2
+  print("------------------------------------------")
+  print("Results: {total}/2 JSON Tests PASSED")
+  print("==========================================")
+  return 0
+}
