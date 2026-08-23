@@ -5,6 +5,8 @@
     { "include": "#comments" },
     { "include": "#strings" },
     { "include": "#numbers" },
+    { "include": "#decorators" },
+    { "include": "#namespaces" },
     { "include": "#keywords" },
     { "include": "#types" },
     { "include": "#literals" },
@@ -15,8 +17,22 @@
   "repository": {
     "comments": {
       "patterns": [
+        { "name": "comment.line.triple-slash.zyra", "match": "///.*$" },
         { "name": "comment.line.double-slash.zyra", "match": "//.*$" },
         { "name": "comment.block.zyra", "begin": "/\\*", "end": "\\*/" }
+      ]
+    },
+    "decorators": {
+      "patterns": [
+        { "name": "entity.name.tag.decorator.zyra", "match": "@[A-Za-z_][A-Za-z0-9_]*" }
+      ]
+    },
+    "namespaces": {
+      "patterns": [
+        {
+          "name": "support.class.stdlib.zyra",
+          "match": "\\b(?:io|crypto|http|json|regex|db|map|vec|url|log|pool|chan|path|env|math|random|str|process)\\b(?=\\.[a-zA-Z_])"
+        }
       ]
     },
     "strings": {
@@ -25,33 +41,62 @@
           "name": "string.quoted.double.zyra",
           "begin": "\"",
           "end": "\"",
-          "patterns": [ { "match": "\\\\.", "name": "constant.character.escape.zyra" } ]
+          "patterns": [
+            { "match": "\\\\.", "name": "constant.character.escape.zyra" },
+            { "match": "\\{[a-zA-Z0-9_().]+\\}", "name": "variable.interpolation.zyra" }
+          ]
         },
         {
           "name": "string.quoted.single.zyra",
           "begin": "'",
           "end": "'",
           "patterns": [ { "match": "\\\\.", "name": "constant.character.escape.zyra" } ]
+        },
+        {
+          "name": "string.template.zyra",
+          "begin": "`",
+          "end": "`",
+          "patterns": [
+            { "match": "\\\\.", "name": "constant.character.escape.zyra" },
+            { "match": "\\$\\{[^}]+\\}", "name": "variable.interpolation.zyra" }
+          ]
         }
       ]
     },
     "numbers": {
-      "patterns": [ { "name": "constant.numeric.zyra", "match": "\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b" } ]
+      "patterns": [
+        { "name": "constant.numeric.hex.zyra", "match": "\\b0x[0-9a-fA-F_]+\\b" },
+        { "name": "constant.numeric.binary.zyra", "match": "\\b0b[01_]+\\b" },
+        { "name": "constant.numeric.zyra", "match": "\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b" }
+      ]
     },
     "keywords": {
-      "patterns": [ { "name": "keyword.control.zyra", "match": "\\b(?:let|const|fn|if|else|match|return|struct|enum|import|export)\\b" } ]
+      "patterns": [
+        {
+          "name": "keyword.control.zyra",
+          "match": "\\b(?:def|async|await|trait|impl|spawn|pub|extern|try|catch|let|const|var|fn|if|else|match|return|struct|enum|import|export)\\b"
+        }
+      ]
     },
     "types": {
-      "patterns": [ { "name": "storage.type.zyra", "match": "\\b(?:Int|Bool|String|Unit)\\b" } ]
+      "patterns": [
+        {
+          "name": "storage.type.zyra",
+          "match": "\\b(?:Int|Float|Bool|String|Void|Unit|Option|Result|Some|None|Ok|Err|ZyraMap|ZyraUrl|ZyraChannel|ZyraKvDb|ZyraWorkerPool|HttpRequest|HttpResponse|Vec)\\b"
+        }
+      ]
     },
     "literals": {
-      "patterns": [ { "name": "constant.language.boolean.zyra", "match": "\\b(?:true|false)\\b" } ]
+      "patterns": [
+        { "name": "constant.language.boolean.zyra", "match": "\\b(?:true|false)\\b" },
+        { "name": "constant.language.null.zyra", "match": "\\b(?:None|null)\\b" }
+      ]
     },
     "declarations": {
       "patterns": [
         {
           "name": "meta.function.zyra",
-          "begin": "\\bfn\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(\\()",
+          "begin": "\\b(?:def|async\\s+def|fn)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(\\()",
           "beginCaptures": {
             "1": { "name": "entity.name.function.zyra" },
             "2": { "name": "punctuation.definition.parameters.begin.zyra" }
@@ -61,7 +106,7 @@
           "patterns": [
             {
               "name": "meta.function.parameters.zyra",
-              "match": "([A-Za-z_][A-Za-z0-9_]*)\\s*:\\s*([A-Za-z_][A-Za-z0-9_]*)",
+              "match": "([A-Za-z_][A-Za-z0-9_]*)\\s*:\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\[[A-Za-z0-9_,\\s]+\\])?)",
               "captures": {
                 "1": { "name": "variable.parameter.zyra" },
                 "2": { "name": "storage.type.zyra" }
@@ -69,8 +114,16 @@
             }
           ]
         },
-        { "name": "meta.type.declaration.zyra", "match": "\\b(?:struct|enum)\\s+([A-Za-z_][A-Za-z0-9_]*)", "captures": { "1": { "name": "entity.name.type.zyra" } } },
-        { "name": "meta.import.zyra", "match": "\\b(?:import|export)\\b\\s+([A-Za-z0-9_./\\-]+)", "captures": { "1": { "name": "string.unquoted.import.zyra" } } },
+        {
+          "name": "meta.type.declaration.zyra",
+          "match": "\\b(?:struct|enum|trait|impl)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": { "1": { "name": "entity.name.type.zyra" } }
+        },
+        {
+          "name": "meta.import.zyra",
+          "match": "\\b(?:import|export)\\b\\s+([A-Za-z0-9_./\\-]+)",
+          "captures": { "1": { "name": "string.unquoted.import.zyra" } }
+        },
         {
           "name": "meta.match.zyra",
           "begin": "\\bmatch\\b\\s*\\([^\\n{]+\\)\\s*\\{",
@@ -84,7 +137,7 @@
     },
     "punctuation": {
       "patterns": [
-        { "name": "keyword.operator.zyra", "match": "->|=>|==|!=|<=|>=|&&|\\|\\|" },
+        { "name": "keyword.operator.zyra", "match": "->|=>|==|!=|<=|>=|&&|\\|\\||\\|\\||\\+|\\-|\\*|\\/|%|\\?" },
         { "name": "punctuation.separator.zyra", "match": ":|,|;" },
         { "name": "punctuation.bracket.zyra", "match": "[\\[\\]{}()]" }
       ]

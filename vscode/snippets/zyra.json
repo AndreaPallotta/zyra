@@ -1,18 +1,182 @@
 {
-  "Let binding": {
-    "prefix": "let",
+  "Function Definition": {
+    "prefix": "def",
     "body": [
-      "let ${1:name} = ${2:expr};"
-    ],
-    "description": "Insert a let binding"
-  },
-  "Function": {
-    "prefix": "fn",
-    "body": [
-      "fn ${1:name}(${2:args}) -> ${3:Type} {",
+      "def ${1:name}(${2:params}): ${3:Result[Int, String]} {",
       "  $0",
+      "  return Ok(0)",
       "}"
     ],
-    "description": "Function snippet"
+    "description": "Zyra function definition"
+  },
+  "Async Function Definition": {
+    "prefix": "async def",
+    "body": [
+      "async def ${1:name}(${2:params}): ${3:Result[Int, String]} {",
+      "  $0",
+      "  return Ok(0)",
+      "}"
+    ],
+    "description": "Zyra async function definition"
+  },
+  "Main Entrypoint": {
+    "prefix": "main",
+    "body": [
+      "def main(): Int {",
+      "  print(\"Hello from Zyra!\")",
+      "  $0",
+      "  return 0",
+      "}"
+    ],
+    "description": "Zyra main entrypoint function"
+  },
+  "Struct Definition": {
+    "prefix": "struct",
+    "body": [
+      "struct ${1:Name} {",
+      "  ${2:field}: ${3:String},",
+      "}"
+    ],
+    "description": "Zyra struct declaration"
+  },
+  "Trait Definition": {
+    "prefix": "trait",
+    "body": [
+      "trait ${1:Name} {",
+      "  def ${2:method}(${3:params}): ${4:Result[String, String]}",
+      "}"
+    ],
+    "description": "Zyra trait definition"
+  },
+  "Impl Block": {
+    "prefix": "impl",
+    "body": [
+      "impl ${1:Trait} for ${2:Type} {",
+      "  def ${3:method}(${4:params}): ${5:Result[String, String]} {",
+      "    $0",
+      "  }",
+      "}"
+    ],
+    "description": "Zyra trait implementation block"
+  },
+  "Unit Test": {
+    "prefix": "test",
+    "body": [
+      "@test",
+      "def test_${1:feature}(): Int {",
+      "  $0",
+      "  return 1",
+      "}"
+    ],
+    "description": "Zyra unit test function"
+  },
+  "HTTP Server Listen": {
+    "prefix": "http.listen",
+    "body": [
+      "http.listen(\"${1:127.0.0.1:8080}\", |req| {",
+      "  print(\"Incoming request: {req.method} {req.path}\")",
+      "  if (req.path == \"/health\") {",
+      "    return HttpResponse::new(200, \"{\\\"status\\\": \\\"healthy\\\"}\")",
+      "  }",
+      "  return HttpResponse::new(200, \"{\\\"message\\\": \\\"OK\\\"}\")",
+      "})"
+    ],
+    "description": "Start a native Zyra HTTP microservice listener"
+  },
+  "HTTP Client Request": {
+    "prefix": "http.request",
+    "body": [
+      "const headers = map.new()",
+      "map.set(headers, \"Content-Type\", \"application/json\")",
+      "const resp = http.request(\"${1:GET}\", \"${2:https://api.example.com}\", headers, \"${3:{}}\")",
+      "print(\"Response: {resp.status} {resp.body}\")"
+    ],
+    "description": "Make an HTTP request with headers"
+  },
+  "HTTP Interceptor": {
+    "prefix": "http.intercept",
+    "body": [
+      "http.intercept(|req| {",
+      "  print(\"[HTTP Outgoing] {req.method} {req.path}\")",
+      "  return req",
+      "})"
+    ],
+    "description": "Register HTTP client pre-flight interceptor middleware"
+  },
+  "JSON Parse and Query": {
+    "prefix": "json.parse",
+    "body": [
+      "const data = json.parse(${1:raw_json})",
+      "const val = json.get(data, \"${2:key.path}\")",
+      "print(\"Extracted: {val}\")"
+    ],
+    "description": "Parse JSON string into dynamic queryable AST"
+  },
+  "Key-Value Database": {
+    "prefix": "db.open",
+    "body": [
+      "const store = db.open(\"${1:app.db}\")",
+      "db.set(store, \"${2:key}\", \"${3:value}\")",
+      "const val = db.get(store, \"${2:key}\")"
+    ],
+    "description": "Open and operate embedded persistent key-value store"
+  },
+  "Task Worker Pool": {
+    "prefix": "pool.new",
+    "body": [
+      "const p = pool.new(${1:4})",
+      "pool.submit(p, || {",
+      "  $0",
+      "})",
+      "pool.wait_all(p)"
+    ],
+    "description": "Create and submit tasks to worker pool"
+  },
+  "Channel Spawn": {
+    "prefix": "chan.new",
+    "body": [
+      "const c = chan.new()",
+      "const tx = chan.clone(c)",
+      "spawn(move || {",
+      "  chan.send(tx, \"${1:payload}\")",
+      "})",
+      "const msg = chan.recv(c)"
+    ],
+    "description": "Channel-based cross-thread communication"
+  },
+  "In-Memory Map": {
+    "prefix": "map.new",
+    "body": [
+      "const m = map.new()",
+      "map.set(m, \"${1:key}\", \"${2:value}\")",
+      "const val = map.get(m, \"${1:key}\")"
+    ],
+    "description": "Create thread-safe in-memory key-value dictionary"
+  },
+  "Vector Operations": {
+    "prefix": "vec.sort",
+    "body": [
+      "const sorted = vec.sort(${1:items})",
+      "const unique = vec.unique(sorted)",
+      "const joined = vec.join(unique, \", \")"
+    ],
+    "description": "Vector transformation utilities"
+  },
+  "URL Parse": {
+    "prefix": "url.parse",
+    "body": [
+      "const u = url.parse(\"${1:https://example.com/search?q=test}\")",
+      "const host = url.get(u, \"host\")",
+      "const q = url.get_param(u, \"q\")"
+    ],
+    "description": "Parse URL components and query parameters"
+  },
+  "Logger": {
+    "prefix": "log.info",
+    "body": [
+      "log.set_level(\"${1:INFO}\")",
+      "log.info(\"${2:Application initialized}\")"
+    ],
+    "description": "Standard multi-level logging statement"
   }
 }
