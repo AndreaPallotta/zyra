@@ -198,9 +198,9 @@ fn handle_init(project_name: &str) {
     let _ = fs::write(proj_dir.join("zyra.json"), manifest);
     let _ = fs::write(src_dir.join("main.zy"), main_code);
 
-    println!("✔ Created {}/zyra.json project manifest", project_name);
-    println!("✔ Created {}/src/main.zy application entry point", project_name);
-    println!("\n🎉 Project '{}' initialized successfully! Run 'cd {}' and 'zyra run src/main.zy'.", project_name, project_name);
+    println!("[OK] Created {}/zyra.json project manifest", project_name);
+    println!("[OK] Created {}/src/main.zy application entry point", project_name);
+    println!("\n[OK] Project '{}' initialized successfully! Run 'cd {}' and 'zyra run src/main.zy'.", project_name, project_name);
 }
 
 fn handle_create(template: &str, name: &str) {
@@ -232,13 +232,13 @@ fn handle_create(template: &str, name: &str) {
     let _ = fs::write(proj_dir.join("zyra.json"), manifest);
     let _ = fs::write(src_dir.join("main.zy"), sample_code);
 
-    println!("✔ Created {}/zyra.json template manifest", name);
-    println!("✔ Created {}/src/main.zy source entry point", name);
-    println!("\n🎉 Template '{}' created successfully in './{}'!", template, name);
+    println!("[OK] Created {}/zyra.json template manifest", name);
+    println!("[OK] Created {}/src/main.zy source entry point", name);
+    println!("\n[OK] Template '{}' created successfully in './{}'!", template, name);
 }
 
 fn handle_audit() {
-    println!("🔒 Running Zyra Security Audit & Secret Scanner...");
+    println!("Running Zyra Security Audit & Secret Scanner...");
     let mut risk_count = 0;
 
     fn scan_dir_recursive(dir: &Path, risk_count: &mut i32) {
@@ -284,7 +284,7 @@ fn handle_audit() {
     }
 
     if risk_count == 0 {
-        println!("✔ 0 security vulnerabilities or exposed secrets found.");
+        println!("[OK] 0 security vulnerabilities or exposed secrets found.");
     } else {
         println!("\nFound {} security risk(s). Review findings above.", risk_count);
     }
@@ -311,8 +311,8 @@ fn handle_coverage(file_path: Option<&str>) {
 }
 
 fn handle_watch(file_path: &str) {
-    println!("🔥 Starting Zyra Live Watcher: {}...", file_path);
-    println!("⚡ Monitoring file changes... (Press Ctrl+C to stop)");
+    println!("Starting Zyra Live Watcher: {}...", file_path);
+    println!("Monitoring file changes... (Press Ctrl+C to stop)");
 
     let mut last_modified = fs::metadata(file_path).and_then(|m| m.modified()).ok();
     handle_run(file_path);
@@ -322,7 +322,7 @@ fn handle_watch(file_path: &str) {
         let current_modified = fs::metadata(file_path).and_then(|m| m.modified()).ok();
         if current_modified != last_modified {
             last_modified = current_modified;
-            println!("\n🔄 Change detected in {}! Recompiling...\n", file_path);
+            println!("\nChange detected in {}! Recompiling...\n", file_path);
             handle_run(file_path);
         }
     }
@@ -350,7 +350,7 @@ fn handle_add(package_input: &str) {
     let is_verified = pkg_type == "cargo" || !is_direct_url || pkg_name.starts_with("zyra-lang/") || pkg_name.starts_with("github.com/zyra-lang/");
 
     if !is_verified {
-        println!("\x1b[1;33m⚠️  SECURITY WARNING\x1b[0m: '{}' is an unverified external package.", pkg_name);
+        println!("\x1b[1;33mSECURITY WARNING\x1b[0m: '{}' is an unverified external package.", pkg_name);
         println!("   It has not undergone security review in the official Zyra Verified Registry.");
         print!("   Do you want to proceed with installation? [y/N]: ");
         let _ = io::stdout().flush();
@@ -364,7 +364,7 @@ fn handle_add(package_input: &str) {
     if pkg_type == "zyra" {
         let modules_dir = Path::new(".zyra_modules").join(pkg_name).join(version);
         let _ = fs::create_dir_all(&modules_dir);
-        println!("🌐 Fetching Go-style Zyra Git repository: {}@{}...", pkg_name, version);
+        println!("Fetching Go-style Zyra Git repository: {}@{}...", pkg_name, version);
         if is_direct_url {
             let repo_url = format!("https://{}", pkg_name);
             let _ = Command::new("git")
@@ -372,7 +372,7 @@ fn handle_add(package_input: &str) {
                 .status();
         }
     } else {
-        println!("📦 Registering Cargo ecosystem dependency: {} = \"{}\"", pkg_name, version);
+        println!("Registering Cargo ecosystem dependency: {} = \"{}\"", pkg_name, version);
     }
 
     let manifest_path = Path::new("zyra.json");
@@ -405,8 +405,8 @@ fn handle_add(package_input: &str) {
     let _ = fs::write(lock_path, lock_content);
 
     let status_badge = if is_verified { "\x1b[1;32m[VERIFIED]\x1b[0m" } else { "\x1b[1;33m[UNVERIFIED]\x1b[0m" };
-    println!("✔ Installed [{}] package '{}@{}' {}", pkg_type.to_uppercase(), pkg_name, version, status_badge);
-    println!("✔ Updated zyra.json manifest and generated secure zyra.lock");
+    println!("[OK] Installed [{}] package '{}@{}' {}", pkg_type.to_uppercase(), pkg_name, version, status_badge);
+    println!("[OK] Updated zyra.json manifest and generated secure zyra.lock");
 }
 
 fn handle_pkg() {
@@ -415,14 +415,14 @@ fn handle_pkg() {
     let lock_path = Path::new("zyra.lock");
     if manifest_path.exists() {
         if let Ok(content) = fs::read_to_string(manifest_path) {
-            println!("✔ Zyra & Cargo dependencies resolved successfully:\n{}", content);
+            println!("[OK] Zyra & Cargo dependencies resolved successfully:\n{}", content);
             if lock_path.exists() {
-                println!("🔒 Security Lockfile (zyra.lock) verified 100% SHA-256 integrity.");
+                println!("Security Lockfile (zyra.lock) verified 100% SHA-256 integrity.");
             }
             return;
         }
     }
-    println!("✔ All Zyra & Cargo dependencies are up to date.");
+    println!("[OK] All Zyra & Cargo dependencies are up to date.");
 }
 
 fn handle_test(file_path: Option<&str>) {
@@ -590,11 +590,11 @@ fn handle_doc(file_path: &str) {
 
     let out_file = docs_dir.join("API_DOCUMENTATION.md");
     let _ = fs::write(&out_file, doc_markdown);
-    println!("✔ Generated API documentation: {}", out_file.display());
+    println!("[OK] Generated API documentation: {}", out_file.display());
 }
 
 fn handle_lint(file_path: &str) {
-    println!("🔍 Linting Zyra source file: {}...", file_path);
+    println!("Linting Zyra source file: {}...", file_path);
     let content = match fs::read_to_string(file_path) {
         Ok(c) => c,
         Err(_) => {
@@ -636,7 +636,7 @@ fn handle_lint(file_path: &str) {
     }
 
     if warning_count == 0 {
-        println!("✔ No lint warnings detected in {}!", file_path);
+        println!("[OK] No lint warnings detected in {}!", file_path);
     } else {
         println!("Found {} lint warning(s).", warning_count);
     }
@@ -697,7 +697,7 @@ fn handle_fmt(file_path: &str) {
         println!("Error writing file '{}': {}", file_path, e);
         return;
     }
-    println!("✔ Formatted {}", file_path);
+    println!("[OK] Formatted {}", file_path);
 }
 
 fn transform_zyra_line(line: &str) -> String {
@@ -2041,13 +2041,13 @@ fn handle_run(file_path: &str) {
     let cached_exe = cache_dir.join(&cached_exe_name);
 
     if cached_exe.exists() {
-        println!("⚡ Using incremental build cache: {}", cached_exe.display());
-        println!("\n▶ Executing native binary...");
+        println!("[CACHE] Using incremental build cache: {}", cached_exe.display());
+        println!("\nExecuting native binary...");
         let _ = Command::new(&cached_exe).status();
         return;
     }
 
-    println!("▶ Compiling and running Zyra application: {}...", file_path);
+    println!("Compiling and running Zyra application: {}...", file_path);
     let exe_name = if cfg!(windows) { "main.exe" } else { "main" };
     let exe_path = out_dir.join(exe_name);
 
@@ -2065,8 +2065,8 @@ fn handle_run(file_path: &str) {
     if let Ok(exit_status) = status {
         if exit_status.success() {
             let _ = fs::copy(&exe_path, &cached_exe);
-            println!("✔ Compiled native binary: {}", exe_path.display());
-            println!("\n▶ Executing native binary {}...\n", exe_path.display());
+            println!("[OK] Compiled native binary: {}", exe_path.display());
+            println!("\nExecuting native binary {}...\n", exe_path.display());
             let _ = Command::new(&exe_path).status();
         } else {
             format_span_diagnostic(file_path, &content, 0, 0, "Compilation failed", "Verify syntax and function definitions");
@@ -2166,8 +2166,10 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function net_listen(addr, handler) { const parts = String(addr).split(':'); const port = parseInt(parts[1] || parts[0], 10) || 8080; const server = http.createServer((req, res) => { let body = ''; req.on('data', c => { body += c; }); req.on('end', () => { const response = handler({ method: req.method, path: req.url, body }); res.writeHead(response.status || 200, { 'Content-Type': 'text/plain' }); res.end(response.body || ''); }); }); server.listen(port); return 0; }\n");
         header.push_str("class ZyraChannel { constructor() { this.queue = []; this.waiters = []; } send(val) { if (this.waiters.length > 0) { const resolve = this.waiters.shift(); resolve(String(val)); } else { this.queue.push(String(val)); } return true; } recv() { if (this.queue.length > 0) { return this.queue.shift(); } return ''; } try_recv() { if (this.queue.length > 0) { return this.queue.shift(); } return ''; } }\n");
         header.push_str("function chan_new() { return new ZyraChannel(); }\n");
+        header.push_str("function chan_clone(c) { return c; }\n");
         header.push_str("function chan_send(c, v) { return c.send(v); }\n");
         header.push_str("function chan_recv(c) { return c.recv(); }\n");
+        header.push_str("function chan_try_recv(c) { return c.try_recv(); }\n");
         header.push_str("class ZyraKvDb { constructor(p) { this.path = p; this.data = {}; try { for (const l of fs.readFileSync(p, 'utf8').split('\\n')) { const t = l.trim(); const eq = t.indexOf('='); if (eq > 0) this.data[t.slice(0, eq).trim()] = t.slice(eq + 1).trim(); } } catch {} } flush() { let o = ''; for (const [k, v] of Object.entries(this.data)) o += `${k}=${v}\\n`; try { fs.writeFileSync(this.path, o); } catch {} } set(k, v) { this.data[String(k)] = String(v); this.flush(); return true; } get(k) { return this.data[String(k)] || ''; } has(k) { return String(k) in this.data; } delete(k) { const ex = String(k) in this.data; delete this.data[String(k)]; if (ex) this.flush(); return ex; } keys() { return Object.keys(this.data); } }\n");
         header.push_str("function db_open(p) { return new ZyraKvDb(p); }\n");
         header.push_str("function db_set(db, k, v) { return db.set(k, v); }\n");
@@ -2175,7 +2177,7 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function db_has(db, k) { return db.has(k); }\n");
         header.push_str("function db_delete(db, k) { return db.delete(k); }\n");
         header.push_str("function db_keys(db) { return db.keys(); }\n");
-        header.push_str("function thread_spawn(fn) { return setTimeout(fn, 0); }\n\n");
+        header.push_str("function thread_spawn(fn) { try { fn(); } catch {} }\n\n");
         header
     } else {
         String::new()
@@ -2299,6 +2301,7 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("db.delete(", "db_delete(")
              .replace("db.keys(", "db_keys(")
              .replace("chan.new()", "chan_new()")
+             .replace("chan.clone(", "chan_clone(")
              .replace("chan.send(", "chan_send(")
              .replace("chan.recv(", "chan_recv(")
              .replace("chan.try_recv(", "chan_try_recv(")
@@ -2315,6 +2318,33 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         } else {
             if s.starts_with("var ") {
                 s = s.replacen("var ", "let ", 1);
+            }
+        }
+
+        if s.starts_with("const _ = ") || s.starts_with("export const _ = ") || s.starts_with("let _ = ") {
+            s = s.replacen("const _ = ", "", 1)
+                 .replacen("export const _ = ", "", 1)
+                 .replacen("let _ = ", "", 1);
+        }
+
+        if s.contains('{') && s.contains('}') && (s.contains("print(") || s.contains('"')) {
+            let mut result = String::new();
+            let mut has_interp = false;
+            let mut in_str = false;
+
+            for c in s.chars() {
+                if c == '"' {
+                    in_str = !in_str;
+                    result.push('`');
+                } else if in_str && c == '{' {
+                    has_interp = true;
+                    result.push_str("${");
+                } else {
+                    result.push(c);
+                }
+            }
+            if has_interp {
+                s = result;
             }
         }
 
@@ -2397,21 +2427,21 @@ fn handle_build(file_path: &str, is_js: bool, is_wasm: bool, is_workspace: bool,
         if b == "python" {
             let py_path = out_dir.join("zyra_native.pyd");
             let _ = fs::write(&py_path, b"// Python C-extension binary");
-            println!("✔ Compiled C-Extension Native Python Binding: {}", py_path.display());
+            println!("[OK] Compiled C-Extension Native Python Binding: {}", py_path.display());
             return;
         } else if b == "node" {
             let node_path = out_dir.join("zyra_native.node");
             let _ = fs::write(&node_path, b"// Node.js N-API C++ addon binary");
-            println!("✔ Compiled N-API Native Node.js C++ Addon Binding: {}", node_path.display());
+            println!("[OK] Compiled N-API Native Node.js C++ Addon Binding: {}", node_path.display());
             return;
         }
     }
 
     if is_workspace {
-        println!("🏢 Building monorepo workspace members from zyra.json...");
-        println!("✔ Built workspace member: 'core'");
-        println!("✔ Built workspace member: 'cli'");
-        println!("✔ Built workspace member: 'web'");
+        println!("Building monorepo workspace members from zyra.json...");
+        println!("[OK] Built workspace member: 'core'");
+        println!("[OK] Built workspace member: 'cli'");
+        println!("[OK] Built workspace member: 'web'");
         return;
     }
 
@@ -2419,13 +2449,13 @@ fn handle_build(file_path: &str, is_js: bool, is_wasm: bool, is_workspace: bool,
         let wasm_path = out_dir.join("main.wasm");
         let wasm_bytes = vec![0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
         let _ = fs::write(&wasm_path, wasm_bytes);
-        println!("✔ Compiled WebAssembly binary module (wasm32): {}", wasm_path.display());
+        println!("[OK] Compiled WebAssembly binary module (wasm32): {}", wasm_path.display());
     } else if is_js {
         let js_path = out_dir.join("main.mjs");
         let content = fs::read_to_string(file_path).unwrap_or_default();
         let js_code = transpile_zyra_to_js(file_path, &content);
         let _ = fs::write(&js_path, js_code);
-        println!("✔ Compiled JavaScript ESM module: {}", js_path.display());
+        println!("[OK] Compiled JavaScript ESM module: {}", js_path.display());
     } else {
         let exe_name = if cfg!(windows) { "main.exe" } else { "main" };
         let exe_path = out_dir.join(exe_name);
@@ -2434,7 +2464,7 @@ fn handle_build(file_path: &str, is_js: bool, is_wasm: bool, is_workspace: bool,
         let rs_code = transpile_zyra_to_rust(file_path, &content);
         let _ = fs::write(&rs_path, rs_code);
         let _ = Command::new("rustc").arg(&rs_path).arg("-o").arg(&exe_path).status();
-        println!("✔ Compiled native executable binary: {}", exe_path.display());
+        println!("[OK] Compiled native executable binary: {}", exe_path.display());
     }
 }
 
@@ -2747,7 +2777,7 @@ fn handle_lsp() {
 }
 
 fn handle_update(check_only: bool) {
-    println!("🔍 Checking for Zyra updates from GitHub releases...");
+    println!("Checking for Zyra updates from GitHub releases...");
 
     let api_url = "https://api.github.com/repos/AndreaPallotta/zyra/releases/latest";
     let cmd_output = if cfg!(windows) {
@@ -2771,22 +2801,37 @@ fn handle_update(check_only: bool) {
     println!("  Current version: v{}", VERSION);
     println!("  Latest release:  {}", latest_tag);
 
-    if latest_clean == VERSION || latest_clean.is_empty() {
-        println!("✨ Zyra is already up-to-date (v{})", VERSION);
+    fn parse_semver(s: &str) -> (u32, u32, u32) {
+        let parts: Vec<u32> = s.trim_start_matches('v')
+            .split('.')
+            .filter_map(|p| p.parse().ok())
+            .collect();
+        (
+            parts.get(0).copied().unwrap_or(0),
+            parts.get(1).copied().unwrap_or(0),
+            parts.get(2).copied().unwrap_or(0),
+        )
+    }
+
+    let cur_ver = parse_semver(VERSION);
+    let remote_ver = parse_semver(latest_clean);
+
+    if remote_ver <= cur_ver || latest_clean.is_empty() {
+        println!("Zyra is already up-to-date (v{})", VERSION);
         return;
     }
 
     if check_only {
-        println!("🚀 New version available: v{} -> {}", VERSION, latest_tag);
+        println!("New version available: v{} -> {}", VERSION, latest_tag);
         println!("Run 'zyra update' to install.");
         return;
     }
 
-    println!("⬇ Downloading update for {} ({})...", std::env::consts::OS, std::env::consts::ARCH);
+    println!("Downloading update for {} ({})...", std::env::consts::OS, std::env::consts::ARCH);
     let current_exe = match std::env::current_exe() {
         Ok(p) => p,
         Err(e) => {
-            eprintln!("❌ Failed to determine current executable path: {}", e);
+            eprintln!("[ERROR] Failed to determine current executable path: {}", e);
             return;
         }
     };
@@ -2821,15 +2866,15 @@ fn handle_update(check_only: bool) {
         let _ = fs::remove_file(&backup_path);
         if fs::rename(&current_exe, &backup_path).is_ok() && fs::rename(&tmp_path, &current_exe).is_ok() {
             let _ = fs::remove_file(backup_path);
-            println!("🎉 Successfully updated Zyra to {} in-place!", latest_tag);
+            println!("[OK] Successfully updated Zyra to {} in-place!", latest_tag);
         } else {
             let _ = fs::rename(&backup_path, &current_exe);
             let _ = fs::remove_file(&tmp_path);
-            eprintln!("❌ Failed to replace executable in-place.");
+            eprintln!("[ERROR] Failed to replace executable in-place.");
         }
     } else {
         let _ = fs::remove_file(&tmp_path);
-        println!("✨ Verified release channel (already latest release v{})", VERSION);
+        println!("Verified release channel (already latest release v{})", VERSION);
     }
 }
 
