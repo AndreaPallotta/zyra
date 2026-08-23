@@ -8,10 +8,28 @@ Official release notes, version history, and commit logs for the Zyra Programmin
 
 | Version | Release Date | Target | Key Highlights | Status |
 | :--- | :--- | :--- | :--- | :--- |
+| **v2.4.0** | *Upcoming* | Native, JS ESM | Postfix `?` error operator, full expression interpolation `{expr}`, destructuring match, `time.*`, `ws.*`, `crypto.uuid/jwt`, DAP debugger, dynamic coverage | **Planned** |
 | **v2.3.0** | 2026-08-23 | Native, JS ESM | Concurrency & channels, embedded KV db, JSON AST, regex, worker pool, manifest scripts, JS minifier, in-memory map, vector utilities, URL engine, logging, HTTP interceptor client | **Current Stable** |
 | **v2.2.0** | 2026-08-16 | Native, JS ESM | Zero-import dot-notation namespacing, structured `zyra.env` parser, non-callback file watcher, expanded standard library | Supported |
 | **v2.1.1** | 2026-08-16 | Native, JS ESM | Multi-format I/O (`io`), native HTTP web primitives (`net`), platform crypto, system info, 28 compiler bug fixes | Supported |
 | **v2.1.0** | 2026-08-09 | Native, JS ESM | Multi-module struct return types, JS parameter type stripping, VS Code extension enhancements | Supported |
+
+---
+
+## Version 2.4.0 (Planned)
+
+### Key Features & Scope
+- **Postfix Error Operator (`?`) & Unwrap Helpers**: Postfix `?` error propagation on `Result[T, E]` and `Option[T]`, plus `.unwrap()`, `.unwrap_or()`, and `.expect()`.
+- **Arbitrary Expression Interpolation**: Support for inline expressions inside `{...}` template strings.
+- **Destructuring Pattern Matching**: Pattern matching with variable binding and `if` match guards.
+- **High-Precision Time Module (`time.*`)**: Timestamps, UTC/local date formatting (`%Y-%m-%d %H:%M:%S`), parsing, and thread sleep.
+- **UUID, HMAC, and JWT Tokens (`crypto.*`)**: Cryptographic UUIDv4, HMAC-SHA256 signatures, and JWT encoding/decoding.
+- **Streaming & Chunked I/O (`io.stream`, `io.pipe`)**: Memory-efficient buffered streaming for large files.
+- **WebSockets (`ws.*`)**: Full-duplex WebSocket server and client.
+- **VS Code Debug Adapter Protocol (DAP)**: Graphical breakpoints, variable watches, and call stacks in VS Code.
+- **Dynamic Code Coverage (`zyra coverage`)**: Runtime bytecode/line execution trace and HTML coverage reports.
+- **Compiler Modularization**: Architectural refactoring of `core/bin/zyra.rs` into modular Rust subsystems.
+- **Monorepo Workspaces (`zyra build --workspace`)**: Multi-package dependency graph resolution and parallel compilation.
 
 ---
 

@@ -2,6 +2,35 @@
 
 All notable changes to the **Zyra Programming Language & Toolchain** will be documented in this file.
 
+## [v2.4.0] - Unreleased
+
+- **Postfix Error Propagation Operator (`?`)**:
+  - Add native postfix `?` try operator on `Result[T, E]` and `Option[T]` expressions (e.g. `const data = json.parse(raw)?`).
+- **Ergonomic Unwrap Primitives**:
+  - Implement `.unwrap()`, `.unwrap_or(default)`, and `.expect(msg)` methods across Native Rust and JavaScript ESM preambles.
+- **Arbitrary Expression String Interpolation**:
+  - Support arbitrary expressions within string template `{...}` spans (e.g. `print("Total: {a + b * 2}, User: {str.upper(user.name)}")`).
+- **Destructuring Pattern Matching & Match Guards**:
+  - Add structural pattern matching for tuples, structs, and enum variants with conditional `if` guards.
+- **High-Precision DateTime & Clock Module (`time.*`)**:
+  - Add standard library primitives: `time.now()`, `time.unix()`, `time.format(ts, fmt)`, `time.parse(str, fmt)`, `time.sleep(ms)`, `time.elapsed(start)`.
+- **Enhanced Cryptography & Token Primitives (`crypto.*`)**:
+  - Add UUIDv4 generation (`crypto.uuid()`), HMAC-SHA256 signatures (`crypto.hmac_sha256()`), and lightweight JWT token signing/verification (`crypto.jwt_encode()`, `crypto.jwt_decode()`).
+- **Buffered Streaming I/O (`io.stream`, `io.pipe`)**:
+  - Add chunked streams and line-by-line readers for handling large files without loading entire payloads into memory.
+- **Full-Duplex WebSockets (`ws.*`)**:
+  - Add WebSocket client and server primitives: `ws.connect()`, `ws.listen()`, `ws.send()`, `ws.on_message()`.
+- **VS Code Debug Adapter Protocol (DAP)**:
+  - Implement DAP protocol server over stdio to enable GUI breakpoint debugging, call stacks, and variable inspection in VS Code.
+- **Dynamic Line & Branch Code Coverage (`zyra coverage`)**:
+  - Replace static line estimators with runtime bytecode/line instrumentation and HTML report generation.
+- **Compiler Modularization**:
+  - Refactor monolithic `core/bin/zyra.rs` into modular Rust subsystems (`src/lexer/`, `src/parser/`, `src/preamble/`, `src/codegen/`, `src/cli/`).
+- **Monorepo Workspace Orchestrator (`zyra build --workspace`)**:
+  - Implement workspace dependency graph resolution and parallel package compilation from `zyra.json`.
+- **Multi-Architecture Release Packaging**:
+  - Add release pipelines for macOS ARM64 (Apple Silicon) and Linux `aarch64`.
+
 ## [v2.3.0] - 2026-08-23
 
 - [`74fc7e0`](https://github.com/AndreaPallotta/zyra/commit/74fc7e0): **Lightweight Concurrency & Channels (`chan` and `spawn`)**
