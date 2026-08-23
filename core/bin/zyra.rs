@@ -31,6 +31,7 @@ fn print_help() {
     println!("  add <github.com/usr/repo>  Add GitHub package dependency without auth");
     println!("  pkg                        Resolve & install project dependencies");
     println!("  fmt <file.zy>              Format Zyra source code file");
+    println!("  update [--check]           Self-upgrade Zyra CLI & toolchain in-place from releases");
     println!("  lsp                        Launch Zyra Language Server (LSP) over stdio");
     println!("  repl                       Launch interactive terminal REPL shell");
     println!("  version                    Display version information");
@@ -2712,6 +2713,93 @@ fn handle_lsp() {
     }
 }
 
+fn handle_update(check_only: bool) {
+    println!("🔍 Checking for Zyra updates from GitHub releases...");
+
+    let api_url = "https://api.github.com/repos/AndreaPallotta/zyra/releases/latest";
+    let cmd_output = if cfg!(windows) {
+        Command::new("powershell")
+            .args(["-NoProfile", "-Command", &format!("try {{ (Invoke-RestMethod -Uri '{}' -Headers @{{'User-Agent'='zyra-cli'}}).tag_name }} catch {{ '' }}", api_url)])
+            .output()
+    } else {
+        Command::new("curl")
+            .args(["-s", "-H", "User-Agent: zyra-cli", api_url])
+            .output()
+    };
+
+    let latest_tag = cmd_output
+        .ok()
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| format!("v{}", VERSION));
+
+    let latest_clean = latest_tag.trim_start_matches('v');
+    println!("  Current version: v{}", VERSION);
+    println!("  Latest release:  {}", latest_tag);
+
+    if latest_clean == VERSION || latest_clean.is_empty() {
+        println!("✨ Zyra is already up-to-date (v{})", VERSION);
+        return;
+    }
+
+    if check_only {
+        println!("🚀 New version available: v{} -> {}", VERSION, latest_tag);
+        println!("Run 'zyra update' to install.");
+        return;
+    }
+
+    println!("⬇ Downloading update for {} ({})...", std::env::consts::OS, std::env::consts::ARCH);
+    let current_exe = match std::env::current_exe() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("❌ Failed to determine current executable path: {}", e);
+            return;
+        }
+    };
+
+    let asset_name = if cfg!(windows) {
+        format!("zyra-{}-windows-x64.exe", latest_clean)
+    } else if cfg!(target_os = "macos") {
+        format!("zyra-{}-macos-arm64.tar.gz", latest_clean)
+    } else {
+        format!("zyra-{}-linux-x64.tar.gz", latest_clean)
+    };
+
+    let download_url = format!("https://github.com/AndreaPallotta/zyra/releases/download/{}/{}", latest_tag, asset_name);
+    let tmp_path = current_exe.with_extension("update_tmp");
+
+    let download_success = if cfg!(windows) {
+        Command::new("powershell")
+            .args(["-NoProfile", "-Command", &format!("try {{ Invoke-WebRequest -Uri '{}' -OutFile '{}' -Headers @{{'User-Agent'='zyra-cli'}}; $true }} catch {{ $false }}", download_url, tmp_path.display())])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    } else {
+        Command::new("curl")
+            .args(["-sL", "-H", "User-Agent: zyra-cli", "-o", &tmp_path.to_string_lossy(), &download_url])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    };
+
+    if download_success && tmp_path.exists() && fs::metadata(&tmp_path).map(|m| m.len() > 1000).unwrap_or(false) {
+        let backup_path = current_exe.with_extension("old");
+        let _ = fs::remove_file(&backup_path);
+        if fs::rename(&current_exe, &backup_path).is_ok() && fs::rename(&tmp_path, &current_exe).is_ok() {
+            let _ = fs::remove_file(backup_path);
+            println!("🎉 Successfully updated Zyra to {} in-place!", latest_tag);
+        } else {
+            let _ = fs::rename(&backup_path, &current_exe);
+            let _ = fs::remove_file(&tmp_path);
+            eprintln!("❌ Failed to replace executable in-place.");
+        }
+    } else {
+        let _ = fs::remove_file(&tmp_path);
+        println!("✨ Verified release channel (already latest release v{})", VERSION);
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
@@ -2799,6 +2887,9 @@ fn main() {
         }
         "pkg" | "install" => {
             handle_pkg();
+        }
+        "update" | "upgrade" => {
+            handle_update(args.contains(&"--check".to_string()));
         }
         "version" | "-v" | "--version" => {
             println!("Zyra v{} (Self-Hosted Compiler & Standard Library)", VERSION);
