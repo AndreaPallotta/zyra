@@ -10,7 +10,13 @@ const distPackagesDir = path.join(rootDir, 'dist_packages');
 const msixBuildDir = path.join(distPackagesDir, 'msix_build');
 const assetsDir = path.join(msixBuildDir, 'Assets');
 
-const rawVersion = (process.env.VERSION || '2.1.0').replace(/^v/, '');
+let manifestVer = '2.3.0';
+try {
+  const zyraJson = JSON.parse(fs.readFileSync(path.join(rootDir, 'zyra.json'), 'utf8'));
+  if (zyraJson.version) manifestVer = zyraJson.version;
+} catch (e) {}
+
+const rawVersion = (process.env.VERSION || manifestVer).replace(/^v/, '');
 
 console.log('==================================================');
 console.log('       Building Zyra Windows App Installer (.msix)');

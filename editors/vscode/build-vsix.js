@@ -27,7 +27,7 @@ try {
     cwd: __dirname,
     stdio: "inherit",
   });
-  console.log(`\n✔ Generated VS Code Extension VSIX: dist_packages/${vsixFileName}`);
+  console.log(`\n[OK] Generated VS Code Extension VSIX: dist_packages/${vsixFileName}`);
 } catch (e) {
   console.warn(`\nVS Code VSIX packaging step check complete for ${vsixFileName}.`);
 }

@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Zyra Programming Language
-AppVersion=1.1.0
+AppVersion=2.3.0
 AppPublisher=Andrea Pallotta
 AppPublisherURL=https://zyra-lang.dev
 AppSupportURL=https://zyra-lang.dev
@@ -26,7 +26,7 @@ Name: "custom"; Description: "Custom Installation"; Flags: iscustom
 
 [Components]
 Name: "compiler"; Description: "Zyra Core Compiler & Native Executable CLI (zyra.exe)"; Types: full compact custom
-Name: "vscode"; Description: "Zyra Official VS Code Extension (zyra-vscode-1.0.2.vsix)"; Types: custom; Check: IsVSCodeExtensionNeeded
+Name: "vscode"; Description: "Zyra Official VS Code Extension (zyra-vscode-2.3.0.vsix)"; Types: custom; Check: IsVSCodeExtensionNeeded
 
 [Tasks]
 Name: "addpath"; Description: "Add Zyra binary directory to User PATH environment variable"; GroupDescription: "System Integration:"; Flags: checkedonce
@@ -34,7 +34,7 @@ Name: "desktopicon"; Description: "Create a Desktop shortcut for Zyra REPL"; Gro
 
 [Files]
 Source: "..\..\core\bin\zyra.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "..\..\dist_packages\zyra-vscode-1.0.2.vsix"; DestDir: "{app}\extension"; Flags: ignoreversion; Components: vscode
+Source: "..\..\dist_packages\zyra-vscode-2.3.0.vsix"; DestDir: "{app}\extension"; Flags: ignoreversion; Components: vscode
 
 [Icons]
 Name: "{group}\Zyra REPL"; Filename: "{app}\bin\zyra.exe"; Parameters: "repl"
@@ -42,7 +42,7 @@ Name: "{group}\Zyra Documentation"; Filename: "https://zyra-lang.dev"
 Name: "{autodesktop}\Zyra REPL"; Filename: "{app}\bin\zyra.exe"; Parameters: "repl"; Tasks: desktopicon
 
 [Run]
-Filename: "code"; Parameters: "--install-extension ""{app}\extension\zyra-vscode-1.0.2.vsix"" --force"; StatusMsg: "Installing Zyra VS Code Extension..."; Components: vscode; Flags: runhidden; Check: IsVSCodeExtensionNeeded
+Filename: "code"; Parameters: "--install-extension ""{app}\extension\zyra-vscode-2.3.0.vsix"" --force"; StatusMsg: "Installing Zyra VS Code Extension..."; Components: vscode; Flags: runhidden; Check: IsVSCodeExtensionNeeded
 Filename: "{app}\bin\zyra.exe"; Parameters: "repl"; Description: "Launch Zyra REPL interactive shell"; Flags: postinstall nowait skipifsilent unchecked
 
 [Code]

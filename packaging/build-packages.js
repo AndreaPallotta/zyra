@@ -11,7 +11,13 @@ const coreDir = path.join(rootDir, "core");
 const distPackages = path.join(rootDir, "dist_packages");
 const binDir = path.join(coreDir, "bin");
 
-const rawVersion = (process.env.VERSION || "2.1.0").replace(/^v/, "");
+let manifestVer = "2.3.0";
+try {
+  const zyraJson = JSON.parse(fs.readFileSync(path.join(rootDir, "zyra.json"), "utf8"));
+  if (zyraJson.version) manifestVer = zyraJson.version;
+} catch (e) {}
+
+const rawVersion = (process.env.VERSION || manifestVer).replace(/^v/, "");
 const versionTag = `v${rawVersion}`;
 
 console.log("==================================================");
@@ -22,7 +28,7 @@ fs.mkdirSync(distPackages, { recursive: true });
 fs.mkdirSync(binDir, { recursive: true });
 
 // Step 0: Ensure VS Code VSIX extension exists
-let vscodeExtVer = "2.1.0";
+let vscodeExtVer = rawVersion;
 try {
   const vscodePkgJson = JSON.parse(fs.readFileSync(path.join(rootDir, "editors", "vscode", "package.json"), "utf8"));
   if (vscodePkgJson.version) vscodeExtVer = vscodePkgJson.version;
