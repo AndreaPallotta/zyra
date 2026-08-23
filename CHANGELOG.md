@@ -56,6 +56,8 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
 - [`7492285`](https://github.com/AndreaPallotta/zyra/commit/7492285): **Complete Standard Library Documentation**
   - Added dedicated documentation pages for `json.md`, `regex.md`, `pool.md`, `chan.md`, `db.md`, `map.md`, `vec.md`, `url.md`, `log.md`.
   - Updated `mkdocs.yml` navigation tree and `docs/language/stdlib/index.md`.
+- [`5d05f2b`](https://github.com/AndreaPallotta/zyra/commit/5d05f2b): **Transitive Preamble Dependency Resolution in JS Minifier**
+  - Added fixed-point dependency discovery to prevent tree-shaking functions called transitively within the standard library preamble.
 
 ---
 
