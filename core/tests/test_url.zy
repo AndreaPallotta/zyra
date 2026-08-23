@@ -1,0 +1,58 @@
+// Zyra URL & Query Parameter Test Suite
+
+def test_url_parsing_and_params(): Int {
+  const raw = "https://api.zyra-lang.org:8443/v1/search?query=concurrency+channels&limit=25&debug=true"
+  const u = url.parse(raw)
+
+  const proto = url.get(u, "protocol")
+  const host = url.get(u, "host")
+  const port = url.get(u, "port")
+  const path = url.get(u, "path")
+  const q_param = url.get_param(u, "query")
+  const limit_param = url.get_param(u, "limit")
+
+  print("  url.get protocol: {proto}")
+  print("  url.get host: {host}")
+  print("  url.get port: {port}")
+  print("  url.get path: {path}")
+  print("  url.get_param query: {q_param}")
+  print("  url.get_param limit: {limit_param}")
+
+  if (proto == "https" && host == "api.zyra-lang.org" && port == "8443" && path == "/v1/search" && q_param == "concurrency channels" && limit_param == "25") {
+    print("[PASS] URL parsing and query parameter extraction verified")
+    return 1
+  }
+  print("[FAIL] URL parsing failed")
+  return 0
+}
+
+def test_url_encoding_and_decoding(): Int {
+  const text = "hello world & special / chars = true"
+  const encoded = url.encode(text)
+  const decoded = url.decode(encoded)
+
+  print("  url.encode: {encoded}")
+  print("  url.decode: {decoded}")
+
+  if (encoded != text && decoded == text) {
+    print("[PASS] URL percent encoding and decoding verified")
+    return 1
+  }
+  print("[FAIL] URL encoding/decoding failed")
+  return 0
+}
+
+def main(): Int {
+  print("==========================================")
+  print("     Zyra v2.3.0 URL Suite                ")
+  print("==========================================")
+
+  const t1 = test_url_parsing_and_params()
+  const t2 = test_url_encoding_and_decoding()
+
+  const total = t1 + t2
+  print("------------------------------------------")
+  print("Results: {total}/2 URL Tests PASSED")
+  print("==========================================")
+  return 0
+}

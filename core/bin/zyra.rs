@@ -792,6 +792,11 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("vec.contains(", "vec_contains(&")
          .replace("vec.find(", "vec_find(&")
          .replace("vec.slice(", "vec_slice(&")
+         .replace("url.parse(", "url_parse(")
+         .replace("url.get(", "url_get(&")
+         .replace("url.get_param(", "url_get_param(&")
+         .replace("url.encode(", "url_encode(")
+         .replace("url.decode(", "url_decode(")
          .replace("chan.new()", "chan_new()")
          .replace("chan.clone(", "chan_clone(&")
          .replace("chan.send(", "chan_send(&")
@@ -885,6 +890,7 @@ fn transform_zyra_line(line: &str) -> String {
         "pool_submit", "pool_wait_all", "pool_map",
         "map_set", "map_get", "map_has", "map_delete", "map_keys", "map_values", "map_len", "map_clear",
         "vec_filter", "vec_map", "vec_sort", "vec_reverse", "vec_unique", "vec_join", "vec_contains", "vec_find", "vec_slice",
+        "url_get", "url_get_param", "url_encode", "url_decode",
     ];
     for func in &auto_borrow_fns {
         let pat = format!("{}(", func);
@@ -2639,6 +2645,129 @@ fn vec_slice<T: Clone, A: AsRef<[T]>>(items: A, start: i64, end: i64) -> Vec<T> 
 }
 
 #[allow(unused)]
+#[derive(Clone, Debug, PartialEq)]
+struct ZyraUrl {
+    protocol: String,
+    host: String,
+    port: String,
+    path: String,
+    query: String,
+    params: std::collections::BTreeMap<String, String>,
+}
+
+impl ZyraUrl {
+    fn parse(raw: impl AsRef<str>) -> Self {
+        let s = raw.as_ref().trim();
+        let (protocol, rest) = if let Some(idx) = s.find("://") {
+            (s[..idx].to_string(), &s[idx + 3..])
+        } else {
+            (String::new(), s)
+        };
+
+        let (authority, path_query) = if let Some(idx) = rest.find('/') {
+            (&rest[..idx], &rest[idx..])
+        } else if let Some(idx) = rest.find('?') {
+            (&rest[..idx], &rest[idx..])
+        } else {
+            (rest, "")
+        };
+
+        let (host, port) = if let Some(idx) = authority.find(':') {
+            (authority[..idx].to_string(), authority[idx + 1..].to_string())
+        } else {
+            (authority.to_string(), if protocol == "https" { "443".to_string() } else if protocol == "http" { "80".to_string() } else { String::new() })
+        };
+
+        let (path, query) = if let Some(idx) = path_query.find('?') {
+            (path_query[..idx].to_string(), path_query[idx + 1..].to_string())
+        } else {
+            (if path_query.is_empty() { "/".to_string() } else { path_query.to_string() }, String::new())
+        };
+
+        let mut params = std::collections::BTreeMap::new();
+        if !query.is_empty() {
+            for pair in query.split('&') {
+                if let Some(eq_idx) = pair.find('=') {
+                    let k = pair[..eq_idx].to_string();
+                    let v = url_decode(&pair[eq_idx + 1..]);
+                    params.insert(k, v);
+                } else if !pair.is_empty() {
+                    params.insert(pair.to_string(), String::new());
+                }
+            }
+        }
+
+        ZyraUrl { protocol, host, port, path, query, params }
+    }
+
+    fn get(&self, field: impl AsRef<str>) -> String {
+        match field.as_ref() {
+            "protocol" | "scheme" => self.protocol.clone(),
+            "host" | "hostname" => self.host.clone(),
+            "port" => self.port.clone(),
+            "path" | "pathname" => self.path.clone(),
+            "query" | "search" => self.query.clone(),
+            _ => String::new(),
+        }
+    }
+
+    fn get_param(&self, key: impl AsRef<str>) -> String {
+        self.params.get(key.as_ref()).cloned().unwrap_or_default()
+    }
+}
+
+impl std::fmt::Display for ZyraUrl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}://{}:{}{}", self.protocol, self.host, self.port, self.path)
+    }
+}
+
+#[allow(unused)]
+fn url_parse(raw: impl AsRef<str>) -> ZyraUrl { ZyraUrl::parse(raw) }
+#[allow(unused)]
+fn url_get(u: &ZyraUrl, field: impl AsRef<str>) -> String { u.get(field) }
+#[allow(unused)]
+fn url_get_param(u: &ZyraUrl, key: impl AsRef<str>) -> String { u.get_param(key) }
+#[allow(unused)]
+fn url_encode(s: impl AsRef<str>) -> String {
+    let mut out = String::new();
+    for b in s.as_ref().bytes() {
+        if b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.' || b == b'~' {
+            out.push(b as char);
+        } else if b == b' ' {
+            out.push('+');
+        } else {
+            out.push_str(&format!("%{:02X}", b));
+        }
+    }
+    out
+}
+#[allow(unused)]
+fn url_decode(s: impl AsRef<str>) -> String {
+    let s = s.as_ref();
+    let mut bytes = Vec::new();
+    let mut chars = s.bytes().peekable();
+    while let Some(b) = chars.next() {
+        if b == b'+' {
+            bytes.push(b' ');
+        } else if b == b'%' {
+            let h1 = chars.next();
+            let h2 = chars.next();
+            if let (Some(c1), Some(c2)) = (h1, h2) {
+                if let Ok(num) = u8::from_str_radix(&format!("{}{}", c1 as char, c2 as char), 16) {
+                    bytes.push(num);
+                    continue;
+                }
+            }
+            bytes.push(b'%');
+        } else {
+            bytes.push(b);
+        }
+    }
+    String::from_utf8_lossy(&bytes).to_string()
+}
+
+#[allow(unused)]
 fn net_listen<F>(addr: impl AsRef<str>, handler: F) -> i64
 where
     F: Fn(HttpRequest) -> HttpResponse + Send + Sync + 'static,
@@ -3196,6 +3325,12 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function vec_contains(arr, target) { return (arr || []).includes(target); }\n");
         header.push_str("function vec_find(arr, pred) { return (arr || []).find(pred) || ''; }\n");
         header.push_str("function vec_slice(arr, start, end) { return (arr || []).slice(start, end); }\n");
+        header.push_str("class ZyraUrl { constructor(raw) { try { const u = new URL(String(raw).includes('://') ? String(raw) : 'http://' + String(raw)); this.protocol = u.protocol.replace(':', ''); this.host = u.hostname; this.port = u.port || (this.protocol === 'https' ? '443' : '80'); this.path = u.pathname; this.query = u.search.replace(/^\\?/, ''); this.searchParams = u.searchParams; } catch { this.protocol = ''; this.host = ''; this.port = ''; this.path = ''; this.query = ''; this.searchParams = new URLSearchParams(); } } get(f) { if (f === 'protocol' || f === 'scheme') return this.protocol; if (f === 'host' || f === 'hostname') return this.host; if (f === 'port') return this.port; if (f === 'path' || f === 'pathname') return this.path; if (f === 'query' || f === 'search') return this.query; return ''; } get_param(k) { return this.searchParams.get(String(k)) || ''; } }\n");
+        header.push_str("function url_parse(raw) { return new ZyraUrl(raw); }\n");
+        header.push_str("function url_get(u, f) { return u.get(f); }\n");
+        header.push_str("function url_get_param(u, k) { return u.get_param(k); }\n");
+        header.push_str("function url_encode(s) { return encodeURIComponent(String(s)); }\n");
+        header.push_str("function url_decode(s) { try { return decodeURIComponent(String(s).replace(/\\+/g, ' ')); } catch { return String(s); } }\n");
         header.push_str("function thread_spawn(fn) { try { fn(); } catch {} }\n\n");
         header
     } else {
@@ -3354,6 +3489,11 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("vec.contains(", "vec_contains(")
              .replace("vec.find(", "vec_find(")
              .replace("vec.slice(", "vec_slice(")
+             .replace("url.parse(", "url_parse(")
+             .replace("url.get(", "url_get(")
+             .replace("url.get_param(", "url_get_param(")
+             .replace("url.encode(", "url_encode(")
+             .replace("url.decode(", "url_decode(")
              .replace("chan.new()", "chan_new()")
              .replace("chan.clone(", "chan_clone(")
              .replace("chan.send(", "chan_send(")
@@ -3556,6 +3696,7 @@ fn minify_js(js_code: &str) -> String {
                 "ZyraChannel" => user_code.contains("chan_") || user_code.contains("ZyraChannel"),
                 "ZyraKvDb" => user_code.contains("db_") || user_code.contains("ZyraKvDb"),
                 "ZyraMap" => user_code.contains("map_") || user_code.contains("ZyraMap"),
+                "ZyraUrl" => user_code.contains("url_") || user_code.contains("ZyraUrl"),
                 other => user_code.contains(other),
             };
             if !is_used {
