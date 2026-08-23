@@ -763,6 +763,11 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("json.keys(", "json_keys(&")
          .replace("json.stringify(", "json_stringify(&")
          .replace("json.pretty(", "json_pretty(&")
+         .replace("regex.is_match(", "regex_is_match(")
+         .replace("regex.find_all(", "regex_find_all(")
+         .replace("regex.find(", "regex_find(")
+         .replace("regex.replace(", "regex_replace(")
+         .replace("regex.split(", "regex_split(")
          .replace("chan.new()", "chan_new()")
          .replace("chan.clone(", "chan_clone(&")
          .replace("chan.send(", "chan_send(&")
@@ -852,6 +857,7 @@ fn transform_zyra_line(line: &str) -> String {
         "chan_send", "chan_recv", "chan_try_recv", "io_walk", "io_glob",
         "db_set", "db_get", "db_has", "db_delete", "db_keys",
         "json_get", "json_set", "json_has", "json_keys", "json_stringify", "json_pretty",
+        "regex_is_match", "regex_find", "regex_find_all", "regex_replace", "regex_split",
     ];
     for func in &auto_borrow_fns {
         let pat = format!("{}(", func);
@@ -2030,7 +2036,295 @@ fn json_pretty(val: &ZyraJsonValue) -> String {
     pretty_rec(val, 0)
 }
 
+#[allow(unused)]
+#[derive(Clone, Debug)]
+enum RegexAtom {
+    Any,
+    Char(char),
+    Class { chars: Vec<char>, ranges: Vec<(char, char)>, negated: bool },
+    Digit,
+    NonDigit,
+    Whitespace,
+    NonWhitespace,
+    Word,
+    NonWord,
+}
 
+#[allow(unused)]
+#[derive(Clone, Debug)]
+struct RegexToken {
+    atom: RegexAtom,
+    min_rep: usize,
+    max_rep: Option<usize>,
+}
+
+#[allow(unused)]
+struct ZyraRegexMatcher {
+    anchored_start: bool,
+    anchored_end: bool,
+    tokens: Vec<RegexToken>,
+}
+
+impl ZyraRegexMatcher {
+    fn compile(pattern: &str) -> Self {
+        let mut chars = pattern.chars().peekable();
+        let mut anchored_start = false;
+        let mut anchored_end = false;
+
+        if chars.peek() == Some(&'^') {
+            anchored_start = true;
+            chars.next();
+        }
+
+        let mut tokens = Vec::new();
+        let mut raw_atoms = Vec::new();
+
+        while let Some(c) = chars.next() {
+            if c == '$' && chars.peek().is_none() {
+                anchored_end = true;
+                break;
+            }
+            if c == '\\' {
+                if let Some(esc) = chars.next() {
+                    let atom = match esc {
+                        'd' => RegexAtom::Digit,
+                        'D' => RegexAtom::NonDigit,
+                        's' => RegexAtom::Whitespace,
+                        'S' => RegexAtom::NonWhitespace,
+                        'w' => RegexAtom::Word,
+                        'W' => RegexAtom::NonWord,
+                        other => RegexAtom::Char(other),
+                    };
+                    raw_atoms.push(atom);
+                }
+            } else if c == '[' {
+                let mut class_chars = Vec::new();
+                let mut ranges = Vec::new();
+                let mut negated = false;
+                if chars.peek() == Some(&'^') {
+                    negated = true;
+                    chars.next();
+                }
+                let mut prev_char: Option<char> = None;
+                while let Some(cc) = chars.next() {
+                    if cc == ']' {
+                        if let Some(p) = prev_char {
+                            class_chars.push(p);
+                        }
+                        break;
+                    } else if cc == '-' && prev_char.is_some() && chars.peek() != Some(&']') {
+                        let start = prev_char.take().unwrap();
+                        let end = chars.next().unwrap();
+                        ranges.push((start, end));
+                    } else {
+                        if let Some(p) = prev_char.replace(cc) {
+                            class_chars.push(p);
+                        }
+                    }
+                }
+                raw_atoms.push(RegexAtom::Class { chars: class_chars, ranges, negated });
+            } else if c == '.' {
+                raw_atoms.push(RegexAtom::Any);
+            } else {
+                raw_atoms.push(RegexAtom::Char(c));
+            }
+
+            let (min_rep, max_rep) = match chars.peek() {
+                Some(&'*') => { chars.next(); (0, None) }
+                Some(&'+') => { chars.next(); (1, None) }
+                Some(&'?') => { chars.next(); (0, Some(1)) }
+                Some(&'{') => {
+                    chars.next();
+                    let mut count_str = String::new();
+                    while let Some(&num_c) = chars.peek() {
+                        if num_c == '}' {
+                            chars.next();
+                            break;
+                        }
+                        count_str.push(chars.next().unwrap());
+                    }
+                    if count_str.contains(',') {
+                        let parts: Vec<&str> = count_str.split(',').collect();
+                        let min: usize = parts[0].trim().parse().unwrap_or(0);
+                        let max: Option<usize> = if parts.len() > 1 && !parts[1].trim().is_empty() {
+                            parts[1].trim().parse().ok()
+                        } else {
+                            None
+                        };
+                        (min, max)
+                    } else {
+                        let count: usize = count_str.trim().parse().unwrap_or(1);
+                        (count, Some(count))
+                    }
+                }
+                _ => (1, Some(1)),
+            };
+
+            if let Some(last_atom) = raw_atoms.pop() {
+                tokens.push(RegexToken {
+                    atom: last_atom,
+                    min_rep,
+                    max_rep,
+                });
+            }
+        }
+
+        ZyraRegexMatcher {
+            anchored_start,
+            anchored_end,
+            tokens,
+        }
+    }
+
+    fn match_atom(atom: &RegexAtom, c: char) -> bool {
+        match atom {
+            RegexAtom::Any => c != '\n',
+            RegexAtom::Char(expected) => c == *expected,
+            RegexAtom::Digit => c.is_ascii_digit(),
+            RegexAtom::NonDigit => !c.is_ascii_digit(),
+            RegexAtom::Whitespace => c.is_whitespace(),
+            RegexAtom::NonWhitespace => !c.is_whitespace(),
+            RegexAtom::Word => c.is_alphanumeric() || c == '_',
+            RegexAtom::NonWord => !(c.is_alphanumeric() || c == '_'),
+            RegexAtom::Class { chars, ranges, negated } => {
+                let in_chars = chars.contains(&c);
+                let in_ranges = ranges.iter().any(|(s, e)| c >= *s && c <= *e);
+                let is_match = in_chars || in_ranges;
+                if *negated { !is_match } else { is_match }
+            }
+        }
+    }
+
+    fn match_tokens(&self, chars: &[char], t_idx: usize, c_idx: usize) -> Option<usize> {
+        if t_idx >= self.tokens.len() {
+            return Some(c_idx);
+        }
+        let tok = &self.tokens[t_idx];
+        let max = tok.max_rep.unwrap_or(chars.len().saturating_sub(c_idx));
+        let mut matched_len = 0;
+        while matched_len < max && (c_idx + matched_len) < chars.len() && Self::match_atom(&tok.atom, chars[c_idx + matched_len]) {
+            matched_len += 1;
+        }
+        for count in (tok.min_rep..=matched_len).rev() {
+            if let Some(end) = self.match_tokens(chars, t_idx + 1, c_idx + count) {
+                return Some(end);
+            }
+        }
+        None
+    }
+
+    fn find_first(&self, text: &str) -> Option<(usize, usize)> {
+        let chars: Vec<char> = text.chars().collect();
+        if self.anchored_start {
+            if let Some(end_char_idx) = self.match_tokens(&chars, 0, 0) {
+                if !self.anchored_end || end_char_idx == chars.len() {
+                    let start_byte: usize = chars[0..0].iter().map(|c| c.len_utf8()).sum();
+                    let len_byte: usize = chars[0..end_char_idx].iter().map(|c| c.len_utf8()).sum();
+                    return Some((start_byte, start_byte + len_byte));
+                }
+            }
+            return None;
+        }
+
+        for start_idx in 0..=chars.len() {
+            if let Some(end_char_idx) = self.match_tokens(&chars, 0, start_idx) {
+                if !self.anchored_end || end_char_idx == chars.len() {
+                    let start_byte: usize = chars[0..start_idx].iter().map(|c| c.len_utf8()).sum();
+                    let len_byte: usize = chars[start_idx..end_char_idx].iter().map(|c| c.len_utf8()).sum();
+                    return Some((start_byte, start_byte + len_byte));
+                }
+            }
+        }
+        None
+    }
+}
+
+#[allow(unused)]
+fn regex_is_match(pat: impl AsRef<str>, text: impl AsRef<str>) -> bool {
+    let matcher = ZyraRegexMatcher::compile(pat.as_ref());
+    matcher.find_first(text.as_ref()).is_some()
+}
+
+#[allow(unused)]
+fn regex_find(pat: impl AsRef<str>, text: impl AsRef<str>) -> String {
+    let t = text.as_ref();
+    let matcher = ZyraRegexMatcher::compile(pat.as_ref());
+    if let Some((s, e)) = matcher.find_first(t) {
+        t[s..e].to_string()
+    } else {
+        String::new()
+    }
+}
+
+#[allow(unused)]
+fn regex_find_all(pat: impl AsRef<str>, text: impl AsRef<str>) -> Vec<String> {
+    let t = text.as_ref();
+    let matcher = ZyraRegexMatcher::compile(pat.as_ref());
+    let mut results = Vec::new();
+    let mut offset = 0;
+    while offset < t.len() {
+        if let Some((s, e)) = matcher.find_first(&t[offset..]) {
+            if e > s {
+                results.push(t[offset + s..offset + e].to_string());
+                offset += e;
+            } else {
+                offset += 1;
+            }
+        } else {
+            break;
+        }
+    }
+    results
+}
+
+#[allow(unused)]
+fn regex_replace(pat: impl AsRef<str>, text: impl AsRef<str>, repl: impl AsRef<str>) -> String {
+    let t = text.as_ref();
+    let r = repl.as_ref();
+    let matcher = ZyraRegexMatcher::compile(pat.as_ref());
+    let mut result = String::new();
+    let mut offset = 0;
+    while offset < t.len() {
+        if let Some((s, e)) = matcher.find_first(&t[offset..]) {
+            result.push_str(&t[offset..offset + s]);
+            result.push_str(r);
+            if e > s {
+                offset += e;
+            } else {
+                if offset < t.len() {
+                    result.push(t.as_bytes()[offset] as char);
+                }
+                offset += 1;
+            }
+        } else {
+            result.push_str(&t[offset..]);
+            break;
+        }
+    }
+    result
+}
+
+#[allow(unused)]
+fn regex_split(pat: impl AsRef<str>, text: impl AsRef<str>) -> Vec<String> {
+    let t = text.as_ref();
+    let matcher = ZyraRegexMatcher::compile(pat.as_ref());
+    let mut results = Vec::new();
+    let mut offset = 0;
+    while offset < t.len() {
+        if let Some((s, e)) = matcher.find_first(&t[offset..]) {
+            results.push(t[offset..offset + s].to_string());
+            if e > s {
+                offset += e;
+            } else {
+                offset += 1;
+            }
+        } else {
+            results.push(t[offset..].to_string());
+            break;
+        }
+    }
+    results
+}
 
 #[allow(unused)]
 fn net_listen<F>(addr: impl AsRef<str>, handler: F) -> i64
@@ -2519,6 +2813,11 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function json_keys(obj) { return obj && typeof obj === 'object' ? Object.keys(obj) : []; }\n");
         header.push_str("function json_stringify(obj) { try { return JSON.stringify(obj); } catch { return ''; } }\n");
         header.push_str("function json_pretty(obj) { try { return JSON.stringify(obj, null, 2); } catch { return ''; } }\n");
+        header.push_str("function regex_is_match(pat, text) { try { return new RegExp(pat).test(String(text)); } catch { return false; } }\n");
+        header.push_str("function regex_find(pat, text) { try { const m = String(text).match(new RegExp(pat)); return m ? m[0] : ''; } catch { return ''; } }\n");
+        header.push_str("function regex_find_all(pat, text) { try { const m = String(text).match(new RegExp(pat, 'g')); return m ? Array.from(m) : []; } catch { return []; } }\n");
+        header.push_str("function regex_replace(pat, text, repl) { try { return String(text).replace(new RegExp(pat, 'g'), repl); } catch { return String(text); } }\n");
+        header.push_str("function regex_split(pat, text) { try { return String(text).split(new RegExp(pat)); } catch { return [String(text)]; } }\n");
         header.push_str("function thread_spawn(fn) { try { fn(); } catch {} }\n\n");
         header
     } else {
@@ -2650,6 +2949,11 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("json.keys(", "json_keys(")
              .replace("json.stringify(", "json_stringify(")
              .replace("json.pretty(", "json_pretty(")
+             .replace("regex.is_match(", "regex_is_match(")
+             .replace("regex.find_all(", "regex_find_all(")
+             .replace("regex.find(", "regex_find(")
+             .replace("regex.replace(", "regex_replace(")
+             .replace("regex.split(", "regex_split(")
              .replace("chan.new()", "chan_new()")
              .replace("chan.clone(", "chan_clone(")
              .replace("chan.send(", "chan_send(")

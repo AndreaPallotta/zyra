@@ -1,0 +1,52 @@
+// Zyra Regex Standard Engine Test Suite
+
+def test_regex_matching_and_finding(): Int {
+  const text = "Server running on 192.168.1.100 port 8080 with status 200"
+
+  const has_digits = regex.is_match("\\d+", text)
+  const ip_addr = regex.find("\\d+\\.\\d+\\.\\d+\\.\\d+", text)
+  const all_numbers = regex.find_all("\\d+", text)
+
+  print("  regex.is_match has_digits: {has_digits}")
+  print("  regex.find ip_addr: {ip_addr}")
+  print("  regex.find_all numbers count: {len(all_numbers)}")
+
+  if (has_digits && ip_addr == "192.168.1.100" && len(all_numbers) >= 6) {
+    print("[PASS] regex matching, finding, and extraction verified")
+    return 1
+  }
+  print("[FAIL] regex matching test failed")
+  return 0
+}
+
+def test_regex_replace_and_split(): Int {
+  const raw_input = "alpha,   beta,gamma;  delta"
+  const normalized = regex.replace("[,;]\\s*", raw_input, " | ")
+  print("  regex.replace: {normalized}")
+
+  const log_line = "2026-08-23 [INFO] System initialized successfully"
+  const parts = regex.split("\\s+", log_line)
+  print("  regex.split tokens count: {len(parts)}")
+
+  if (contains(normalized, "alpha | beta | gamma | delta") && len(parts) == 5) {
+    print("[PASS] regex replacement and token splitting verified")
+    return 1
+  }
+  print("[FAIL] regex replacement/splitting test failed")
+  return 0
+}
+
+def main(): Int {
+  print("==========================================")
+  print("     Zyra v2.3.0 Regular Expressions      ")
+  print("==========================================")
+
+  const t1 = test_regex_matching_and_finding()
+  const t2 = test_regex_replace_and_split()
+
+  const total = t1 + t2
+  print("------------------------------------------")
+  print("Results: {total}/2 Regex Tests PASSED")
+  print("==========================================")
+  return 0
+}
