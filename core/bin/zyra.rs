@@ -712,7 +712,15 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("crypto.base64_decode(", "base64_decode(")
          .replace("http.get(", "http_get(")
          .replace("http.post(", "http_post(")
-         .replace("http.listen(", "net_listen(");
+         .replace("http.listen(", "net_listen(")
+         .replace("chan.new()", "chan_new()")
+         .replace("chan.clone(", "chan_clone(&")
+         .replace("chan.send(", "chan_send(&")
+         .replace("chan.recv(", "chan_recv(&")
+         .replace("chan.try_recv(", "chan_try_recv(&")
+         .replace("spawn(move ||", "thread_spawn(move ||")
+         .replace("spawn(||", "thread_spawn(move ||")
+         .replace("spawn(|", "thread_spawn(move |");
 
     if s.contains('{') && s.contains('}') && (s.contains("print(") || s.contains('"')) {
         let mut result = String::new();
@@ -791,17 +799,25 @@ fn transform_zyra_line(line: &str) -> String {
         "file_write_csv", "http_get", "http_post", "contains",
         "env_var", "env_set", "env_load", "path_exists", "path_ext", "path_basename", "path_dirname",
         "str_split", "str_lower", "str_upper", "process_exec", "io_watch", "io_has_changed",
+        "chan_send", "chan_recv", "chan_try_recv",
     ];
     for func in &auto_borrow_fns {
         let pat = format!("{}(", func);
-        if let Some(idx) = s.find(&pat) {
+        let mut search_from = 0;
+        while let Some(rel_idx) = s[search_from..].find(&pat) {
+            let idx = search_from + rel_idx;
             let arg_start = idx + pat.len();
             if arg_start < s.len() {
                 let first_byte = s.as_bytes()[arg_start];
                 // Only borrow if it's a variable (not a string literal, not already borrowed, not empty call)
                 if first_byte != b'"' && first_byte != b'&' && first_byte != b')' && first_byte != b'(' {
                     s.insert(arg_start, '&');
+                    search_from = arg_start + 1;
+                } else {
+                    search_from = arg_start + 1;
                 }
+            } else {
+                break;
             }
         }
     }
@@ -1370,6 +1386,86 @@ fn io_has_changed(watcher: &FileWatcher) -> bool {
 }
 
 #[allow(unused)]
+#[derive(Clone)]
+struct ZyraChannel {
+    tx: std::sync::Arc<std::sync::Mutex<std::sync::mpsc::Sender<String>>>,
+    rx: std::sync::Arc<std::sync::Mutex<std::sync::mpsc::Receiver<String>>>,
+}
+
+impl ZyraChannel {
+    #[allow(unused)]
+    fn new() -> Self {
+        let (tx, rx) = std::sync::mpsc::channel();
+        ZyraChannel {
+            tx: std::sync::Arc::new(std::sync::Mutex::new(tx)),
+            rx: std::sync::Arc::new(std::sync::Mutex::new(rx)),
+        }
+    }
+
+    #[allow(unused)]
+    fn send(&self, val: impl Into<String>) -> bool {
+        if let Ok(tx) = self.tx.lock() {
+            tx.send(val.into()).is_ok()
+        } else {
+            false
+        }
+    }
+
+    #[allow(unused)]
+    fn recv(&self) -> String {
+        if let Ok(rx) = self.rx.lock() {
+            rx.recv().unwrap_or_default()
+        } else {
+            String::new()
+        }
+    }
+
+    #[allow(unused)]
+    fn try_recv(&self) -> String {
+        if let Ok(rx) = self.rx.lock() {
+            rx.try_recv().unwrap_or_default()
+        } else {
+            String::new()
+        }
+    }
+}
+
+#[allow(unused)]
+fn chan_new() -> ZyraChannel {
+    ZyraChannel::new()
+}
+
+#[allow(unused)]
+fn chan_clone(chan: &ZyraChannel) -> ZyraChannel {
+    chan.clone()
+}
+
+#[allow(unused)]
+fn chan_send(chan: &ZyraChannel, val: impl Into<String>) -> bool {
+    chan.send(val)
+}
+
+#[allow(unused)]
+fn chan_recv(chan: &ZyraChannel) -> String {
+    chan.recv()
+}
+
+#[allow(unused)]
+fn chan_try_recv(chan: &ZyraChannel) -> String {
+    chan.try_recv()
+}
+
+#[allow(unused)]
+fn thread_spawn<F, T>(f: F) -> std::thread::JoinHandle<T>
+where
+    F: FnOnce() -> T + Send + 'static,
+    T: Send + 'static,
+{
+    std::thread::spawn(f)
+}
+
+
+#[allow(unused)]
 fn net_listen<F>(addr: impl AsRef<str>, handler: F) -> i64
 where
     F: Fn(HttpRequest) -> HttpResponse + Send + Sync + 'static,
@@ -1832,10 +1928,15 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function str_upper(s) { return String(s).toUpperCase(); }\n");
         header.push_str("function str_replace(s, t, r) { return String(s).replaceAll(t, r); }\n");
         header.push_str("function process_exec(cmd) { try { return child_process.execSync(cmd, { encoding: 'utf8' }); } catch { return ''; } }\n");
-        header.push_str("function process_exit(code) { process.exit(code); }\n");
         header.push_str("function io_watch(p) { let last = 0; try { last = fs.statSync(p).mtimeMs; } catch {} return { path: p, last_mod: last }; }\n");
         header.push_str("function io_has_changed(w) { try { const cur = fs.statSync(w.path).mtimeMs; if (cur !== w.last_mod && cur > 0) { w.last_mod = cur; return true; } } catch {} return false; }\n");
-        header.push_str("function net_listen(addr, handler) { const parts = String(addr).split(':'); const port = parseInt(parts[1] || parts[0], 10) || 8080; const server = http.createServer((req, res) => { let body = ''; req.on('data', c => { body += c; }); req.on('end', () => { const response = handler({ method: req.method, path: req.url, body }); res.writeHead(response.status || 200, { 'Content-Type': 'text/plain' }); res.end(response.body || ''); }); }); server.listen(port); return 0; }\n\n");
+        header.push_str("function net_listen(addr, handler) { const parts = String(addr).split(':'); const port = parseInt(parts[1] || parts[0], 10) || 8080; const server = http.createServer((req, res) => { let body = ''; req.on('data', c => { body += c; }); req.on('end', () => { const response = handler({ method: req.method, path: req.url, body }); res.writeHead(response.status || 200, { 'Content-Type': 'text/plain' }); res.end(response.body || ''); }); }); server.listen(port); return 0; }\n");
+        header.push_str("class ZyraChannel { constructor() { this.queue = []; this.waiters = []; } send(val) { if (this.waiters.length > 0) { const resolve = this.waiters.shift(); resolve(String(val)); } else { this.queue.push(String(val)); } return true; } recv() { if (this.queue.length > 0) { return this.queue.shift(); } return ''; } try_recv() { if (this.queue.length > 0) { return this.queue.shift(); } return ''; } }\n");
+        header.push_str("function chan_new() { return new ZyraChannel(); }\n");
+        header.push_str("function chan_send(c, v) { return c.send(v); }\n");
+        header.push_str("function chan_recv(c) { return c.recv(); }\n");
+        header.push_str("function chan_try_recv(c) { return c.try_recv(); }\n");
+        header.push_str("function thread_spawn(fn) { return setTimeout(fn, 0); }\n\n");
         header
     } else {
         String::new()
@@ -1949,7 +2050,14 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("crypto.base64_decode(", "base64_decode(")
              .replace("http.get(", "http_get(")
              .replace("http.post(", "http_post(")
-             .replace("http.listen(", "net_listen(");
+             .replace("http.listen(", "net_listen(")
+             .replace("chan.new()", "chan_new()")
+             .replace("chan.send(", "chan_send(")
+             .replace("chan.recv(", "chan_recv(")
+             .replace("chan.try_recv(", "chan_try_recv(")
+             .replace("spawn(||", "thread_spawn(() =>")
+             .replace("spawn(move ||", "thread_spawn(() =>")
+             .replace("spawn(|", "thread_spawn((");
 
         if !inside_func {
             if s.starts_with("const ") {

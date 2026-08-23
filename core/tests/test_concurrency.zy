@@ -1,0 +1,59 @@
+// Zyra Concurrency & Channels Test Suite
+
+def test_channels_and_spawn(): Int {
+  const ch = chan.new()
+  const tx = chan.clone(ch)
+
+  spawn(|| {
+    chan.send(tx, "worker_done")
+  })
+
+  const msg = chan.recv(ch)
+  print("  Received message: {msg}")
+
+  if (msg == "worker_done") {
+    print("[PASS] Channel creation, thread spawn, send & recv verified")
+    return 1
+  }
+  print("[FAIL] Channel message mismatch")
+  return 0
+}
+
+def test_multi_producer(): Int {
+  const ch = chan.new()
+  const tx1 = chan.clone(ch)
+  const tx2 = chan.clone(ch)
+
+  spawn(|| {
+    chan.send(tx1, "msg1")
+  })
+  spawn(|| {
+    chan.send(tx2, "msg2")
+  })
+
+  const m1 = chan.recv(ch)
+  const m2 = chan.recv(ch)
+  print("  Multi-producer received: {m1}, {m2}")
+
+  if (len(m1) > 0 && len(m2) > 0 && m1 != m2) {
+    print("[PASS] Multi-producer channels verified")
+    return 1
+  }
+  print("[FAIL] Multi-producer channel test failed")
+  return 0
+}
+
+def main(): Int {
+  print("==========================================")
+  print("   Zyra v2.3.0 Concurrency & Chan Suite   ")
+  print("==========================================")
+
+  const t1 = test_channels_and_spawn()
+  const t2 = test_multi_producer()
+
+  const total = t1 + t2
+  print("------------------------------------------")
+  print("Results: {total}/2 Concurrency Tests PASSED")
+  print("==========================================")
+  return 0
+}
