@@ -1,0 +1,67 @@
+// Zyra Task & Worker Pool Test Suite
+
+def test_worker_pool_submit_and_channels(): Int {
+  const p = pool.new(4)
+  const ch = chan.new()
+  const tx1 = chan.clone(ch)
+  const tx2 = chan.clone(ch)
+
+  pool.submit(p, move || {
+    chan.send(tx1, "job_alpha_done")
+  })
+
+  pool.submit(p, move || {
+    chan.send(tx2, "job_beta_done")
+  })
+
+  pool.wait_all(p)
+
+  const msg1 = chan.recv(ch)
+  const msg2 = chan.recv(ch)
+
+  print("  pool job results: {msg1}, {msg2}")
+
+  if (len(msg1) > 0 && len(msg2) > 0 && msg1 != msg2) {
+    print("[PASS] Worker pool task submission and synchronization verified")
+    return 1
+  }
+  print("[FAIL] Worker pool task submission failed")
+  return 0
+}
+
+def test_worker_pool_map(): Int {
+  const p = pool.new(4)
+  const inputs = ["chunk1", "chunk2", "chunk3"]
+
+  const results = pool.map(p, inputs, |item| {
+    return str.upper(item)
+  })
+
+  print("  pool.map result count: {len(results)}")
+  const first = results[0]
+  const second = results[1]
+  const third = results[2]
+  print("  pool.map items: {first}, {second}, {third}")
+
+  if (len(results) == 3 && first == "CHUNK1" && second == "CHUNK2" && third == "CHUNK3") {
+    print("[PASS] Worker pool parallel map verified")
+    return 1
+  }
+  print("[FAIL] Worker pool map failed")
+  return 0
+}
+
+def main(): Int {
+  print("==========================================")
+  print("     Zyra v2.3.0 Task & Worker Pool       ")
+  print("==========================================")
+
+  const t1 = test_worker_pool_submit_and_channels()
+  const t2 = test_worker_pool_map()
+
+  const total = t1 + t2
+  print("------------------------------------------")
+  print("Results: {total}/2 Worker Pool Tests PASSED")
+  print("==========================================")
+  return 0
+}

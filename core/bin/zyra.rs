@@ -768,6 +768,10 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("regex.find(", "regex_find(")
          .replace("regex.replace(", "regex_replace(")
          .replace("regex.split(", "regex_split(")
+         .replace("pool.new(", "pool_new(")
+         .replace("pool.submit(", "pool_submit(&")
+         .replace("pool.wait_all(", "pool_wait_all(&")
+         .replace("pool.map(", "pool_map(&")
          .replace("chan.new()", "chan_new()")
          .replace("chan.clone(", "chan_clone(&")
          .replace("chan.send(", "chan_send(&")
@@ -858,6 +862,7 @@ fn transform_zyra_line(line: &str) -> String {
         "db_set", "db_get", "db_has", "db_delete", "db_keys",
         "json_get", "json_set", "json_has", "json_keys", "json_stringify", "json_pretty",
         "regex_is_match", "regex_find", "regex_find_all", "regex_replace", "regex_split",
+        "pool_submit", "pool_wait_all", "pool_map",
     ];
     for func in &auto_borrow_fns {
         let pat = format!("{}(", func);
@@ -886,6 +891,15 @@ fn transform_zyra_line(line: &str) -> String {
     if s.contains(" + ") && s.contains('"') {
         s = s.replace(" + ", ".to_string() + &");
         s = s.replace(".to_string() + &.to_string()", " + ");
+    }
+
+    if (s.starts_with("let ") || s.starts_with("const ") || s.starts_with("var ")) && s.contains(" = ") && s.contains('[') && s.ends_with(']') {
+        if let Some(eq_idx) = s.find(" = ") {
+            let rhs = s[eq_idx + 3..].trim();
+            if !rhs.starts_with('&') && !rhs.ends_with(".clone()") && !rhs.starts_with('[') {
+                s = format!("{} = &{}", &s[..eq_idx], rhs);
+            }
+        }
     }
 
     // #11: Safer if-paren stripping — only strip the condition parens, not arbitrary ") {"
@@ -2327,6 +2341,105 @@ fn regex_split(pat: impl AsRef<str>, text: impl AsRef<str>) -> Vec<String> {
 }
 
 #[allow(unused)]
+#[derive(Clone)]
+struct ZyraWorkerPool {
+    workers: usize,
+    tx: std::sync::Arc<std::sync::Mutex<std::sync::mpsc::Sender<Box<dyn FnOnce() + Send + 'static>>>>,
+    active: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+}
+
+impl ZyraWorkerPool {
+    fn new(workers: usize) -> Self {
+        let num_workers = if workers == 0 { 1 } else { workers };
+        let (tx, rx) = std::sync::mpsc::channel::<Box<dyn FnOnce() + Send + 'static>>();
+        let rx = std::sync::Arc::new(std::sync::Mutex::new(rx));
+        let active = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+
+        for _ in 0..num_workers {
+            let rx = rx.clone();
+            let active = active.clone();
+            std::thread::spawn(move || {
+                while let Ok(job) = rx.lock().unwrap().recv() {
+                    job();
+                    active.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+                }
+            });
+        }
+
+        ZyraWorkerPool {
+            workers: num_workers,
+            tx: std::sync::Arc::new(std::sync::Mutex::new(tx)),
+            active,
+        }
+    }
+
+    fn submit<F>(&self, task: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        self.active.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if let Ok(tx) = self.tx.lock() {
+            let _ = tx.send(Box::new(task));
+        }
+    }
+
+    fn wait_all(&self) {
+        while self.active.load(std::sync::atomic::Ordering::SeqCst) > 0 {
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+    }
+}
+
+#[allow(unused)]
+fn pool_new(workers: i64) -> ZyraWorkerPool {
+    ZyraWorkerPool::new(workers as usize)
+}
+
+#[allow(unused)]
+fn pool_submit<F>(p: &ZyraWorkerPool, task: F)
+where
+    F: FnOnce() + Send + 'static,
+{
+    p.submit(task);
+}
+
+#[allow(unused)]
+fn pool_wait_all(p: &ZyraWorkerPool) {
+    p.wait_all();
+}
+
+#[allow(unused)]
+fn pool_map<T: Clone + Send + 'static, R: Clone + Send + 'static, F, A: AsRef<[T]>>(
+    p: &ZyraWorkerPool,
+    items: A,
+    mapper: F,
+) -> Vec<R>
+where
+    F: Fn(T) -> R + Send + Sync + 'static,
+{
+    let items = items.as_ref();
+    let len = items.len();
+    if len == 0 { return Vec::new(); }
+    let results = std::sync::Arc::new(std::sync::Mutex::new(vec![None; len]));
+    let mapper = std::sync::Arc::new(mapper);
+
+    for (idx, item) in items.iter().cloned().enumerate() {
+        let results = results.clone();
+        let mapper = mapper.clone();
+        p.submit(move || {
+            let res = mapper(item);
+            if let Ok(mut r) = results.lock() {
+                r[idx] = Some(res);
+            }
+        });
+    }
+
+    p.wait_all();
+    let guard = results.lock().unwrap();
+    guard.iter().filter_map(|x| x.clone()).collect()
+}
+
+#[allow(unused)]
 fn net_listen<F>(addr: impl AsRef<str>, handler: F) -> i64
 where
     F: Fn(HttpRequest) -> HttpResponse + Send + Sync + 'static,
@@ -2818,6 +2931,11 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function regex_find_all(pat, text) { try { const m = String(text).match(new RegExp(pat, 'g')); return m ? Array.from(m) : []; } catch { return []; } }\n");
         header.push_str("function regex_replace(pat, text, repl) { try { return String(text).replace(new RegExp(pat, 'g'), repl); } catch { return String(text); } }\n");
         header.push_str("function regex_split(pat, text) { try { return String(text).split(new RegExp(pat)); } catch { return [String(text)]; } }\n");
+        header.push_str("class ZyraWorkerPool { constructor(w) { this.workers = w; } submit(fn) { try { fn(); } catch {} } wait_all() {} map(items, mapper) { return (items || []).map(mapper); } }\n");
+        header.push_str("function pool_new(w) { return new ZyraWorkerPool(w); }\n");
+        header.push_str("function pool_submit(p, fn) { p.submit(fn); }\n");
+        header.push_str("function pool_wait_all(p) { p.wait_all(); }\n");
+        header.push_str("function pool_map(p, items, mapper) { return p.map(items, mapper); }\n");
         header.push_str("function thread_spawn(fn) { try { fn(); } catch {} }\n\n");
         header
     } else {
@@ -2954,6 +3072,10 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("regex.find(", "regex_find(")
              .replace("regex.replace(", "regex_replace(")
              .replace("regex.split(", "regex_split(")
+             .replace("pool.new(", "pool_new(")
+             .replace("pool.submit(", "pool_submit(")
+             .replace("pool.wait_all(", "pool_wait_all(")
+             .replace("pool.map(", "pool_map(")
              .replace("chan.new()", "chan_new()")
              .replace("chan.clone(", "chan_clone(")
              .replace("chan.send(", "chan_send(")
@@ -2961,7 +3083,17 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("chan.try_recv(", "chan_try_recv(")
              .replace("spawn(||", "thread_spawn(() =>")
              .replace("spawn(move ||", "thread_spawn(() =>")
-             .replace("spawn(|", "thread_spawn((");
+             .replace("spawn(|", "thread_spawn((")
+             .replace("move ||", "() =>")
+             .replace("|| {", "() => {");
+
+        if let Some(pipe_open) = s.find(", |") {
+            if let Some(pipe_close) = s[pipe_open + 3..].find('|') {
+                let full_pipe_close = pipe_open + 3 + pipe_close;
+                let arg_name = &s[pipe_open + 3..full_pipe_close];
+                s = format!("{}, ({}) =>{}", &s[..pipe_open], arg_name, &s[full_pipe_close + 1..]);
+            }
+        }
 
         if !inside_func {
             if s.starts_with("const ") {
