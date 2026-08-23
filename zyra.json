@@ -1,7 +1,14 @@
 {
-  "name": "zyra_test_app",
-  "version": "2.1.1",
+  "name": "zyra",
+  "version": "2.3.0",
   "main": "src/main.zy",
+  "scripts": {
+    "start": "core/bin/zyra.exe run core/tests/test_v220_suite.zy",
+    "test:concurrency": "core/bin/zyra.exe run core/tests/test_concurrency.zy",
+    "test:json": "core/bin/zyra.exe run core/tests/test_json.zy",
+    "test:regex": "core/bin/zyra.exe run core/tests/test_regex.zy",
+    "test:pool": "core/bin/zyra.exe run core/tests/test_pool.zy"
+  },
   "dependencies": {
     "github.com/zyra-lang/sample-lib": "v1.0.0"
   }

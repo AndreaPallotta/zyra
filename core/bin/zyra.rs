@@ -17,8 +17,9 @@ fn print_help() {
     println!("Commands:");
     println!("  init <project-name>        Initialize a new Zyra project directory");
     println!("  create <template> <name>   Bootstrap project template (cli, web, wasm)");
+    println!("  start                      Execute manifest 'start' script or 'src/main.zy'");
+    println!("  run <file.zy|script>       Compile and run Zyra file or manifest script");
     println!("  build <file.zy>            Compile Zyra file to native binary, WASM, JS, Python/Node bindings");
-    println!("  run <file.zy>              Compile and run Zyra file in one step");
     println!("  dev <file.zy>              Launch hot-reloading development server");
     println!("  debug <file.zy>            Launch interactive CLI debugger");
     println!("  profile <file.zy>          Run CPU profiler & generate flamegraph SVG");
@@ -2765,7 +2766,49 @@ where
     rs
 }
 
+fn handle_manifest_script(script_name: &str) -> bool {
+    let content = match fs::read_to_string("zyra.json") {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+
+    if let Some(scripts_idx) = content.find("\"scripts\"") {
+        let after_scripts = &content[scripts_idx..];
+        let key_pat = format!("\"{}\"", script_name);
+        if let Some(key_idx) = after_scripts.find(&key_pat) {
+            let after_key = &after_scripts[key_idx + key_pat.len()..];
+            if let Some(colon_idx) = after_key.find(':') {
+                let after_colon = after_key[colon_idx + 1..].trim_start();
+                if after_colon.starts_with('"') {
+                    if let Some(end_quote) = after_colon[1..].find('"') {
+                        let script_cmd = &after_colon[1..=end_quote];
+                        println!("Running manifest script '{}': {}...\n", script_name, script_cmd);
+                        let status = if cfg!(windows) {
+                            Command::new("powershell").args(["-NoProfile", "-Command", script_cmd]).status()
+                        } else {
+                            Command::new("sh").args(["-c", script_cmd]).status()
+                        };
+                        if let Ok(exit) = status {
+                            if !exit.success() {
+                                eprintln!("[ERROR] Script '{}' exited with code: {:?}", script_name, exit.code());
+                            }
+                        }
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
 fn handle_run(file_path: &str) {
+    if !Path::new(file_path).exists() && !file_path.ends_with(".zy") {
+        if handle_manifest_script(file_path) {
+            return;
+        }
+    }
+
     let out_dir = Path::new("dist");
     let cache_dir = Path::new(".zyra_cache");
     let _ = fs::create_dir_all(&out_dir);
@@ -3708,6 +3751,16 @@ fn main() {
             let template = if args.len() > 2 { &args[2] } else { "cli" };
             let name = if args.len() > 3 { &args[3] } else { "zyra_app" };
             handle_create(template, name);
+        }
+        "start" => {
+            if !handle_manifest_script("start") {
+                let default_entry = "src/main.zy";
+                if Path::new(default_entry).exists() {
+                    handle_run(default_entry);
+                } else {
+                    eprintln!("[ERROR] No 'start' script in zyra.json and '{}' does not exist.", default_entry);
+                }
+            }
         }
         "run" => {
             let file = if args.len() > 2 { &args[2] } else { "src/main.zy" };
