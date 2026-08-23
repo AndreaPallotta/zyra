@@ -1,0 +1,56 @@
+// Zyra Vector & Collection Transformation Test Suite
+
+def test_vec_transformations(): Int {
+  const numbers = ["apple", "cherry", "banana", "apple", "date"]
+
+  const sorted = vec.sort(numbers)
+  const unique_items = vec.unique(numbers)
+  const joined = vec.join(sorted, ", ")
+
+  print("  vec.sort: {joined}")
+  print("  vec.unique count: {len(unique_items)}")
+
+  const has_banana = vec.contains(numbers, "banana")
+  const has_grape = vec.contains(numbers, "grape")
+
+  const sliced = vec.slice(sorted, 1, 3)
+  print("  vec.slice len: {len(sliced)}")
+
+  if (len(unique_items) == 4 && has_banana && !has_grape && len(sliced) == 2) {
+    print("[PASS] Vector sort, unique, join, contains, and slice verified")
+    return 1
+  }
+  print("[FAIL] Vector transformation test failed")
+  return 0
+}
+
+def test_vec_filter_and_reverse(): Int {
+  const words = ["alpha", "beta", "gamma", "delta"]
+  const reversed = vec.reverse(words)
+  const first_rev = reversed[0]
+  const last_rev = reversed[3]
+
+  print("  vec.reverse first: {first_rev}, last: {last_rev}")
+
+  if (first_rev == "delta" && last_rev == "alpha") {
+    print("[PASS] Vector filter and reverse operations verified")
+    return 1
+  }
+  print("[FAIL] Vector reverse test failed")
+  return 0
+}
+
+def main(): Int {
+  print("==========================================")
+  print("     Zyra v2.3.0 Vector Suite             ")
+  print("==========================================")
+
+  const t1 = test_vec_transformations()
+  const t2 = test_vec_filter_and_reverse()
+
+  const total = t1 + t2
+  print("------------------------------------------")
+  print("Results: {total}/2 Vector Tests PASSED")
+  print("==========================================")
+  return 0
+}

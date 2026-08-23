@@ -783,6 +783,15 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("map.values(", "map_values(&")
          .replace("map.len(", "map_len(&")
          .replace("map.clear(", "map_clear(&")
+         .replace("vec.filter(", "vec_filter(&")
+         .replace("vec.map(", "vec_map(&")
+         .replace("vec.sort(", "vec_sort(&")
+         .replace("vec.reverse(", "vec_reverse(&")
+         .replace("vec.unique(", "vec_unique(&")
+         .replace("vec.join(", "vec_join(&")
+         .replace("vec.contains(", "vec_contains(&")
+         .replace("vec.find(", "vec_find(&")
+         .replace("vec.slice(", "vec_slice(&")
          .replace("chan.new()", "chan_new()")
          .replace("chan.clone(", "chan_clone(&")
          .replace("chan.send(", "chan_send(&")
@@ -875,6 +884,7 @@ fn transform_zyra_line(line: &str) -> String {
         "regex_is_match", "regex_find", "regex_find_all", "regex_replace", "regex_split",
         "pool_submit", "pool_wait_all", "pool_map",
         "map_set", "map_get", "map_has", "map_delete", "map_keys", "map_values", "map_len", "map_clear",
+        "vec_filter", "vec_map", "vec_sort", "vec_reverse", "vec_unique", "vec_join", "vec_contains", "vec_find", "vec_slice",
     ];
     for func in &auto_borrow_fns {
         let pat = format!("{}(", func);
@@ -909,7 +919,7 @@ fn transform_zyra_line(line: &str) -> String {
         if let Some(eq_idx) = s.find(" = ") {
             let rhs = s[eq_idx + 3..].trim();
             if !rhs.starts_with('&') && !rhs.ends_with(".clone()") && !rhs.starts_with('[') {
-                s = format!("{} = &{}", &s[..eq_idx], rhs);
+                s = format!("{} = {}.clone()", &s[..eq_idx], rhs);
             }
         }
     }
@@ -2560,6 +2570,75 @@ fn map_len(m: &ZyraMap) -> i64 { m.len() }
 fn map_clear(m: &ZyraMap) { m.clear(); }
 
 #[allow(unused)]
+fn vec_filter<T: Clone, F: Fn(&T) -> bool, A: AsRef<[T]>>(items: A, predicate: F) -> Vec<T> {
+    items.as_ref().iter().filter(|x| predicate(x)).cloned().collect()
+}
+
+#[allow(unused)]
+fn vec_map<T: Clone, R, F: Fn(T) -> R, A: AsRef<[T]>>(items: A, mapper: F) -> Vec<R> {
+    items.as_ref().iter().cloned().map(mapper).collect()
+}
+
+#[allow(unused)]
+fn vec_sort<T: Clone + Ord, A: AsRef<[T]>>(items: A) -> Vec<T> {
+    let mut res = items.as_ref().to_vec();
+    res.sort();
+    res
+}
+
+#[allow(unused)]
+fn vec_reverse<T: Clone, A: AsRef<[T]>>(items: A) -> Vec<T> {
+    let mut res = items.as_ref().to_vec();
+    res.reverse();
+    res
+}
+
+#[allow(unused)]
+fn vec_unique<T: Clone + Eq + std::hash::Hash, A: AsRef<[T]>>(items: A) -> Vec<T> {
+    let mut seen = std::collections::HashSet::new();
+    let mut res = Vec::new();
+    for item in items.as_ref() {
+        if seen.insert(item.clone()) {
+            res.push(item.clone());
+        }
+    }
+    res
+}
+
+#[allow(unused)]
+fn vec_join<T: std::fmt::Display, A: AsRef<[T]>>(items: A, sep: impl AsRef<str>) -> String {
+    let parts: Vec<String> = items.as_ref().iter().map(|x| x.to_string()).collect();
+    parts.join(sep.as_ref())
+}
+
+#[allow(unused)]
+fn vec_contains<T, A: AsRef<[T]>, Q>(items: A, target: &Q) -> bool
+where
+    T: std::borrow::Borrow<Q>,
+    Q: PartialEq + ?Sized,
+{
+    items.as_ref().iter().any(|x| x.borrow() == target)
+}
+
+#[allow(unused)]
+fn vec_find<T: Clone, F: Fn(&T) -> bool, A: AsRef<[T]>>(items: A, predicate: F) -> Option<T> {
+    items.as_ref().iter().find(|x| predicate(x)).cloned()
+}
+
+#[allow(unused)]
+fn vec_slice<T: Clone, A: AsRef<[T]>>(items: A, start: i64, end: i64) -> Vec<T> {
+    let slice = items.as_ref();
+    let len = slice.len();
+    let s = (start.max(0) as usize).min(len);
+    let e = (end.max(0) as usize).min(len);
+    if s <= e {
+        slice[s..e].to_vec()
+    } else {
+        Vec::new()
+    }
+}
+
+#[allow(unused)]
 fn net_listen<F>(addr: impl AsRef<str>, handler: F) -> i64
 where
     F: Fn(HttpRequest) -> HttpResponse + Send + Sync + 'static,
@@ -3108,6 +3187,15 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function map_values(m) { return m.values(); }\n");
         header.push_str("function map_len(m) { return m.len(); }\n");
         header.push_str("function map_clear(m) { m.clear(); }\n");
+        header.push_str("function vec_filter(arr, pred) { return (arr || []).filter(pred); }\n");
+        header.push_str("function vec_map(arr, mapper) { return (arr || []).map(mapper); }\n");
+        header.push_str("function vec_sort(arr) { return [...(arr || [])].sort(); }\n");
+        header.push_str("function vec_reverse(arr) { return [...(arr || [])].reverse(); }\n");
+        header.push_str("function vec_unique(arr) { return Array.from(new Set(arr || [])); }\n");
+        header.push_str("function vec_join(arr, sep) { return (arr || []).join(sep); }\n");
+        header.push_str("function vec_contains(arr, target) { return (arr || []).includes(target); }\n");
+        header.push_str("function vec_find(arr, pred) { return (arr || []).find(pred) || ''; }\n");
+        header.push_str("function vec_slice(arr, start, end) { return (arr || []).slice(start, end); }\n");
         header.push_str("function thread_spawn(fn) { try { fn(); } catch {} }\n\n");
         header
     } else {
@@ -3257,6 +3345,15 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("map.values(", "map_values(")
              .replace("map.len(", "map_len(")
              .replace("map.clear(", "map_clear(")
+             .replace("vec.filter(", "vec_filter(")
+             .replace("vec.map(", "vec_map(")
+             .replace("vec.sort(", "vec_sort(")
+             .replace("vec.reverse(", "vec_reverse(")
+             .replace("vec.unique(", "vec_unique(")
+             .replace("vec.join(", "vec_join(")
+             .replace("vec.contains(", "vec_contains(")
+             .replace("vec.find(", "vec_find(")
+             .replace("vec.slice(", "vec_slice(")
              .replace("chan.new()", "chan_new()")
              .replace("chan.clone(", "chan_clone(")
              .replace("chan.send(", "chan_send(")
