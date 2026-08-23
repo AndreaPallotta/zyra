@@ -715,6 +715,12 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("http.get(", "http_get(")
          .replace("http.post(", "http_post(")
          .replace("http.listen(", "net_listen(")
+         .replace("db.open(", "db_open(")
+         .replace("db.set(", "db_set(&")
+         .replace("db.get(", "db_get(&")
+         .replace("db.has(", "db_has(&")
+         .replace("db.delete(", "db_delete(&")
+         .replace("db.keys(", "db_keys(&")
          .replace("chan.new()", "chan_new()")
          .replace("chan.clone(", "chan_clone(&")
          .replace("chan.send(", "chan_send(&")
@@ -802,6 +808,7 @@ fn transform_zyra_line(line: &str) -> String {
         "env_var", "env_set", "env_load", "path_exists", "path_ext", "path_basename", "path_dirname",
         "str_split", "str_lower", "str_upper", "process_exec", "io_watch", "io_has_changed",
         "chan_send", "chan_recv", "chan_try_recv", "io_walk", "io_glob",
+        "db_set", "db_get", "db_has", "db_delete", "db_keys",
     ];
     for func in &auto_borrow_fns {
         let pat = format!("{}(", func);
@@ -1547,6 +1554,113 @@ where
     std::thread::spawn(f)
 }
 
+#[allow(unused)]
+#[derive(Clone)]
+struct ZyraKvDb {
+    path: String,
+    data: std::sync::Arc<std::sync::RwLock<std::collections::HashMap<String, String>>>,
+}
+
+impl ZyraKvDb {
+    #[allow(unused)]
+    fn open(path: impl AsRef<str>) -> Self {
+        let p = path.as_ref().to_string();
+        let mut map = std::collections::HashMap::new();
+        if let Ok(content) = std::fs::read_to_string(&p) {
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if let Some(eq_idx) = trimmed.find('=') {
+                    let k = trimmed[..eq_idx].trim().to_string();
+                    let v = trimmed[eq_idx + 1..].trim().to_string();
+                    map.insert(k, v);
+                }
+            }
+        }
+        ZyraKvDb {
+            path: p,
+            data: std::sync::Arc::new(std::sync::RwLock::new(map)),
+        }
+    }
+
+    fn flush(&self) {
+        if let Ok(map) = self.data.read() {
+            let mut out = String::new();
+            for (k, v) in map.iter() {
+                out.push_str(k);
+                out.push('=');
+                out.push_str(v);
+                out.push('\n');
+            }
+            let _ = std::fs::write(&self.path, out);
+        }
+    }
+
+    #[allow(unused)]
+    fn set(&self, key: impl AsRef<str>, val: impl AsRef<str>) -> bool {
+        if let Ok(mut map) = self.data.write() {
+            map.insert(key.as_ref().to_string(), val.as_ref().to_string());
+            drop(map);
+            self.flush();
+            true
+        } else {
+            false
+        }
+    }
+
+    #[allow(unused)]
+    fn get(&self, key: impl AsRef<str>) -> String {
+        if let Ok(map) = self.data.read() {
+            map.get(key.as_ref()).cloned().unwrap_or_default()
+        } else {
+            String::new()
+        }
+    }
+
+    #[allow(unused)]
+    fn has(&self, key: impl AsRef<str>) -> bool {
+        if let Ok(map) = self.data.read() {
+            map.contains_key(key.as_ref())
+        } else {
+            false
+        }
+    }
+
+    #[allow(unused)]
+    fn delete(&self, key: impl AsRef<str>) -> bool {
+        if let Ok(mut map) = self.data.write() {
+            let removed = map.remove(key.as_ref()).is_some();
+            drop(map);
+            if removed { self.flush(); }
+            removed
+        } else {
+            false
+        }
+    }
+
+    #[allow(unused)]
+    fn keys(&self) -> Vec<String> {
+        if let Ok(map) = self.data.read() {
+            map.keys().cloned().collect()
+        } else {
+            Vec::new()
+        }
+    }
+}
+
+#[allow(unused)]
+fn db_open(path: impl AsRef<str>) -> ZyraKvDb { ZyraKvDb::open(path) }
+#[allow(unused)]
+fn db_set(db: &ZyraKvDb, key: impl AsRef<str>, val: impl AsRef<str>) -> bool { db.set(key, val) }
+#[allow(unused)]
+fn db_get(db: &ZyraKvDb, key: impl AsRef<str>) -> String { db.get(key) }
+#[allow(unused)]
+fn db_has(db: &ZyraKvDb, key: impl AsRef<str>) -> bool { db.has(key) }
+#[allow(unused)]
+fn db_delete(db: &ZyraKvDb, key: impl AsRef<str>) -> bool { db.delete(key) }
+#[allow(unused)]
+fn db_keys(db: &ZyraKvDb) -> Vec<String> { db.keys() }
+
+
 
 #[allow(unused)]
 fn net_listen<F>(addr: impl AsRef<str>, handler: F) -> i64
@@ -2020,7 +2134,13 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function chan_new() { return new ZyraChannel(); }\n");
         header.push_str("function chan_send(c, v) { return c.send(v); }\n");
         header.push_str("function chan_recv(c) { return c.recv(); }\n");
-        header.push_str("function chan_try_recv(c) { return c.try_recv(); }\n");
+        header.push_str("class ZyraKvDb { constructor(p) { this.path = p; this.data = {}; try { for (const l of fs.readFileSync(p, 'utf8').split('\\n')) { const t = l.trim(); const eq = t.indexOf('='); if (eq > 0) this.data[t.slice(0, eq).trim()] = t.slice(eq + 1).trim(); } } catch {} } flush() { let o = ''; for (const [k, v] of Object.entries(this.data)) o += `${k}=${v}\\n`; try { fs.writeFileSync(this.path, o); } catch {} } set(k, v) { this.data[String(k)] = String(v); this.flush(); return true; } get(k) { return this.data[String(k)] || ''; } has(k) { return String(k) in this.data; } delete(k) { const ex = String(k) in this.data; delete this.data[String(k)]; if (ex) this.flush(); return ex; } keys() { return Object.keys(this.data); } }\n");
+        header.push_str("function db_open(p) { return new ZyraKvDb(p); }\n");
+        header.push_str("function db_set(db, k, v) { return db.set(k, v); }\n");
+        header.push_str("function db_get(db, k) { return db.get(k); }\n");
+        header.push_str("function db_has(db, k) { return db.has(k); }\n");
+        header.push_str("function db_delete(db, k) { return db.delete(k); }\n");
+        header.push_str("function db_keys(db) { return db.keys(); }\n");
         header.push_str("function thread_spawn(fn) { return setTimeout(fn, 0); }\n\n");
         header
     } else {
@@ -2138,6 +2258,12 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("http.get(", "http_get(")
              .replace("http.post(", "http_post(")
              .replace("http.listen(", "net_listen(")
+             .replace("db.open(", "db_open(")
+             .replace("db.set(", "db_set(")
+             .replace("db.get(", "db_get(")
+             .replace("db.has(", "db_has(")
+             .replace("db.delete(", "db_delete(")
+             .replace("db.keys(", "db_keys(")
              .replace("chan.new()", "chan_new()")
              .replace("chan.send(", "chan_send(")
              .replace("chan.recv(", "chan_recv(")

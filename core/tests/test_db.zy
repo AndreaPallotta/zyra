@@ -1,0 +1,42 @@
+// Zyra Embedded Key-Value Database Test Suite
+
+def test_kv_storage(): Int {
+  const store_file = "test_store.db"
+  const store = db.open(store_file)
+
+  const _ = db.set(store, "user.name", "Andrea")
+  const _ = db.set(store, "user.role", "Architect")
+  const _ = db.set(store, "app.version", "2.3.0")
+
+  const name = db.get(store, "user.name")
+  const role = db.get(store, "user.role")
+  const has_ver = db.has(store, "app.version")
+
+  print("  db.get user.name: {name}")
+  print("  db.get user.role: {role}")
+
+  const all_keys = db.keys(store)
+  print("  db.keys count: {len(all_keys)}")
+
+  const _ = db.delete(store, "user.role")
+  const role_after_del = db.get(store, "user.role")
+
+  if (name == "Andrea" && role == "Architect" && has_ver && len(role_after_del) == 0 && len(all_keys) == 3) {
+    print("[PASS] Embedded Key-Value Database (open, set, get, has, delete, keys) verified")
+    return 1
+  }
+  print("[FAIL] Key-Value store test failed")
+  return 0
+}
+
+def main(): Int {
+  print("==========================================")
+  print("   Zyra v2.3.0 Embedded KV Database Suite ")
+  print("==========================================")
+
+  const t1 = test_kv_storage()
+  print("------------------------------------------")
+  print("Results: {t1}/1 Tests PASSED")
+  print("==========================================")
+  return 0
+}
