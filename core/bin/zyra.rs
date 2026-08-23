@@ -132,16 +132,49 @@ fn infer_local_type(value_expr: &str) -> &'static str {
 
 fn format_span_diagnostic(file: &str, content: &str, line_idx: usize, col_idx: usize, msg: &str, suggestion: &str) {
     let lines: Vec<&str> = content.lines().collect();
-    println!("\x1b[1;31merror\x1b[0m: {}", msg);
+    println!("\x1b[1;31merror\x1b[0m: \x1b[1m{}\x1b[0m", msg);
     println!("  \x1b[1;34m-->\x1b[0m {}:{}:{}", file, line_idx + 1, col_idx + 1);
+
+    let gutter_width = if line_idx + 2 > 99 { 4 } else { 2 };
+    println!("{:>width$} \x1b[1;34m|\x1b[0m", "", width = gutter_width);
+
+    // Preceding context line if available
+    if line_idx > 0 && line_idx - 1 < lines.len() {
+        println!("\x1b[1;34m{:>width$} |\x1b[0m {}", line_idx, lines[line_idx - 1], width = gutter_width);
+    }
+
     if line_idx < lines.len() {
         let line = lines[line_idx];
-        println!("   \x1b[1;34m|\x1b[0m");
-        println!("\x1b[1;34m{:>2} |\x1b[0m {}", line_idx + 1, line);
+        println!("\x1b[1;34m{:>width$} |\x1b[0m {}", line_idx + 1, line, width = gutter_width);
+
+        // Compute token length at col_idx
+        let rest = if col_idx < line.len() { &line[col_idx..] } else { "" };
+        let token_len = rest
+            .split(|c: char| !c.is_alphanumeric() && c != '_')
+            .next()
+            .map(|s| s.len())
+            .unwrap_or(1)
+            .max(1);
+
         let caret_pad = " ".repeat(col_idx);
-        println!("   \x1b[1;34m|\x1b[0m {}\x1b[1;31m^\x1b[0m", caret_pad);
+        let carets = "^".repeat(token_len);
+        println!(
+            "{:>width$} \x1b[1;34m|\x1b[0m {}\x1b[1;31m{}\x1b[0m \x1b[1;31m{}\x1b[0m",
+            "",
+            caret_pad,
+            carets,
+            msg,
+            width = gutter_width
+        );
+
+        // Following context line if available
+        if line_idx + 1 < lines.len() {
+            println!("\x1b[1;34m{:>width$} |\x1b[0m {}", line_idx + 2, lines[line_idx + 1], width = gutter_width);
+        }
+
+        println!("{:>width$} \x1b[1;34m|\x1b[0m", "", width = gutter_width);
         if !suggestion.is_empty() {
-            println!("   \x1b[1;34m|\x1b[0m \x1b[1;32mhelp\x1b[0m: {}", suggestion);
+            println!("{:>width$} \x1b[1;34m=\x1b[0m \x1b[1;32mhelp\x1b[0m: {}", "", suggestion, width = gutter_width);
         }
     }
     println!();
