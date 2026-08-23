@@ -1,0 +1,68 @@
+// Zyra In-Memory Hash Map & Dictionary Test Suite
+
+def test_map_crud_and_lookups(): Int {
+  const m = map.new()
+
+  map.set(m, "service", "gateway")
+  map.set(m, "port", "9000")
+  map.set(m, "environment", "production")
+
+  const s = map.get(m, "service")
+  const p = map.get(m, "port")
+  const has_env = map.has(m, "environment")
+  const missing = map.has(m, "debug_mode")
+  const l = map.len(m)
+
+  print("  map.get service: {s}")
+  print("  map.get port: {p}")
+  print("  map.has environment: {has_env}")
+  print("  map.len: {l}")
+
+  if (s == "gateway" && p == "9000" && has_env && !missing && l == 3) {
+    print("[PASS] In-memory map CRUD and lookup verified")
+    return 1
+  }
+  print("[FAIL] In-memory map CRUD failed")
+  return 0
+}
+
+def test_map_mutation_and_keys(): Int {
+  const m = map.new()
+  map.set(m, "k1", "v1")
+  map.set(m, "k2", "v2")
+  map.set(m, "k3", "v3")
+
+  const keys = map.keys(m)
+  const vals = map.values(m)
+  print("  map.keys count: {len(keys)}")
+  print("  map.values count: {len(vals)}")
+
+  map.delete(m, "k2")
+  const has_k2_after = map.has(m, "k2")
+  const len_after = map.len(m)
+
+  map.clear(m)
+  const len_cleared = map.len(m)
+
+  if (len(keys) == 3 && len(vals) == 3 && !has_k2_after && len_after == 2 && len_cleared == 0) {
+    print("[PASS] Map keys, deletion, and clear operations verified")
+    return 1
+  }
+  print("[FAIL] Map mutation operations failed")
+  return 0
+}
+
+def main(): Int {
+  print("==========================================")
+  print("     Zyra v2.3.0 In-Memory Map Suite      ")
+  print("==========================================")
+
+  const t1 = test_map_crud_and_lookups()
+  const t2 = test_map_mutation_and_keys()
+
+  const total = t1 + t2
+  print("------------------------------------------")
+  print("Results: {total}/2 Map Tests PASSED")
+  print("==========================================")
+  return 0
+}

@@ -774,6 +774,15 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("pool.submit(", "pool_submit(&")
          .replace("pool.wait_all(", "pool_wait_all(&")
          .replace("pool.map(", "pool_map(&")
+         .replace("map.new()", "map_new()")
+         .replace("map.set(", "map_set(&")
+         .replace("map.get(", "map_get(&")
+         .replace("map.has(", "map_has(&")
+         .replace("map.delete(", "map_delete(&")
+         .replace("map.keys(", "map_keys(&")
+         .replace("map.values(", "map_values(&")
+         .replace("map.len(", "map_len(&")
+         .replace("map.clear(", "map_clear(&")
          .replace("chan.new()", "chan_new()")
          .replace("chan.clone(", "chan_clone(&")
          .replace("chan.send(", "chan_send(&")
@@ -865,6 +874,7 @@ fn transform_zyra_line(line: &str) -> String {
         "json_get", "json_set", "json_has", "json_keys", "json_stringify", "json_pretty",
         "regex_is_match", "regex_find", "regex_find_all", "regex_replace", "regex_split",
         "pool_submit", "pool_wait_all", "pool_map",
+        "map_set", "map_get", "map_has", "map_delete", "map_keys", "map_values", "map_len", "map_clear",
     ];
     for func in &auto_borrow_fns {
         let pat = format!("{}(", func);
@@ -2442,6 +2452,114 @@ where
 }
 
 #[allow(unused)]
+#[derive(Clone, Debug)]
+struct ZyraMap {
+    data: std::sync::Arc<std::sync::RwLock<std::collections::BTreeMap<String, String>>>,
+}
+
+impl PartialEq for ZyraMap {
+    fn eq(&self, other: &Self) -> bool {
+        match (self.data.read(), other.data.read()) {
+            (Ok(a), Ok(b)) => *a == *b,
+            _ => false,
+        }
+    }
+}
+
+impl ZyraMap {
+    fn new() -> Self {
+        ZyraMap {
+            data: std::sync::Arc::new(std::sync::RwLock::new(std::collections::BTreeMap::new())),
+        }
+    }
+    fn set(&self, key: impl AsRef<str>, val: impl AsRef<str>) -> bool {
+        if let Ok(mut map) = self.data.write() {
+            map.insert(key.as_ref().to_string(), val.as_ref().to_string());
+            true
+        } else {
+            false
+        }
+    }
+    fn get(&self, key: impl AsRef<str>) -> String {
+        if let Ok(map) = self.data.read() {
+            map.get(key.as_ref()).cloned().unwrap_or_default()
+        } else {
+            String::new()
+        }
+    }
+    fn has(&self, key: impl AsRef<str>) -> bool {
+        if let Ok(map) = self.data.read() {
+            map.contains_key(key.as_ref())
+        } else {
+            false
+        }
+    }
+    fn delete(&self, key: impl AsRef<str>) -> bool {
+        if let Ok(mut map) = self.data.write() {
+            map.remove(key.as_ref()).is_some()
+        } else {
+            false
+        }
+    }
+    fn keys(&self) -> Vec<String> {
+        if let Ok(map) = self.data.read() {
+            map.keys().cloned().collect()
+        } else {
+            Vec::new()
+        }
+    }
+    fn values(&self) -> Vec<String> {
+        if let Ok(map) = self.data.read() {
+            map.values().cloned().collect()
+        } else {
+            Vec::new()
+        }
+    }
+    fn len(&self) -> i64 {
+        if let Ok(map) = self.data.read() {
+            map.len() as i64
+        } else {
+            0
+        }
+    }
+    fn clear(&self) {
+        if let Ok(mut map) = self.data.write() {
+            map.clear();
+        }
+    }
+}
+
+impl std::fmt::Display for ZyraMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Ok(map) = self.data.read() {
+            let pairs: Vec<String> = map.iter().map(|(k, v)| format!("\"{}\": \"{}\"", k, v)).collect();
+            write!(f, "{{{}}}", pairs.join(", "))
+        } else {
+            write!(f, "{{}}")
+        }
+    }
+}
+
+#[allow(unused)]
+fn map_new() -> ZyraMap { ZyraMap::new() }
+#[allow(unused)]
+fn map_set(m: &ZyraMap, key: impl AsRef<str>, val: impl AsRef<str>) -> bool { m.set(key, val) }
+#[allow(unused)]
+fn map_get(m: &ZyraMap, key: impl AsRef<str>) -> String { m.get(key) }
+#[allow(unused)]
+fn map_has(m: &ZyraMap, key: impl AsRef<str>) -> bool { m.has(key) }
+#[allow(unused)]
+fn map_delete(m: &ZyraMap, key: impl AsRef<str>) -> bool { m.delete(key) }
+#[allow(unused)]
+fn map_keys(m: &ZyraMap) -> Vec<String> { m.keys() }
+#[allow(unused)]
+fn map_values(m: &ZyraMap) -> Vec<String> { m.values() }
+#[allow(unused)]
+fn map_len(m: &ZyraMap) -> i64 { m.len() }
+#[allow(unused)]
+fn map_clear(m: &ZyraMap) { m.clear(); }
+
+#[allow(unused)]
 fn net_listen<F>(addr: impl AsRef<str>, handler: F) -> i64
 where
     F: Fn(HttpRequest) -> HttpResponse + Send + Sync + 'static,
@@ -2980,6 +3098,16 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function pool_submit(p, fn) { p.submit(fn); }\n");
         header.push_str("function pool_wait_all(p) { p.wait_all(); }\n");
         header.push_str("function pool_map(p, items, mapper) { return p.map(items, mapper); }\n");
+        header.push_str("class ZyraMap { constructor() { this.data = {}; } set(k, v) { this.data[String(k)] = String(v); return true; } get(k) { return this.data[String(k)] !== undefined ? this.data[String(k)] : ''; } has(k) { return String(k) in this.data; } delete(k) { const ex = String(k) in this.data; delete this.data[String(k)]; return ex; } keys() { return Object.keys(this.data); } values() { return Object.values(this.data); } len() { return Object.keys(this.data).length; } clear() { this.data = {}; } }\n");
+        header.push_str("function map_new() { return new ZyraMap(); }\n");
+        header.push_str("function map_set(m, k, v) { return m.set(k, v); }\n");
+        header.push_str("function map_get(m, k) { return m.get(k); }\n");
+        header.push_str("function map_has(m, k) { return m.has(k); }\n");
+        header.push_str("function map_delete(m, k) { return m.delete(k); }\n");
+        header.push_str("function map_keys(m) { return m.keys(); }\n");
+        header.push_str("function map_values(m) { return m.values(); }\n");
+        header.push_str("function map_len(m) { return m.len(); }\n");
+        header.push_str("function map_clear(m) { m.clear(); }\n");
         header.push_str("function thread_spawn(fn) { try { fn(); } catch {} }\n\n");
         header
     } else {
@@ -3120,6 +3248,15 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("pool.submit(", "pool_submit(")
              .replace("pool.wait_all(", "pool_wait_all(")
              .replace("pool.map(", "pool_map(")
+             .replace("map.new(", "map_new(")
+             .replace("map.set(", "map_set(")
+             .replace("map.get(", "map_get(")
+             .replace("map.has(", "map_has(")
+             .replace("map.delete(", "map_delete(")
+             .replace("map.keys(", "map_keys(")
+             .replace("map.values(", "map_values(")
+             .replace("map.len(", "map_len(")
+             .replace("map.clear(", "map_clear(")
              .replace("chan.new()", "chan_new()")
              .replace("chan.clone(", "chan_clone(")
              .replace("chan.send(", "chan_send(")
@@ -3321,6 +3458,7 @@ fn minify_js(js_code: &str) -> String {
                 "ZyraWorkerPool" => user_code.contains("pool_") || user_code.contains("ZyraWorkerPool"),
                 "ZyraChannel" => user_code.contains("chan_") || user_code.contains("ZyraChannel"),
                 "ZyraKvDb" => user_code.contains("db_") || user_code.contains("ZyraKvDb"),
+                "ZyraMap" => user_code.contains("map_") || user_code.contains("ZyraMap"),
                 other => user_code.contains(other),
             };
             if !is_used {
