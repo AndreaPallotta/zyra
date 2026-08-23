@@ -706,6 +706,8 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("io.write(", "file_write(")
          .replace("io.watch(", "io_watch(")
          .replace("io.has_changed(", "io_has_changed(")
+         .replace("io.walk(", "io_walk(")
+         .replace("io.glob(", "io_glob(")
          .replace("crypto.sha256(", "sha256(")
          .replace("crypto.md5(", "md5(")
          .replace("crypto.base64_encode(", "base64_encode(")
@@ -799,7 +801,7 @@ fn transform_zyra_line(line: &str) -> String {
         "file_write_csv", "http_get", "http_post", "contains",
         "env_var", "env_set", "env_load", "path_exists", "path_ext", "path_basename", "path_dirname",
         "str_split", "str_lower", "str_upper", "process_exec", "io_watch", "io_has_changed",
-        "chan_send", "chan_recv", "chan_try_recv",
+        "chan_send", "chan_recv", "chan_try_recv", "io_walk", "io_glob",
     ];
     for func in &auto_borrow_fns {
         let pat = format!("{}(", func);
@@ -960,9 +962,17 @@ fn transpile_zyra_to_rust_internal(file_path: &str, content: &str, is_root: bool
 fn print<T: std::fmt::Display>(v: T) {
     println!("{}", v);
 }
+trait ZyraLen { fn zyra_len(&self) -> i64; }
+impl ZyraLen for str { fn zyra_len(&self) -> i64 { self.len() as i64 } }
+impl ZyraLen for String { fn zyra_len(&self) -> i64 { self.len() as i64 } }
+impl ZyraLen for &str { fn zyra_len(&self) -> i64 { self.len() as i64 } }
+impl<T> ZyraLen for Vec<T> { fn zyra_len(&self) -> i64 { self.len() as i64 } }
+impl<T> ZyraLen for [T] { fn zyra_len(&self) -> i64 { self.len() as i64 } }
+impl<T, const N: usize> ZyraLen for [T; N] { fn zyra_len(&self) -> i64 { N as i64 } }
+
 #[allow(unused)]
-fn len(s: impl AsRef<str>) -> i64 {
-    s.as_ref().len() as i64
+fn len<T: ZyraLen + ?Sized>(s: &T) -> i64 {
+    s.zyra_len()
 }
 #[allow(unused)]
 fn trim(s: impl AsRef<str>) -> String {
@@ -990,6 +1000,79 @@ fn read_dir(path: impl AsRef<str>) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_else(|_| vec![])
+}
+#[allow(unused)]
+fn io_walk(dir: impl AsRef<str>) -> Vec<String> {
+    fn walk_rec(dir_path: &std::path::Path, results: &mut Vec<String>) {
+        if let Ok(entries) = std::fs::read_dir(dir_path) {
+            for entry in entries.flatten() {
+                let p = entry.path();
+                let p_str = p.display().to_string();
+                if p.is_dir() {
+                    let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                    if !name.starts_with('.') && name != "node_modules" && name != "target" {
+                        walk_rec(&p, results);
+                    }
+                } else {
+                    results.push(p_str);
+                }
+            }
+        }
+    }
+    let mut files = Vec::new();
+    let root = std::path::Path::new(dir.as_ref());
+    walk_rec(root, &mut files);
+    files
+}
+#[allow(unused)]
+fn io_glob(pattern: impl AsRef<str>) -> Vec<String> {
+    fn glob_match(pattern: &str, text: &str) -> bool {
+        let p_norm = pattern.replace('\\', "/");
+        let t_norm = text.replace('\\', "/");
+        let p_parts: Vec<&str> = p_norm.split('/').filter(|s| !s.is_empty()).collect();
+        let t_parts: Vec<&str> = t_norm.split('/').filter(|s| !s.is_empty()).collect();
+
+        fn match_parts(p: &[&str], t: &[&str]) -> bool {
+            if p.is_empty() { return t.is_empty(); }
+            if p[0] == "**" {
+                if p.len() == 1 { return true; }
+                for i in 0..=t.len() {
+                    if match_parts(&p[1..], &t[i..]) { return true; }
+                }
+                return false;
+            }
+            if t.is_empty() { return false; }
+            fn match_comp(pat: &str, s: &str) -> bool {
+                if pat == "*" { return true; }
+                if let Some(idx) = pat.find('*') {
+                    let pre = &pat[..idx];
+                    let suf = &pat[idx + 1..];
+                    s.starts_with(pre) && s.ends_with(suf) && s.len() >= pre.len() + suf.len()
+                } else {
+                    pat == s
+                }
+            }
+            if match_comp(p[0], t[0]) {
+                match_parts(&p[1..], &t[1..])
+            } else {
+                false
+            }
+        }
+        match_parts(&p_parts, &t_parts)
+    }
+
+    let pat = pattern.as_ref();
+    let root_dir = if pat.starts_with("./") || pat.starts_with(".\\") {
+        "."
+    } else if let Some(slash_idx) = pat.find(|c| c == '/' || c == '\\') {
+        let prefix = &pat[..slash_idx];
+        if !prefix.contains('*') && !prefix.contains('?') { prefix } else { "." }
+    } else {
+        "."
+    };
+
+    let all_files = io_walk(root_dir);
+    all_files.into_iter().filter(|f| glob_match(pat, f)).collect()
 }
 #[allow(unused)]
 fn command_exec(cmd: impl AsRef<str>) -> String {
@@ -1930,6 +2013,8 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function process_exec(cmd) { try { return child_process.execSync(cmd, { encoding: 'utf8' }); } catch { return ''; } }\n");
         header.push_str("function io_watch(p) { let last = 0; try { last = fs.statSync(p).mtimeMs; } catch {} return { path: p, last_mod: last }; }\n");
         header.push_str("function io_has_changed(w) { try { const cur = fs.statSync(w.path).mtimeMs; if (cur !== w.last_mod && cur > 0) { w.last_mod = cur; return true; } } catch {} return false; }\n");
+        header.push_str("function io_walk(d) { const res = []; function walk(dir) { try { for (const f of fs.readdirSync(dir, { withFileTypes: true })) { if (f.name.startsWith('.') || f.name === 'node_modules' || f.name === 'target') continue; const fp = path.join(dir, f.name); if (f.isDirectory()) walk(fp); else res.push(fp); } } catch {} } walk(d); return res; }\n");
+        header.push_str("function io_glob(pat) { const norm = String(pat).replace(/\\\\/g, '/'); const regexStr = '^' + norm.replace(/\\./g, '\\\\.').replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*') + '$'; const re = new RegExp(regexStr); return io_walk('.').filter(f => re.test(f.replace(/\\\\/g, '/'))); }\n");
         header.push_str("function net_listen(addr, handler) { const parts = String(addr).split(':'); const port = parseInt(parts[1] || parts[0], 10) || 8080; const server = http.createServer((req, res) => { let body = ''; req.on('data', c => { body += c; }); req.on('end', () => { const response = handler({ method: req.method, path: req.url, body }); res.writeHead(response.status || 200, { 'Content-Type': 'text/plain' }); res.end(response.body || ''); }); }); server.listen(port); return 0; }\n");
         header.push_str("class ZyraChannel { constructor() { this.queue = []; this.waiters = []; } send(val) { if (this.waiters.length > 0) { const resolve = this.waiters.shift(); resolve(String(val)); } else { this.queue.push(String(val)); } return true; } recv() { if (this.queue.length > 0) { return this.queue.shift(); } return ''; } try_recv() { if (this.queue.length > 0) { return this.queue.shift(); } return ''; } }\n");
         header.push_str("function chan_new() { return new ZyraChannel(); }\n");
@@ -2044,6 +2129,8 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("io.write(", "file_write(")
              .replace("io.watch(", "io_watch(")
              .replace("io.has_changed(", "io_has_changed(")
+             .replace("io.walk(", "io_walk(")
+             .replace("io.glob(", "io_glob(")
              .replace("crypto.sha256(", "sha256(")
              .replace("crypto.md5(", "md5(")
              .replace("crypto.base64_encode(", "base64_encode(")

@@ -1,0 +1,28 @@
+// Zyra Directory Walk & Glob Test Suite
+
+def test_walk_and_glob(): Int {
+  const all_files = io.walk("core/tests")
+  print("  io.walk count: {len(all_files)}")
+
+  const zy_files = io.glob("core/tests/*.zy")
+  print("  io.glob *.zy count: {len(zy_files)}")
+
+  if (len(all_files) >= 3 && len(zy_files) >= 3) {
+    print("[PASS] io.walk and io.glob directory traversal verified")
+    return 1
+  }
+  print("[FAIL] Walk/Glob count test failed")
+  return 0
+}
+
+def main(): Int {
+  print("==========================================")
+  print("     Zyra v2.3.0 Walk & Glob Suite        ")
+  print("==========================================")
+
+  const t1 = test_walk_and_glob()
+  print("------------------------------------------")
+  print("Results: {t1}/1 Tests PASSED")
+  print("==========================================")
+  return 0
+}
