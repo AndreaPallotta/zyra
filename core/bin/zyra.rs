@@ -485,7 +485,7 @@ fn handle_debug(file_path: &str) {
         if raw.starts_with(":break ") || raw.starts_with("b ") {
             let line_num: usize = raw.split_whitespace().nth(1).unwrap_or("1").parse().unwrap_or(1);
             breakpoints.insert(line_num);
-            println!("✔ Breakpoint set at line {}", line_num);
+            println!("[OK] Breakpoint set at line {}", line_num);
             continue;
         }
 
@@ -1077,6 +1077,27 @@ impl ZyraLen for &str { fn zyra_len(&self) -> i64 { self.len() as i64 } }
 impl<T> ZyraLen for Vec<T> { fn zyra_len(&self) -> i64 { self.len() as i64 } }
 impl<T> ZyraLen for [T] { fn zyra_len(&self) -> i64 { self.len() as i64 } }
 impl<T, const N: usize> ZyraLen for [T; N] { fn zyra_len(&self) -> i64 { N as i64 } }
+
+trait ZyraExitCode { fn zyra_exit_code(self) -> i32; }
+impl ZyraExitCode for () { fn zyra_exit_code(self) -> i32 { 0 } }
+impl ZyraExitCode for i64 { fn zyra_exit_code(self) -> i32 { self as i32 } }
+impl ZyraExitCode for i32 { fn zyra_exit_code(self) -> i32 { self } }
+impl<T, E: std::fmt::Display> ZyraExitCode for Result<T, E> {
+    fn zyra_exit_code(self) -> i32 {
+        match self {
+            Ok(_) => 0,
+            Err(e) => { eprintln!("Error: {}", e); 1 }
+        }
+    }
+}
+impl<T> ZyraExitCode for Option<T> {
+    fn zyra_exit_code(self) -> i32 {
+        match self {
+            Some(_) => 0,
+            None => 1,
+        }
+    }
+}
 
 #[allow(unused)]
 fn len<T: ZyraLen + ?Sized>(s: &T) -> i64 {
@@ -3258,7 +3279,7 @@ where
 
     if is_root {
         if has_main {
-            rs.push_str("fn main() {\n  let code = _zyra_user_main();\n  if code != 0 { std::process::exit(code as i32); }\n}\n");
+            rs.push_str("fn main() {\n  let code = _zyra_user_main().zyra_exit_code();\n  if code != 0 { std::process::exit(code); }\n}\n");
         } else {
             rs.push_str("fn main() {\n");
             for stmt in top_level_statements {
@@ -3329,14 +3350,39 @@ fn handle_run(file_path: &str) {
         }
     };
 
-    let hash = compute_file_hash(&content);
+    fn compute_composite_hash(path_str: &str, visited: &mut HashSet<String>) -> String {
+        visited.insert(path_str.to_string());
+        let content = fs::read_to_string(path_str).unwrap_or_default();
+        let mut combined = content.clone();
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("import \"") && trimmed.ends_with("\"") {
+                let rel = trimmed.trim_start_matches("import \"").trim_end_matches('"');
+                if let Some(sub) = resolve_module_import_path(path_str, rel) {
+                    let sub_str = sub.to_string_lossy().to_string();
+                    if !visited.contains(&sub_str) {
+                        combined.push_str(&compute_composite_hash(&sub_str, visited));
+                    }
+                }
+            }
+        }
+        compute_file_hash(&combined)
+    }
+
+    let mut visited_paths = HashSet::new();
+    let hash = compute_composite_hash(file_path, &mut visited_paths);
     let cached_exe_name = format!("bin_{}{}", hash, if cfg!(windows) { ".exe" } else { "" });
     let cached_exe = cache_dir.join(&cached_exe_name);
 
     if cached_exe.exists() {
         println!("[CACHE] Using incremental build cache: {}", cached_exe.display());
         println!("\nExecuting native binary...");
-        let _ = Command::new(&cached_exe).status();
+        let run_res = Command::new(&cached_exe).status();
+        if let Ok(exit_code) = run_res {
+            if !exit_code.success() {
+                std::process::exit(exit_code.code().unwrap_or(1));
+            }
+        }
         return;
     }
 
@@ -3360,12 +3406,19 @@ fn handle_run(file_path: &str) {
             let _ = fs::copy(&exe_path, &cached_exe);
             println!("[OK] Compiled native binary: {}", exe_path.display());
             println!("\nExecuting native binary {}...\n", exe_path.display());
-            let _ = Command::new(&exe_path).status();
+            let run_res = Command::new(&exe_path).status();
+            if let Ok(exit_code) = run_res {
+                if !exit_code.success() {
+                    std::process::exit(exit_code.code().unwrap_or(1));
+                }
+            }
         } else {
             format_span_diagnostic(file_path, &content, 0, 0, "Compilation failed", "Verify syntax and function definitions");
+            std::process::exit(1);
         }
     } else {
         format_span_diagnostic(file_path, &content, 0, 0, "Compilation failed", "Verify syntax and function definitions");
+        std::process::exit(1);
     }
 }
 
@@ -3395,7 +3448,7 @@ fn handle_profile(file_path: &str) {
     println!("  1. greet()        51.2% (2,156,000 cycles)");
     println!("  2. fetch_user()   48.8% (2,054,900 cycles)");
     println!("==================================================");
-    println!("✔ Generated Flamegraph SVG visualization: {}", flame_path.display());
+    println!("[OK] Generated Flamegraph SVG visualization: {}", flame_path.display());
 }
 
 fn transpile_zyra_to_js(file_path: &str, content: &str) -> String {
@@ -4000,8 +4053,13 @@ fn handle_build(file_path: &str, is_js: bool, is_wasm: bool, is_workspace: bool,
         let content = fs::read_to_string(file_path).unwrap_or_default();
         let rs_code = transpile_zyra_to_rust(file_path, &content);
         let _ = fs::write(&rs_path, rs_code);
-        let _ = Command::new("rustc").arg(&rs_path).arg("-o").arg(&exe_path).status();
-        println!("[OK] Compiled native executable binary: {}", exe_path.display());
+        let status = Command::new("rustc").arg(&rs_path).arg("-o").arg(&exe_path).status();
+        if status.map(|s| s.success()).unwrap_or(false) {
+            println!("[OK] Compiled native executable binary: {}", exe_path.display());
+        } else {
+            eprintln!("[ERROR] Native compilation failed for '{}'", file_path);
+            std::process::exit(1);
+        }
     }
 }
 
@@ -4036,7 +4094,7 @@ fn get_completion_candidates(top_decls: &[String], stmts: &[String]) -> Vec<Stri
 
 fn handle_repl() {
     println!("==================================================");
-    println!("    \x1b[1;36mZyra Interactive Shell (REPL) v2.2.0\x1b[0m  ");
+    println!("    \x1b[1;36mZyra Interactive Shell (REPL) v{}\x1b[0m  ", VERSION);
     println!("    Type \x1b[1;33m:help\x1b[0m for REPL inspection commands      ");
     println!("    Press \x1b[1;32mTAB\x1b[0m for symbol autocomplete          ");
     println!("    Type \x1b[1;31mexit\x1b[0m or \x1b[1;31mquit\x1b[0m to exit              ");
@@ -4452,14 +4510,27 @@ fn main() {
             handle_watch(file);
         }
         "build" => {
-            let file = if args.len() > 2 && !args[2].starts_with("--") && args[2] != "js" && args[2] != "wasm" && args[2] != "wasm32" { &args[2] } else { "src/main.zy" };
-            let is_js = args.iter().any(|a| a == "js" || a == "--target=js" || a == "--js");
-            let is_wasm = args.iter().any(|a| a == "wasm" || a == "wasm32" || a == "--target=wasm32");
+            let mut file = "src/main.zy";
+            for (idx, arg) in args.iter().enumerate().skip(2) {
+                if !arg.starts_with('-') && arg != "js" && arg != "wasm" && arg != "wasm32" && arg != "rust" && arg != "python" && arg != "node" {
+                    if idx > 2 && (args[idx - 1] == "--target" || args[idx - 1] == "--binding" || args[idx - 1] == "--arch" || args[idx - 1] == "--gc") {
+                        continue;
+                    }
+                    file = arg;
+                    break;
+                }
+            }
+            let is_js = args.iter().any(|a| a == "js" || a == "--target=js" || a == "--js")
+                || args.windows(2).any(|w| w[0] == "--target" && w[1] == "js");
+            let is_wasm = args.iter().any(|a| a == "wasm" || a == "wasm32" || a == "--target=wasm32" || a == "--target=wasm")
+                || args.windows(2).any(|w| w[0] == "--target" && (w[1] == "wasm" || w[1] == "wasm32"));
             let is_workspace = args.iter().any(|a| a == "--workspace");
             let is_minify = args.iter().any(|a| a == "--minify" || a == "-m");
-            let binding = if args.iter().any(|a| a == "python" || a == "--binding=python") {
+            let binding = if args.iter().any(|a| a == "python" || a == "--binding=python")
+                || args.windows(2).any(|w| w[0] == "--binding" && w[1] == "python") {
                 Some("python")
-            } else if args.iter().any(|a| a == "node" || a == "--binding=node") {
+            } else if args.iter().any(|a| a == "node" || a == "--binding=node")
+                || args.windows(2).any(|w| w[0] == "--binding" && w[1] == "node") {
                 Some("node")
             } else {
                 None
