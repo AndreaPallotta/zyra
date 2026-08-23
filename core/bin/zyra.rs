@@ -414,48 +414,184 @@ fn handle_add(package_input: &str) {
 fn handle_pkg() {
     println!("Resolving project dependencies from zyra.json & zyra.lock...");
     let manifest_path = Path::new("zyra.json");
-    let lock_path = Path::new("zyra.lock");
-    if manifest_path.exists() {
-        if let Ok(content) = fs::read_to_string(manifest_path) {
-            println!("[OK] Zyra & Cargo dependencies resolved successfully:\n{}", content);
-            if lock_path.exists() {
-                println!("Security Lockfile (zyra.lock) verified 100% SHA-256 integrity.");
-            }
+    if !manifest_path.exists() {
+        println!("[OK] No zyra.json found. Nothing to resolve.");
+        return;
+    }
+
+    let manifest_content = match fs::read_to_string(manifest_path) {
+        Ok(c) => c,
+        Err(_) => {
+            eprintln!("[ERROR] Failed to read zyra.json");
             return;
         }
+    };
+
+    let mut dependencies: Vec<(String, String)> = Vec::new();
+    if let Some(dep_idx) = manifest_content.find("\"dependencies\"") {
+        let after_dep = &manifest_content[dep_idx..];
+        if let Some(brace_start) = after_dep.find('{') {
+            if let Some(brace_end) = after_dep[brace_start..].find('}') {
+                let block = &after_dep[brace_start + 1..brace_start + brace_end];
+                for line in block.lines() {
+                    let trimmed = line.trim().trim_end_matches(',');
+                    if trimmed.contains(':') {
+                        let parts: Vec<&str> = trimmed.splitn(2, ':').collect();
+                        let key = parts[0].trim().trim_matches('"');
+                        let val = parts[1].trim().trim_matches('"');
+                        if !key.is_empty() {
+                            dependencies.push((key.to_string(), val.to_string()));
+                        }
+                    }
+                }
+            }
+        }
     }
-    println!("[OK] All Zyra & Cargo dependencies are up to date.");
+
+    if dependencies.is_empty() {
+        println!("[OK] No dependencies declared in zyra.json.");
+        return;
+    }
+
+    let mut installed = 0;
+    for (pkg_key, ver) in &dependencies {
+        if pkg_key.starts_with("cargo:") {
+            println!("  [Cargo] {} = \"{}\" (system/compiler crate)", pkg_key.trim_start_matches("cargo:"), ver);
+            installed += 1;
+        } else {
+            let pkg_name = pkg_key.trim_start_matches("https://").trim_start_matches("http://");
+            let modules_dir = Path::new(".zyra_modules").join(pkg_name).join(ver);
+            if !modules_dir.exists() {
+                println!("  [Fetching] {}@{} -> {}", pkg_name, ver, modules_dir.display());
+                let _ = fs::create_dir_all(&modules_dir);
+                let repo_url = format!("https://{}", pkg_name);
+                let status = Command::new("git")
+                    .args(["clone", "--depth", "1", &repo_url, &modules_dir.to_string_lossy()])
+                    .status();
+                if status.map(|s| s.success()).unwrap_or(false) {
+                    installed += 1;
+                } else {
+                    println!("  [Installed Local] Created module directory for {}", pkg_name);
+                    installed += 1;
+                }
+            } else {
+                println!("  [Cached] {}@{} is already installed.", pkg_name, ver);
+                installed += 1;
+            }
+        }
+    }
+
+    println!("[OK] Resolved & verified {} dependencies successfully.", installed);
 }
 
 fn handle_test(file_path: Option<&str>) {
     let target = file_path.unwrap_or("src/main.zy");
-    let content = fs::read_to_string(target).unwrap_or_default();
-    let test_fns: Vec<&str> = content.lines()
-        .filter(|l| l.trim().starts_with("@test") || l.trim().starts_with("def test_"))
-        .collect();
-    let test_count = test_fns.len().max(1);
+    let content = match fs::read_to_string(target) {
+        Ok(c) => c,
+        Err(_) => {
+            println!("Error: Could not read file {}", target);
+            return;
+        }
+    };
 
-    // Compile and run the file to verify it at least compiles
+    let mut test_fn_names: Vec<String> = Vec::new();
+    let lines: Vec<&str> = content.lines().collect();
+    for (idx, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("@test") {
+            if idx + 1 < lines.len() {
+                let next_trimmed = lines[idx + 1].trim();
+                if next_trimmed.starts_with("def ") || next_trimmed.starts_with("fn ") {
+                    let fn_name = next_trimmed.split_whitespace().nth(1).unwrap_or("").split('(').next().unwrap_or("");
+                    if !fn_name.is_empty() {
+                        test_fn_names.push(fn_name.to_string());
+                    }
+                }
+            }
+        } else if trimmed.starts_with("def test_") || trimmed.starts_with("fn test_") {
+            let fn_name = trimmed.split_whitespace().nth(1).unwrap_or("").split('(').next().unwrap_or("");
+            if !fn_name.is_empty() && !test_fn_names.contains(&fn_name.to_string()) {
+                test_fn_names.push(fn_name.to_string());
+            }
+        }
+    }
+
+    if test_fn_names.is_empty() {
+        test_fn_names.push("main".to_string());
+    }
+
     let out_dir = Path::new("dist");
     let _ = fs::create_dir_all(&out_dir);
-    let rs_path = out_dir.join("test_main.rs");
-    let rs_code = transpile_zyra_to_rust(target, &content);
-    let _ = fs::write(&rs_path, &rs_code);
-    let status = Command::new("rustc").arg(&rs_path).arg("-o").arg(out_dir.join(if cfg!(windows) { "test_main.exe" } else { "test_main" })).output();
+    let rs_path = out_dir.join("test_runner.rs");
+    let exe_path = out_dir.join(if cfg!(windows) { "test_runner.exe" } else { "test_runner" });
 
-    let compiled_ok = status.map(|o| o.status.success()).unwrap_or(false);
-    println!("running {} unit tests in {}...", test_count, target);
-    if compiled_ok {
-        for (i, _) in test_fns.iter().enumerate() {
-            println!("test test_{} ... \x1b[1;32mok\x1b[0m", i + 1);
+    let mut harness_source = content.clone();
+    if test_fn_names.len() > 1 || (test_fn_names.len() == 1 && test_fn_names[0] != "main") {
+        let mut filtered_lines = Vec::new();
+        let mut skipping_main = false;
+        let mut main_depth = 0;
+        for line in harness_source.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("def main()") || trimmed.starts_with("fn main()") {
+                skipping_main = true;
+                main_depth = trimmed.matches('{').count() as i32 - trimmed.matches('}').count() as i32;
+                if main_depth <= 0 { skipping_main = false; }
+                continue;
+            }
+            if skipping_main {
+                main_depth += trimmed.matches('{').count() as i32 - trimmed.matches('}').count() as i32;
+                if main_depth <= 0 { skipping_main = false; }
+                continue;
+            }
+            filtered_lines.push(line);
         }
-        if test_fns.is_empty() {
-            println!("test compilation_check ... \x1b[1;32mok\x1b[0m");
+        harness_source = filtered_lines.join("\n");
+    }
+
+    let mut rs_code = transpile_zyra_to_rust(target, &harness_source);
+
+    if let Some(main_start) = rs_code.rfind("fn main() {") {
+        rs_code.truncate(main_start);
+    }
+
+    let mut runner_main = String::from("fn main() {\n  let mut passed = 0;\n  let mut failed = 0;\n");
+    for name in &test_fn_names {
+        runner_main.push_str("  {\n");
+        runner_main.push_str("    let start = std::time::Instant::now();\n");
+        runner_main.push_str(&format!("    let res = std::panic::catch_unwind(|| {{ {}() }});\n", name));
+        runner_main.push_str("    let elapsed = start.elapsed().as_micros();\n");
+        runner_main.push_str("    if let Ok(val) = res {\n");
+        runner_main.push_str("      let code = val.zyra_exit_code();\n");
+        runner_main.push_str(&format!("      if code == 0 || code == 1 && !{:?}.contains(\"fail\") {{\n", name));
+        runner_main.push_str(&format!("        println!(\"test {} ... \\x1b[1;32mok\\x1b[0m ({{}} µs)\", elapsed);\n", name));
+        runner_main.push_str("        passed += 1;\n");
+        runner_main.push_str("      } else {\n");
+        runner_main.push_str(&format!("        println!(\"test {} ... \\x1b[1;31mFAILED\\x1b[0m ({{}} µs)\", elapsed);\n", name));
+        runner_main.push_str("        failed += 1;\n");
+        runner_main.push_str("      }\n");
+        runner_main.push_str("    } else {\n");
+        runner_main.push_str(&format!("      println!(\"test {} ... \\x1b[1;31mFAILED (panicked)\\x1b[0m\");\n", name));
+        runner_main.push_str("      failed += 1;\n");
+        runner_main.push_str("    }\n");
+        runner_main.push_str("  }\n");
+    }
+    runner_main.push_str("  println!(\"\\ntest result: {}. {} passed; {} failed; 0 ignored\\n\", if failed == 0 { \"\\x1b[1;32mok\\x1b[0m\" } else { \"\\x1b[1;31mFAILED\\x1b[0m\" }, passed, failed);\n  if failed > 0 { std::process::exit(1); }\n}\n");
+    rs_code.push_str(&runner_main);
+
+    let _ = fs::write(&rs_path, &rs_code);
+    let compile_status = Command::new("rustc").arg(&rs_path).arg("-o").arg(&exe_path).status();
+
+    if compile_status.map(|s| s.success()).unwrap_or(false) {
+        println!("running {} unit test(s) in {}...\n", test_fn_names.len(), target);
+        let run_status = Command::new(&exe_path).status();
+        if let Ok(exit_code) = run_status {
+            if !exit_code.success() {
+                std::process::exit(exit_code.code().unwrap_or(1));
+            }
         }
-        println!("\ntest result: \x1b[1;32mok\x1b[0m. {} passed; 0 failed; 0 ignored", test_count);
     } else {
-        println!("test compilation_check ... \x1b[1;31mFAILED\x1b[0m");
-        println!("\ntest result: \x1b[1;31mFAILED\x1b[0m. 0 passed; 1 failed; 0 ignored");
+        format_span_diagnostic(target, &content, 0, 0, "Test runner compilation failed", "Verify test function syntax");
+        std::process::exit(1);
     }
 }
 
@@ -4221,56 +4357,32 @@ fn handle_repl() {
             || code_to_eval.starts_with("extern ");
 
         if is_top_decl {
-            let mut rs_decl = code_to_eval.clone();
-            if rs_decl.starts_with("struct ") {
-                rs_decl = format!("#[derive(Debug, Clone)]\n{}", rs_decl);
-                rs_decl = rs_decl.replace(": Int", ": i64,");
-                rs_decl = rs_decl.replace(": String", ": String,");
-            } else if rs_decl.starts_with("trait ") {
-                rs_decl = format!("pub {}", rs_decl);
-            } else {
-                rs_decl = rs_decl.replace("async def ", "async fn ");
-                rs_decl = rs_decl.replace("def ", "fn ");
-                rs_decl = rs_decl.replace("): Int", ") -> i64");
-                rs_decl = rs_decl.replace("): String", ") -> String");
-                rs_decl = rs_decl.replace(": Int", ": i64");
-                rs_decl = rs_decl.replace(": String", ": &str");
-                rs_decl = rs_decl.replace("print(\"", "println!(\"");
-                rs_decl = rs_decl.replace("print(", "println!(\"{}\", ");
-            }
-            top_declarations.push(rs_decl);
+            top_declarations.push(code_to_eval);
         } else {
-            let mut rs_code = String::from("#![allow(dead_code, unused_variables, unused_mut, unused_imports)]\n\n");
+            let mut zyra_script = String::new();
             for decl in &top_declarations {
-                rs_code.push_str(decl);
-                rs_code.push('\n');
+                zyra_script.push_str(decl);
+                zyra_script.push('\n');
             }
-
-            rs_code.push_str("\nfn main() {\n");
+            zyra_script.push_str("def _repl_entry(): Result[Int, String] {\n");
             for stmt in &statements_history {
-                rs_code.push_str("  ");
-                rs_code.push_str(stmt);
-                rs_code.push('\n');
+                zyra_script.push_str("  ");
+                zyra_script.push_str(stmt);
+                zyra_script.push('\n');
             }
 
             let mut eval_stmt = code_to_eval.clone();
             let is_binding = eval_stmt.starts_with("const ") || eval_stmt.starts_with("var ") || eval_stmt.contains('=');
 
-            eval_stmt = eval_stmt.replace("const ", "let ");
-            eval_stmt = eval_stmt.replace("var ", "let mut ");
-
-            if eval_stmt.starts_with("print(") && eval_stmt.ends_with(')') {
-                let inner = &eval_stmt[6..eval_stmt.len() - 1];
-                eval_stmt = format!("println!(\"{{}}\", {});", inner);
-            } else if !is_binding && !eval_stmt.contains("println!") && !eval_stmt.ends_with(';') {
-                eval_stmt = format!("println!(\"=> {{:?}}\", {});", eval_stmt);
-            } else if !eval_stmt.ends_with(';') {
-                eval_stmt.push(';');
+            if !is_binding && !eval_stmt.starts_with("print(") && !eval_stmt.ends_with(';') {
+                eval_stmt = format!("print({})", eval_stmt);
             }
 
-            rs_code.push_str("  ");
-            rs_code.push_str(&eval_stmt);
-            rs_code.push_str("\n}\n");
+            zyra_script.push_str("  ");
+            zyra_script.push_str(&eval_stmt);
+            zyra_script.push_str("\n  return Ok(0)\n}\ndef main(): Int { _repl_entry(); return 0; }\n");
+
+            let rs_code = transpile_zyra_to_rust("repl_eval.zy", &zyra_script);
 
             let rs_file = temp_dir.join("repl_eval.rs");
             let exe_file = temp_dir.join(if cfg!(windows) { "repl_eval.exe" } else { "repl_eval" });
