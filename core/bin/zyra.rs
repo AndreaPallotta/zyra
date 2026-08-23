@@ -44,6 +44,7 @@ fn print_help() {
     println!("  --workspace               Build all monorepo workspace member packages");
     println!("  --arch <target-arch>      Cross-compilation target architecture");
     println!("  --native                  Compile native executable binary via rustc");
+    println!("  --minify                  Minify and compress JavaScript ESM output bundle");
     println!("==================================================");
 }
 
@@ -3275,7 +3276,94 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
     js
 }
 
-fn handle_build(file_path: &str, is_js: bool, is_wasm: bool, is_workspace: bool, binding: Option<&str>) {
+fn minify_js(js_code: &str) -> String {
+    let mut minified = String::new();
+    let lines: Vec<&str> = js_code.lines().collect();
+
+    let mut preamble_lines = Vec::new();
+    let mut user_lines = Vec::new();
+    let mut past_preamble = false;
+
+    for line in lines {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with("//") {
+            continue;
+        }
+        if trimmed.starts_with("export function ") || trimmed.starts_with("function main()") || (trimmed.starts_with("export const ") && !trimmed.contains("Zyra")) {
+            past_preamble = true;
+        }
+        if !past_preamble {
+            preamble_lines.push(trimmed);
+        } else {
+            user_lines.push(trimmed);
+        }
+    }
+
+    let user_code = user_lines.join("\n");
+
+    for line in preamble_lines {
+        if line.starts_with("import ") {
+            minified.push_str(line);
+            minified.push('\n');
+            continue;
+        }
+
+        if let Some(fn_name) = line.strip_prefix("function ") {
+            if let Some(paren_idx) = fn_name.find('(') {
+                let name = &fn_name[..paren_idx];
+                if name != "print" && !user_code.contains(name) {
+                    continue;
+                }
+            }
+        } else if line.starts_with("class ") {
+            let class_name = line.split_whitespace().nth(1).unwrap_or("");
+            let is_used = match class_name {
+                "ZyraWorkerPool" => user_code.contains("pool_") || user_code.contains("ZyraWorkerPool"),
+                "ZyraChannel" => user_code.contains("chan_") || user_code.contains("ZyraChannel"),
+                "ZyraKvDb" => user_code.contains("db_") || user_code.contains("ZyraKvDb"),
+                other => user_code.contains(other),
+            };
+            if !is_used {
+                continue;
+            }
+        }
+
+        minified.push_str(line);
+        minified.push('\n');
+    }
+
+    for line in user_lines {
+        let mut clean_line = String::new();
+        let mut in_str: Option<char> = None;
+        let mut chars = line.chars().peekable();
+
+        while let Some(c) = chars.next() {
+            if let Some(quote) = in_str {
+                clean_line.push(c);
+                if c == quote && chars.peek() != Some(&'\\') {
+                    in_str = None;
+                }
+            } else if c == '"' || c == '\'' || c == '`' {
+                in_str = Some(c);
+                clean_line.push(c);
+            } else if c == '/' && chars.peek() == Some(&'/') {
+                break;
+            } else {
+                clean_line.push(c);
+            }
+        }
+
+        let clean_trimmed = clean_line.trim();
+        if !clean_trimmed.is_empty() {
+            minified.push_str(clean_trimmed);
+            minified.push('\n');
+        }
+    }
+
+    minified
+}
+
+fn handle_build(file_path: &str, is_js: bool, is_wasm: bool, is_workspace: bool, is_minify: bool, binding: Option<&str>) {
     let out_dir = Path::new("dist");
     let _ = fs::create_dir_all(&out_dir);
 
@@ -3307,11 +3395,21 @@ fn handle_build(file_path: &str, is_js: bool, is_wasm: bool, is_workspace: bool,
         let _ = fs::write(&wasm_path, wasm_bytes);
         println!("[OK] Compiled WebAssembly binary module (wasm32): {}", wasm_path.display());
     } else if is_js {
-        let js_path = out_dir.join("main.mjs");
+        let js_path = out_dir.join(if is_minify { "main.min.mjs" } else { "main.mjs" });
         let content = fs::read_to_string(file_path).unwrap_or_default();
-        let js_code = transpile_zyra_to_js(file_path, &content);
-        let _ = fs::write(&js_path, js_code);
-        println!("[OK] Compiled JavaScript ESM module: {}", js_path.display());
+        let mut js_code = transpile_zyra_to_js(file_path, &content);
+        let raw_len = js_code.len();
+        if is_minify {
+            js_code = minify_js(&js_code);
+            let min_len = js_code.len();
+            let reduction = if raw_len > 0 { ((raw_len.saturating_sub(min_len)) as f64 / raw_len as f64) * 100.0 } else { 0.0 };
+            let _ = fs::write(&js_path, js_code);
+            println!("[OK] Compiled & Minified JavaScript ESM bundle: {}", js_path.display());
+            println!("     Size reduction: {} bytes -> {} bytes ({:.1}% savings)", raw_len, min_len, reduction);
+        } else {
+            let _ = fs::write(&js_path, js_code);
+            println!("[OK] Compiled JavaScript ESM module: {}", js_path.display());
+        }
     } else {
         let exe_name = if cfg!(windows) { "main.exe" } else { "main" };
         let exe_path = out_dir.join(exe_name);
@@ -3771,10 +3869,11 @@ fn main() {
             handle_watch(file);
         }
         "build" => {
-            let file = if args.len() > 2 { &args[2] } else { "src/main.zy" };
-            let is_js = args.iter().any(|a| a == "js");
-            let is_wasm = args.iter().any(|a| a == "wasm" || a == "wasm32");
+            let file = if args.len() > 2 && !args[2].starts_with("--") && args[2] != "js" && args[2] != "wasm" && args[2] != "wasm32" { &args[2] } else { "src/main.zy" };
+            let is_js = args.iter().any(|a| a == "js" || a == "--target=js" || a == "--js");
+            let is_wasm = args.iter().any(|a| a == "wasm" || a == "wasm32" || a == "--target=wasm32");
             let is_workspace = args.iter().any(|a| a == "--workspace");
+            let is_minify = args.iter().any(|a| a == "--minify" || a == "-m");
             let binding = if args.iter().any(|a| a == "python" || a == "--binding=python") {
                 Some("python")
             } else if args.iter().any(|a| a == "node" || a == "--binding=node") {
@@ -3782,7 +3881,7 @@ fn main() {
             } else {
                 None
             };
-            handle_build(file, is_js, is_wasm, is_workspace, binding);
+            handle_build(file, is_js, is_wasm, is_workspace, is_minify, binding);
         }
         "profile" => {
             let file = if args.len() > 2 { &args[2] } else { "src/main.zy" };
