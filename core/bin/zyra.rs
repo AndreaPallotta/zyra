@@ -4071,6 +4071,45 @@ fn minify_js(js_code: &str) -> String {
 
     let user_code = user_lines.join("\n");
 
+    let mut needed_symbols: HashSet<String> = HashSet::new();
+    needed_symbols.insert("print".to_string());
+
+    for line in &preamble_lines {
+        if let Some(fn_name) = line.strip_prefix("function ") {
+            if let Some(paren_idx) = fn_name.find('(') {
+                let name = &fn_name[..paren_idx];
+                if user_code.contains(name) {
+                    needed_symbols.insert(name.to_string());
+                }
+            }
+        }
+    }
+
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for line in &preamble_lines {
+            if let Some(fn_name) = line.strip_prefix("function ") {
+                if let Some(paren_idx) = fn_name.find('(') {
+                    let name = &fn_name[..paren_idx];
+                    if needed_symbols.contains(name) {
+                        for other_line in &preamble_lines {
+                            if let Some(other_fn) = other_line.strip_prefix("function ") {
+                                if let Some(other_paren) = other_fn.find('(') {
+                                    let other_name = &other_fn[..other_paren];
+                                    if !needed_symbols.contains(other_name) && line.contains(other_name) {
+                                        needed_symbols.insert(other_name.to_string());
+                                        changed = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     for line in preamble_lines {
         if line.starts_with("import ") {
             minified.push_str(line);
@@ -4081,7 +4120,7 @@ fn minify_js(js_code: &str) -> String {
         if let Some(fn_name) = line.strip_prefix("function ") {
             if let Some(paren_idx) = fn_name.find('(') {
                 let name = &fn_name[..paren_idx];
-                if name != "print" && !user_code.contains(name) {
+                if !needed_symbols.contains(name) {
                     continue;
                 }
             }
