@@ -8,9 +8,32 @@ Official release notes, version history, and commit logs for the Zyra Programmin
 
 | Version | Release Date | Target | Key Highlights | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **v2.2.0** | 2026-08-16 | Native, JS ESM | Zero-import dot-notation namespacing, structured `zyra.env` parser, non-callback file watcher, expanded standard library | **Current Stable** |
+| **v2.3.0** | 2026-08-23 | Native, JS ESM | Concurrency & channels (`chan`/`spawn`), directory globbing (`io.walk`/`io.glob`), embedded KV database (`db.*`), self-updater (`zyra update`), rich diagnostics | **Current Stable** |
+| **v2.2.0** | 2026-08-16 | Native, JS ESM | Zero-import dot-notation namespacing, structured `zyra.env` parser, non-callback file watcher, expanded standard library | Supported |
 | **v2.1.1** | 2026-08-16 | Native, JS ESM | Multi-format I/O (`io`), native HTTP web primitives (`net`), platform crypto, system info, 28 compiler bug fixes | Supported |
 | **v2.1.0** | 2026-08-09 | Native, JS ESM | Multi-module struct return types, JS parameter type stripping, VS Code extension enhancements | Supported |
+
+---
+
+## Version 2.3.0 (2026-08-23)
+
+### Key Features and Commits
+- [`74fc7e0`](https://github.com/AndreaPallotta/zyra/commit/74fc7e0): **Lightweight Concurrency & Channels (`chan` and `spawn`)**
+  - Native thread-safe channel primitives: `chan.new()`, `chan.clone()`, `chan.send()`, `chan.recv()`, `chan.try_recv()`.
+  - Worker thread spawning via `spawn(|| { ... })` and `spawn(move || { ... })`.
+- [`245729b`](https://github.com/AndreaPallotta/zyra/commit/245729b): **Recursive Directory Walking & Wildcard Globbing (`io.walk`, `io.glob`)**
+  - High-performance recursive directory walker and wildcard glob matcher supporting `*` and `**` patterns.
+- [`7872899`](https://github.com/AndreaPallotta/zyra/commit/7872899): **Embedded Zero-Dependency Key-Value Database (`db.*`)**
+  - Thread-safe disk-backed persistence engine: `db.open`, `db.set`, `db.get`, `db.has`, `db.delete`, and `db.keys`.
+- [`292d426`](https://github.com/AndreaPallotta/zyra/commit/292d426): **In-Place Self-Updating CLI (`zyra update`)**
+  - Automated release checking and in-place executable upgrading via `zyra update` and `zyra update --check`.
+- [`3178d1b`](https://github.com/AndreaPallotta/zyra/commit/3178d1b): **Rich Compiler Diagnostics Engine**
+  - Multi-line context rendering, column underline spans (`^^^^^`), and actionable auto-fix suggestions.
+
+### Low Priority (Tooling and IDE Extensions)
+- **JS ESM Bundle Minification**: Integrate tree-shaking and module size minification during `zyra build file.zy js`.
+- **VS Code Debugger Protocol (DAP)**: Implement Debug Adapter Protocol endpoints in VS Code extension for breakpoint debugging.
+- **macOS Apple Silicon Installer**: Add standalone curl installer script for macOS ARM64 platform binaries.
 
 ---
 

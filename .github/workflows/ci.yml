@@ -18,22 +18,49 @@ on:
       - 'README.md'
       - '**.md'
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test-and-build:
     name: Build & Verify Native Compiler & Packaging
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: windows-latest
+    timeout-minutes: 25
 
     steps:
       - name: Checkout repository
+        if: success()
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: success()
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Setup Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
+        if: success()
+        uses: dtolnay/rust-toolchain@7b1c307e0dcbda6122208f10795a713336a9b35a # stable
+        with:
+          toolchain: stable
+
+      - name: Cache Build Artifacts
+        if: success()
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            core/target/
+          key: ${{ runner.os }}-zyra-cargo-${{ hashFiles('core/Cargo.lock') }}
 
       - name: Build Release Installers & Packaging Pipeline
+        if: success()
         run: node packaging/build-packages.js

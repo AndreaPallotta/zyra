@@ -2,6 +2,24 @@
 
 All notable changes to the **Zyra Programming Language & Toolchain** will be documented in this file.
 
+## [v2.3.0] - 2026-08-23
+
+- [`74fc7e0`](https://github.com/AndreaPallotta/zyra/commit/74fc7e0): **Lightweight Concurrency & Channels (`chan` and `spawn`)**
+  - Added native channel-based concurrency primitives: `chan.new()`, `chan.clone()`, `chan.send(c, val)`, `chan.recv(c)`, and `chan.try_recv(c)`.
+  - Added thread execution worker dispatch: `spawn(|| { ... })` and `spawn(move || { ... })`.
+  - Added full cross-target support across Native Rust (`std::sync::mpsc`, `Arc<Mutex<...>>`, `std::thread`) and JS ESM (`ZyraChannel` promise queue).
+- [`245729b`](https://github.com/AndreaPallotta/zyra/commit/245729b): **Recursive Directory Walking & Wildcard Globbing (`io.walk`, `io.glob`)**
+  - Added recursive filesystem traversal `io.walk(dir)` skipping dotfiles/node_modules/target.
+  - Added wildcard globbing `io.glob(pattern)` with support for `*` and `**` recursive patterns.
+  - Upgraded `len()` to polymorphically support strings, slices, arrays, and vectors (`Vec<T>`).
+- [`7872899`](https://github.com/AndreaPallotta/zyra/commit/7872899): **Embedded Zero-Dependency Key-Value Database (`db.*`)**
+  - Added disk-backed thread-safe embedded key-value storage engine: `db.open(path)`, `db.set(handle, k, v)`, `db.get(handle, k)`, `db.has(handle, k)`, `db.delete(handle, k)`, and `db.keys(handle)`.
+  - Atomic thread-safe memory caching with synchronized persistent disk flushes across Native Rust and JS ESM.
+- [`292d426`](https://github.com/AndreaPallotta/zyra/commit/292d426): **In-Place Self-Updating CLI (`zyra update`)**
+  - Added `zyra update` and `zyra update --check` commands to query GitHub releases, verify platform binaries, and replace the executable in-place.
+- [`3178d1b`](https://github.com/AndreaPallotta/zyra/commit/3178d1b): **Rich Compiler Diagnostics & Code Snippet Highlighting**
+  - Upgraded compiler error diagnostics with multi-line context, styled gutter line numbers, exact token underline spans (`^^^^^`), and actionable `help: ...` suggestions.
+
 ---
 
 ## [v2.2.0] - 2026-08-16
