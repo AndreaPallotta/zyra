@@ -8,7 +8,7 @@ Official release notes, version history, and commit logs for the Zyra Programmin
 
 | Version | Release Date | Target | Key Highlights | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **v2.3.0** | 2026-08-23 | Native, JS ESM | Concurrency & channels (`chan`/`spawn`), directory globbing (`io.walk`/`io.glob`), embedded KV database (`db.*`), self-updater (`zyra update`), rich diagnostics | **Current Stable** |
+| **v2.3.0** | 2026-08-23 | Native, JS ESM | Concurrency & channels (`chan`/`spawn`), directory globbing (`io.walk`/`io.glob`), embedded KV database (`db.*`), JSON AST engine (`json.*`), regex (`regex.*`), worker pool (`pool.*`), manifest scripts (`zyra start`), JS minifier | **Current Stable** |
 | **v2.2.0** | 2026-08-16 | Native, JS ESM | Zero-import dot-notation namespacing, structured `zyra.env` parser, non-callback file watcher, expanded standard library | Supported |
 | **v2.1.1** | 2026-08-16 | Native, JS ESM | Multi-format I/O (`io`), native HTTP web primitives (`net`), platform crypto, system info, 28 compiler bug fixes | Supported |
 | **v2.1.0** | 2026-08-09 | Native, JS ESM | Multi-module struct return types, JS parameter type stripping, VS Code extension enhancements | Supported |
@@ -29,9 +29,18 @@ Official release notes, version history, and commit logs for the Zyra Programmin
   - Automated release checking and in-place executable upgrading via `zyra update` and `zyra update --check`.
 - [`3178d1b`](https://github.com/AndreaPallotta/zyra/commit/3178d1b): **Rich Compiler Diagnostics Engine**
   - Multi-line context rendering, column underline spans (`^^^^^`), and actionable auto-fix suggestions.
+- [`bb17b5d`](https://github.com/AndreaPallotta/zyra/commit/bb17b5d): **Dynamic JSON AST Engine & Serializer (`json.*`)**
+  - Zero-dependency recursive descent JSON parser supporting dynamic ASTs, querying, mutation, file reading, and pretty printing: `json.parse(str|dict)`, `json.read(path)`, `json.get(val, path)`, `json.set(val, path, new_val)`, `json.has(val, key)`, `json.keys(val)`, `json.stringify(val)`, `json.pretty(val)`.
+- [`a4ce6c6`](https://github.com/AndreaPallotta/zyra/commit/a4ce6c6): **Regular Expressions Engine (`regex.*`)**
+  - Zero-import regex engine supporting matching, token extraction, global replacement, and pattern splitting: `regex.is_match(pat, text)`, `regex.find(pat, text)`, `regex.find_all(pat, text)`, `regex.replace(pat, text, repl)`, `regex.split(pat, text)`.
+- [`92744d7`](https://github.com/AndreaPallotta/zyra/commit/92744d7): **High-Level Task & Worker Pool (`pool.*`)**
+  - Thread worker pool concurrency abstraction on top of channels and threads: `pool.new(workers)`, `pool.submit(p, task_fn)`, `pool.map(p, items, mapper_fn)`, `pool.wait_all(p)`.
+- [`2d29ef2`](https://github.com/AndreaPallotta/zyra/commit/2d29ef2): **Manifest Script Runner (`zyra run <script>`, `zyra start`)**
+  - Added manifest-driven lifecycle script execution from `zyra.json` `"scripts"` section and `zyra start` command.
+- [`3d70d36`](https://github.com/AndreaPallotta/zyra/commit/3d70d36): **Tree-Shaking JS ESM Bundle Minifier (`zyra build --minify`)**
+  - Dead-preamble elimination and comment/whitespace stripping during JS ESM builds delivering 60-85% file size reductions.
 
-### Low Priority (Tooling and IDE Extensions)
-- **JS ESM Bundle Minification**: Integrate tree-shaking and module size minification during `zyra build file.zy js`.
+### Future Roadmap
 - **VS Code Debugger Protocol (DAP)**: Implement Debug Adapter Protocol endpoints in VS Code extension for breakpoint debugging.
 - **macOS Apple Silicon Installer**: Add standalone curl installer script for macOS ARM64 platform binaries.
 

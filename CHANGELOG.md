@@ -16,9 +16,19 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
   - Added disk-backed thread-safe embedded key-value storage engine: `db.open(path)`, `db.set(handle, k, v)`, `db.get(handle, k)`, `db.has(handle, k)`, `db.delete(handle, k)`, and `db.keys(handle)`.
   - Atomic thread-safe memory caching with synchronized persistent disk flushes across Native Rust and JS ESM.
 - [`292d426`](https://github.com/AndreaPallotta/zyra/commit/292d426): **In-Place Self-Updating CLI (`zyra update`)**
-  - Added `zyra update` and `zyra update --check` commands to query GitHub releases, verify platform binaries, and replace the executable in-place.
+  - Added `zyra update` and `zyra update --check` commands to query GitHub releases, verify platform binaries, and replace the executable in-place with semver comparison.
 - [`3178d1b`](https://github.com/AndreaPallotta/zyra/commit/3178d1b): **Rich Compiler Diagnostics & Code Snippet Highlighting**
   - Upgraded compiler error diagnostics with multi-line context, styled gutter line numbers, exact token underline spans (`^^^^^`), and actionable `help: ...` suggestions.
+- [`bb17b5d`](https://github.com/AndreaPallotta/zyra/commit/bb17b5d): **Dynamic JSON AST Engine & Serializer (`json.*`)**
+  - Zero-dependency recursive descent JSON parser supporting dynamic ASTs, querying, mutation, file reading, and pretty printing: `json.parse(str|dict)`, `json.read(path)`, `json.get(val, path)`, `json.set(val, path, new_val)`, `json.has(val, key)`, `json.keys(val)`, `json.stringify(val)`, `json.pretty(val)`.
+- [`a4ce6c6`](https://github.com/AndreaPallotta/zyra/commit/a4ce6c6): **Regular Expressions Engine (`regex.*`)**
+  - Zero-import regex engine supporting matching, token extraction, global replacement, and pattern splitting: `regex.is_match(pat, text)`, `regex.find(pat, text)`, `regex.find_all(pat, text)`, `regex.replace(pat, text, repl)`, `regex.split(pat, text)`.
+- [`92744d7`](https://github.com/AndreaPallotta/zyra/commit/92744d7): **High-Level Task & Worker Pool (`pool.*`)**
+  - Thread worker pool concurrency abstraction on top of channels and threads: `pool.new(workers)`, `pool.submit(p, task_fn)`, `pool.map(p, items, mapper_fn)`, `pool.wait_all(p)`.
+- [`2d29ef2`](https://github.com/AndreaPallotta/zyra/commit/2d29ef2): **Manifest Script Runner (`zyra run <script>`, `zyra start`)**
+  - Added manifest-driven lifecycle script execution from `zyra.json` `"scripts"` section and `zyra start` command.
+- [`3d70d36`](https://github.com/AndreaPallotta/zyra/commit/3d70d36): **Tree-Shaking JS ESM Bundle Minifier (`zyra build --minify`)**
+  - Dead-preamble elimination and comment/whitespace stripping during JS ESM builds delivering 60-85% file size reductions.
 
 ---
 
