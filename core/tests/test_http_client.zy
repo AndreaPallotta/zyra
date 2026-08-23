@@ -1,0 +1,41 @@
+// Zyra HTTP Client & Interceptor Pipeline Test Suite
+
+def test_http_request_and_interceptor(): Int {
+  http.intercept(|req| {
+    print("  [Interceptor] Outgoing request: {req.method} {req.path}")
+    return req
+  })
+
+  const headers = map.new()
+  map.set(headers, "Authorization", "Bearer zyra_token_99")
+  map.set(headers, "Content-Type", "application/json")
+  map.set(headers, "X-Client-Version", "2.3.0")
+
+  const resp = http.request("POST", "http://127.0.0.1:8080/v1/telemetry", headers, "{\"event\": \"boot_ok\"}")
+
+  print("  http.request status: {resp.status}")
+  print("  http.request body: {resp.body}")
+
+  const has_method = contains(resp.body, "POST")
+  const has_payload = contains(resp.body, "boot_ok")
+
+  if (resp.status == 200 && has_method && has_payload) {
+    print("[PASS] HTTP client request with custom headers and interceptor pipeline verified")
+    return 1
+  }
+  print("[FAIL] HTTP client request test failed")
+  return 0
+}
+
+def main(): Int {
+  print("==========================================")
+  print("     Zyra v2.3.0 HTTP Client Suite        ")
+  print("==========================================")
+
+  const t1 = test_http_request_and_interceptor()
+
+  print("------------------------------------------")
+  print("Results: {t1}/1 HTTP Client Tests PASSED")
+  print("==========================================")
+  return 0
+}

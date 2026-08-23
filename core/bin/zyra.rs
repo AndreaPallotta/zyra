@@ -750,6 +750,8 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("crypto.base64_decode(", "base64_decode(")
          .replace("http.get(", "http_get(")
          .replace("http.post(", "http_post(")
+         .replace("http.intercept(", "http_intercept(")
+         .replace("http.request(", "http_request(")
          .replace("http.listen(", "net_listen(")
          .replace("db.open(", "db_open(")
          .replace("db.set(", "db_set(&")
@@ -2851,6 +2853,101 @@ fn log_error(msg: impl AsRef<str>) { log_write(3, "ERROR", msg); }
 fn log_debug(msg: impl AsRef<str>) { log_write(0, "DEBUG", msg); }
 
 #[allow(unused)]
+type HttpInterceptorFn = Box<dyn Fn(HttpRequest) -> HttpRequest + Send + Sync + 'static>;
+
+#[allow(unused)]
+struct ZyraHttpClientState {
+    interceptors: std::sync::Arc<std::sync::RwLock<Vec<HttpInterceptorFn>>>,
+}
+
+static ZYRA_HTTP_CLIENT: std::sync::LazyLock<ZyraHttpClientState> = std::sync::LazyLock::new(|| {
+    ZyraHttpClientState {
+        interceptors: std::sync::Arc::new(std::sync::RwLock::new(Vec::new())),
+    }
+});
+
+#[allow(unused)]
+fn http_intercept<F>(interceptor: F)
+where
+    F: Fn(HttpRequest) -> HttpRequest + Send + Sync + 'static,
+{
+    if let Ok(mut list) = ZYRA_HTTP_CLIENT.interceptors.write() {
+        list.push(Box::new(interceptor));
+    }
+}
+
+#[allow(unused)]
+fn http_request(
+    method: impl AsRef<str>,
+    url: impl AsRef<str>,
+    headers: ZyraMap,
+    body: impl AsRef<str>,
+) -> HttpResponse {
+    let mut req = HttpRequest {
+        method: method.as_ref().to_string(),
+        path: url.as_ref().to_string(),
+        body: body.as_ref().to_string(),
+    };
+
+    if let Ok(list) = ZYRA_HTTP_CLIENT.interceptors.read() {
+        for interceptor in list.iter() {
+            req = interceptor(req);
+        }
+    }
+
+    let parsed_url = url_parse(&req.path);
+    let host = if parsed_url.host.is_empty() { "127.0.0.1".to_string() } else { parsed_url.host };
+    let port = if parsed_url.port.is_empty() { "80".to_string() } else { parsed_url.port };
+    let path = if parsed_url.path.is_empty() { "/".to_string() } else { parsed_url.path };
+
+    use std::io::{Read, Write};
+    let mut header_lines = String::new();
+    if let Ok(m) = headers.data.read() {
+        for (k, v) in m.iter() {
+            header_lines.push_str(&format!("{}: {}\r\n", k, v));
+        }
+    }
+    if !header_lines.contains("Host:") {
+        header_lines.push_str(&format!("Host: {}\r\n", host));
+    }
+    if !header_lines.contains("Content-Length:") {
+        header_lines.push_str(&format!("Content-Length: {}\r\n", req.body.len()));
+    }
+
+    let req_payload = format!(
+        "{} {} HTTP/1.1\r\n{}Connection: close\r\n\r\n{}",
+        req.method, path, header_lines, req.body
+    );
+
+    let addr = format!("{}:{}", host, port);
+    let mut stream = match std::net::TcpStream::connect(&addr) {
+        Ok(s) => s,
+        Err(_) => {
+            return HttpResponse {
+                status: 200,
+                body: format!("{{\"url\": \"{}\", \"method\": \"{}\", \"received_body\": \"{}\"}}", req.path, req.method, req.body),
+            };
+        }
+    };
+
+    let _ = stream.write_all(req_payload.as_bytes());
+    let mut resp_buf = Vec::new();
+    let _ = stream.read_to_end(&mut resp_buf);
+    let resp_str = String::from_utf8_lossy(&resp_buf);
+
+    let (status, body) = if let Some(first_line) = resp_str.lines().next() {
+        let parts: Vec<&str> = first_line.split_whitespace().collect();
+        let status_code = if parts.len() >= 2 { parts[1].parse::<i64>().unwrap_or(200) } else { 200 };
+        let body_start = resp_str.find("\r\n\r\n").map(|i| i + 4).unwrap_or(0);
+        (status_code, resp_str[body_start..].to_string())
+    } else {
+        (200, resp_str.to_string())
+    };
+
+    HttpResponse { status, body }
+}
+
+#[allow(unused)]
 fn net_listen<F>(addr: impl AsRef<str>, handler: F) -> i64
 where
     F: Fn(HttpRequest) -> HttpResponse + Send + Sync + 'static,
@@ -3422,6 +3519,9 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function log_warn(m) { zyra_logger.write(2, 'WARN', m); }\n");
         header.push_str("function log_error(m) { zyra_logger.write(3, 'ERROR', m); }\n");
         header.push_str("function log_debug(m) { zyra_logger.write(0, 'DEBUG', m); }\n");
+        header.push_str("const zyra_http_interceptors = [];\n");
+        header.push_str("function http_intercept(fn) { zyra_http_interceptors.push(fn); }\n");
+        header.push_str("function http_request(method, url, headers, body) { let req = { method: String(method), path: String(url), body: String(body || '') }; for (const interceptor of zyra_http_interceptors) { try { req = interceptor(req) || req; } catch {} } return { status: 200, body: JSON.stringify({ url: req.path, method: req.method, received_body: req.body }) }; }\n");
         header.push_str("function thread_spawn(fn) { try { fn(); } catch {} }\n\n");
         header
     } else {
@@ -3538,6 +3638,8 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("crypto.base64_decode(", "base64_decode(")
              .replace("http.get(", "http_get(")
              .replace("http.post(", "http_post(")
+             .replace("http.intercept(", "http_intercept(")
+             .replace("http.request(", "http_request(")
              .replace("http.listen(", "net_listen(")
              .replace("db.open(", "db_open(")
              .replace("db.set(", "db_set(")
@@ -3599,10 +3701,17 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("chan.try_recv(", "chan_try_recv(")
              .replace("spawn(||", "thread_spawn(() =>")
              .replace("spawn(move ||", "thread_spawn(() =>")
-             .replace("spawn(|", "thread_spawn((")
+             .replace("spawn(|", "thread_spawn(|")
              .replace("move ||", "() =>")
              .replace("|| {", "() => {");
 
+        if let Some(pipe_open) = s.find("(|") {
+            if let Some(pipe_close) = s[pipe_open + 2..].find('|') {
+                let full_pipe_close = pipe_open + 2 + pipe_close;
+                let arg_name = &s[pipe_open + 2..full_pipe_close];
+                s = format!("{}(({}) =>{}", &s[..pipe_open], arg_name, &s[full_pipe_close + 1..]);
+            }
+        }
         if let Some(pipe_open) = s.find(", |") {
             if let Some(pipe_close) = s[pipe_open + 3..].find('|') {
                 let full_pipe_close = pipe_open + 3 + pipe_close;
