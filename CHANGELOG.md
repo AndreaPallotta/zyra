@@ -4,6 +4,14 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
 
 ## [v2.4.0] - Unreleased
 
+- **Arbitrary Expression String Interpolation**:
+  - Full expression evaluation inside string interpolation templates `"{a + b * 2}"`, `"{str.upper(name)}"`, and nested function calls.
+  - Multi-target support across Native Rust (`format!`) and JavaScript ESM (ES6 template literals `` `${expr}` ``).
+- **Destructuring Pattern Matching & Match Guards**:
+  - Structural pattern matching for tuples, scalar values, and algebraic data types (`Option`, `Result`) with conditional `if` guard expressions (`(x, y) if x == y => ...`).
+  - Automatic statement block semicolon insertion for variable-assigned `match` expressions.
+- **Ergonomic Unwrap & Option Primitives**:
+  - Added `.unwrap()`, `.unwrap_or(default)`, and `.expect(msg)` helpers across Native Rust and JavaScript ESM runtime preambles.
 - **High-Precision DateTime & Clock Module (`time.*`)**:
   - Added zero-import `time.*` standard library: `time.now()`, `time.unix()`, `time.unix_ms()`, `time.format(ts, fmt)`, `time.sleep(ms)`, and `time.elapsed(start_ts)`.
   - Zero-dependency implementation across Native Rust (`std::time`, `SystemTime`, `Duration`) and JavaScript ESM (`Date`, `Atomics.wait`).
@@ -11,10 +19,6 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
   - Added RFC 4122 v4 UUID generator (`crypto.uuid()`).
   - Added HMAC-SHA256 signature generator (`crypto.hmac_sha256(key, message)`).
   - Added RFC 7519 HS256 JSON Web Token encoder and decoder with signature verification (`crypto.jwt_encode(payload, secret)`, `crypto.jwt_decode(token, secret)`).
-- **Postfix Error Propagation Operator (`?`)**:
-  - Add native postfix `?` try operator on `Result[T, E]` and `Option[T]` expressions (e.g. `const data = json.parse(raw)?`).
-- **Ergonomic Unwrap Primitives**:
-  - Implement `.unwrap()`, `.unwrap_or(default)`, and `.expect(msg)` methods across Native Rust and JavaScript ESM preambles.
 - **Buffered Streaming I/O (`io.stream`, `io.pipe`)**:
   - Add chunked streams and line-by-line readers for handling large files without loading entire payloads into memory.
 - **Full-Duplex WebSockets (`ws.*`)**:

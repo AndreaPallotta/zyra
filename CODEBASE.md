@@ -1,6 +1,6 @@
 ﻿# Codebase Map
-Generated: 2026-08-29 20:35:32
-Commit: 952a829 docs(changelog): initialize v2.4.0 roadmap in CHANGELOG and release notes
+Generated: 2026-08-29 21:44:54
+Commit: a8bc144 feat(stdlib): add time module, uuid, hmac-sha256, and jwt token primitives (v2.4.0)
 
 This file is a compact index of the codebase for AI agents to understand project structure without full recursive file scans.
 
@@ -13,11 +13,11 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **.github/workflows/release.yml** (135 lines)
 - **.vscode/copilot-instructions.md** (84 lines)
 - **AGENT.md** (33 lines)
-- **CHANGELOG.md** (174 lines)
+- **CHANGELOG.md** (178 lines)
 - **CLAUDE.md** (30 lines)
-- **CODEBASE.md** (396 lines)
+- **CODEBASE.md** (407 lines)
 - **core/bin/zyra.js** (30 lines)
-- **core/bin/zyra.rs** (4922 lines)
+- **core/bin/zyra.rs** (5052 lines)
 - **core/coverage/lcov-report/block-navigation.js** (88 lines)
 - **core/coverage/lcov-report/prettify.js** (3 lines)
 - **core/coverage/lcov-report/sorter.js** (211 lines)
@@ -66,7 +66,7 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **docs/getting-started/installation.md** (49 lines)
 - **docs/getting-started/quickstart.md** (60 lines)
 - **docs/index.md** (84 lines)
-- **docs/language/control-flow.md** (114 lines)
+- **docs/language/control-flow.md** (131 lines)
 - **docs/language/functions-modules.md** (135 lines)
 - **docs/language/stdlib/chan.md** (48 lines)
 - **docs/language/stdlib/crypto.md** (75 lines)

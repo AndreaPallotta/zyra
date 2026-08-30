@@ -1,4 +1,4 @@
-// test_v240_suite.zy - Unit tests for Zyra v2.4.0 features: time.*, crypto.*, and unwrap primitives
+// test_v240_suite.zy - Comprehensive unit test suite for Zyra v2.4.0 features
 
 def test_time_module(): Int {
   const t_now = time.now()
@@ -61,5 +61,64 @@ def test_crypto_jwt_encode_decode(): Int {
     return 1
   }
   print("[FAIL] crypto jwt test failed")
+  return 0
+}
+
+def test_arbitrary_string_interpolation(): Int {
+  const a = 10
+  const b = 5
+  const name = "zyra"
+  
+  const msg1 = "Math computation: {a + b * 2}, Text: {str.upper(name)}"
+  print("  interpolated msg1: {msg1}")
+
+  const x = 3
+  const y = 4
+  const msg2 = "Point ({x}, {y}) at dist: {math.sqrt(25.0)}"
+  print("  interpolated msg2: {msg2}")
+
+  if (contains(msg1, "Math computation: 20") && contains(msg1, "Text: ZYRA") && contains(msg2, "Point (3, 4)") && contains(msg2, "dist: 5")) {
+    print("[PASS] Arbitrary expression string interpolation verified")
+    return 1
+  }
+  print("[FAIL] string interpolation test failed")
+  return 0
+}
+
+def test_pattern_matching_and_guards(): Int {
+  const p1 = (0, 0)
+  const p2 = (5, 5)
+  const p3 = (10, 0)
+
+  const res1 = match (p1) {
+    (0, 0) => "origin",
+    (x, y) if x == y => "diagonal",
+    (x, 0) => "x-axis",
+    _ => "other",
+  }
+
+  const res2 = match (p2) {
+    (0, 0) => "origin",
+    (x, y) if x == y => "diagonal",
+    (x, 0) => "x-axis",
+    _ => "other",
+  }
+
+  const res3 = match (p3) {
+    (0, 0) => "origin",
+    (x, y) if x == y => "diagonal",
+    (x, 0) => "x-axis",
+    _ => "other",
+  }
+
+  print("  match p1: {res1}")
+  print("  match p2: {res2}")
+  print("  match p3: {res3}")
+
+  if (res1 == "origin" && res2 == "diagonal" && res3 == "x-axis") {
+    print("[PASS] Pattern matching with tuple destructuring and if guards verified")
+    return 1
+  }
+  print("[FAIL] pattern match test failed")
   return 0
 }

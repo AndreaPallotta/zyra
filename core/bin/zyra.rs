@@ -563,19 +563,19 @@ fn handle_test(file_path: Option<&str>) {
         runner_main.push_str("    if let Ok(val) = res {\n");
         runner_main.push_str("      let code = val.zyra_exit_code();\n");
         runner_main.push_str(&format!("      if code == 0 || code == 1 && !{:?}.contains(\"fail\") {{\n", name));
-        runner_main.push_str(&format!("        println!(\"test {} ... \\x1b[1;32mok\\x1b[0m ({{}} µs)\", elapsed);\n", name));
+        runner_main.push_str(&format!("        println!(\"test {} ... ok ({{}} µs)\", elapsed);\n", name));
         runner_main.push_str("        passed += 1;\n");
         runner_main.push_str("      } else {\n");
-        runner_main.push_str(&format!("        println!(\"test {} ... \\x1b[1;31mFAILED\\x1b[0m ({{}} µs)\", elapsed);\n", name));
+        runner_main.push_str(&format!("        println!(\"test {} ... FAILED ({{}} µs)\", elapsed);\n", name));
         runner_main.push_str("        failed += 1;\n");
         runner_main.push_str("      }\n");
         runner_main.push_str("    } else {\n");
-        runner_main.push_str(&format!("      println!(\"test {} ... \\x1b[1;31mFAILED (panicked)\\x1b[0m\");\n", name));
+        runner_main.push_str(&format!("      println!(\"test {} ... FAILED (panicked)\");\n", name));
         runner_main.push_str("      failed += 1;\n");
         runner_main.push_str("    }\n");
         runner_main.push_str("  }\n");
     }
-    runner_main.push_str("  println!(\"\\ntest result: {}. {} passed; {} failed; 0 ignored\\n\", if failed == 0 { \"\\x1b[1;32mok\\x1b[0m\" } else { \"\\x1b[1;31mFAILED\\x1b[0m\" }, passed, failed);\n  if failed > 0 { std::process::exit(1); }\n}\n");
+    runner_main.push_str("  println!(\"\\ntest result: {}. {} passed; {} failed; 0 ignored\\n\", if failed == 0 { \"ok\" } else { \"FAILED\" }, passed, failed);\n  if failed > 0 { std::process::exit(1); }\n}\n");
     rs_code.push_str(&runner_main);
 
     let _ = fs::write(&rs_path, &rs_code);
@@ -838,6 +838,101 @@ fn handle_fmt(file_path: &str) {
     println!("[OK] Formatted {}", file_path);
 }
 
+fn is_valid_interpolation_expr(expr: &str) -> bool {
+    let t = expr.trim();
+    if t.is_empty() || t.contains('"') || t.contains('\\') || t.contains(':') {
+        return false;
+    }
+    t.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '.' || c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || c == '(' || c == ')' || c == ' ' || c == ',')
+}
+
+fn interpolate_string_expressions(input: &str) -> String {
+    if !input.contains('{') || !input.contains('}') || !input.contains('"') {
+        return input.to_string();
+    }
+
+    let mut out = String::new();
+    let chars: Vec<char> = input.chars().collect();
+    let mut i = 0;
+    let mut in_string = false;
+    let mut current_str_fmt = String::new();
+    let mut current_str_args = Vec::new();
+
+    while i < chars.len() {
+        let c = chars[i];
+        if c == '\\' && in_string && i + 1 < chars.len() {
+            current_str_fmt.push('\\');
+            current_str_fmt.push(chars[i + 1]);
+            i += 2;
+            continue;
+        }
+
+        if c == '"' {
+            if in_string {
+                in_string = false;
+                if !current_str_args.is_empty() {
+                    let args = current_str_args.join(", ");
+                    out.push_str(&format!("format!(\"{}\", {})", current_str_fmt, args));
+                } else {
+                    out.push('"');
+                    out.push_str(&current_str_fmt);
+                    out.push('"');
+                }
+                current_str_fmt.clear();
+                current_str_args.clear();
+            } else {
+                in_string = true;
+                current_str_fmt.clear();
+                current_str_args.clear();
+            }
+            i += 1;
+        } else if in_string {
+            if c == '{' {
+                let mut j = i + 1;
+                let mut expr_buf = String::new();
+                let mut brace_depth = 1;
+                while j < chars.len() && chars[j] != '"' && chars[j] != '\n' {
+                    if chars[j] == '{' {
+                        brace_depth += 1;
+                        expr_buf.push('{');
+                    } else if chars[j] == '}' {
+                        brace_depth -= 1;
+                        if brace_depth == 0 {
+                            break;
+                        }
+                        expr_buf.push('}');
+                    } else {
+                        expr_buf.push(chars[j]);
+                    }
+                    j += 1;
+                }
+
+                if brace_depth == 0 && is_valid_interpolation_expr(&expr_buf) {
+                    current_str_fmt.push_str("{}");
+                    current_str_args.push(expr_buf.trim().to_string());
+                    i = j + 1;
+                } else {
+                    current_str_fmt.push(c);
+                    i += 1;
+                }
+            } else {
+                current_str_fmt.push(c);
+                i += 1;
+            }
+        } else {
+            out.push(c);
+            i += 1;
+        }
+    }
+
+    if in_string {
+        out.push('"');
+        out.push_str(&current_str_fmt);
+    }
+
+    out
+}
+
 fn transform_zyra_line(line: &str) -> String {
     let mut s = line.trim().to_string();
 
@@ -848,9 +943,12 @@ fn transform_zyra_line(line: &str) -> String {
     }
 
     s = s.replace(": Int", ": i64");
-    // #13: was a no-op (": String" -> ": String"); intentional passthrough for Rust
     s = s.replace(": Bool", ": bool");
     s = s.replace(": Float", ": f64");
+
+    if s.contains('{') && s.contains('}') && s.contains('"') {
+        s = interpolate_string_expressions(&s);
+    }
 
     // Zyra v2.2.0 Zero-Import Dot-Notation Namespacing Replacements
     s = s.replace("env.get(", "env_var(")
@@ -961,44 +1059,6 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("spawn(||", "thread_spawn(move ||")
          .replace("spawn(|", "thread_spawn(move |");
 
-    if s.contains('{') && s.contains('}') && (s.contains("print(") || s.contains('"')) {
-        let mut result = String::new();
-        let mut vars = Vec::new();
-        let mut in_str = false;
-        let mut in_var = false;
-        let mut current_var = String::new();
-
-        for c in s.chars() {
-            if c == '"' {
-                in_str = !in_str;
-                result.push(c);
-            } else if in_str && c == '{' {
-                in_var = true;
-                current_var.clear();
-                result.push_str("{}");
-            } else if in_str && c == '}' {
-                in_var = false;
-                vars.push(current_var.clone());
-            } else if in_var {
-                current_var.push(c);
-            } else {
-                result.push(c);
-            }
-        }
-
-        if !vars.is_empty() {
-            if result.starts_with("print(\"") && result.ends_with("\")") {
-                let fmt_body = &result[7..result.len() - 2];
-                let vars_str = vars.join(", ");
-                s = format!("print(&format!(\"{}\", {}));", fmt_body, vars_str);
-            } else if result.starts_with("return \"") {
-                let fmt_body = result.trim_start_matches("return \"").trim_end_matches(';').trim_end_matches('"');
-                let vars_str = vars.iter().map(|v| format!("{}.into()", v)).collect::<Vec<_>>().join(", ");
-                s = format!("return format!(\"{}\", {});", fmt_body, vars_str);
-            }
-        }
-    }
-
     if s.starts_with("return \"") && s.ends_with('"') && !s.contains("to_string()") && !s.contains("format!") {
         s = format!("{}.to_string();", &s[..s.len()]);
     }
@@ -1072,7 +1132,7 @@ fn transform_zyra_line(line: &str) -> String {
         s = s.replace("trim(", "&trim(");
         s = s.replace("&&trim(", "&trim(");
     }
-    if s.contains(" + ") && s.contains('"') {
+    if s.contains(" + ") && s.contains('"') && !s.contains("format!(") {
         s = s.replace(" + ", ".to_string() + &");
         s = s.replace(".to_string() + &.to_string()", " + ");
     }
@@ -1089,6 +1149,13 @@ fn transform_zyra_line(line: &str) -> String {
     // #11: Safer if-paren stripping — only strip the condition parens, not arbitrary ") {"
     if s.contains("if (") {
         s = s.replace("if (", "if ");
+        if s.ends_with(") {") {
+            let len = s.len();
+            s = format!("{} {{", &s[..len - 3]);
+        }
+    }
+    if s.contains("match (") {
+        s = s.replace("match (", "match ");
         if s.ends_with(") {") {
             let len = s.len();
             s = format!("{} {{", &s[..len - 3]);
@@ -1206,6 +1273,7 @@ fn transpile_zyra_to_rust_internal(file_path: &str, content: &str, is_root: bool
     };
     let mut inside_func = false;
     let mut func_depth = 0;
+    let mut let_block_depth: Vec<i32> = Vec::new();
     let mut func_lines: Vec<String> = Vec::new();
     let mut top_level_statements: Vec<String> = Vec::new();
     let mut has_main = false;
@@ -3488,7 +3556,7 @@ where
 
                 let clean_params = params
                     .replace(": Int", ": i64")
-                    .replace(": String", ": impl Into<String>")
+                    .replace(": String", ": impl Into<String> + std::fmt::Display")
                     .replace(": Bool", ": bool")
                     .replace(": Float", ": f64");
 
@@ -3545,16 +3613,31 @@ where
         }
 
         if inside_func {
+            let is_let_block_start = (trimmed.starts_with("let ") || trimmed.starts_with("const ") || trimmed.starts_with("var "))
+                && (trimmed.contains(" = match ") || trimmed.contains(" = if ") || trimmed.contains(" = if(") || trimmed.ends_with('{'));
+
+            if is_let_block_start {
+                let_block_depth.push(func_depth);
+            }
+
             let opens = trimmed.matches('{').count() as i32;
             let closes = trimmed.matches('}').count() as i32;
             func_depth += opens;
             func_depth -= closes;
 
-            let transformed = transform_zyra_line(trimmed);
+            let mut transformed = transform_zyra_line(trimmed);
+            if (trimmed == "}" || trimmed == "};") && let_block_depth.last() == Some(&func_depth) {
+                let_block_depth.pop();
+                if !transformed.ends_with(';') {
+                    transformed.push(';');
+                }
+            }
+
             func_lines.push(transformed);
             if func_depth <= 0 {
                 inside_func = false;
                 func_depth = 0;
+                let_block_depth.clear();
                 rs.push_str(&func_lines.join("\n"));
                 rs.push_str("\n\n");
                 func_lines.clear();
@@ -3739,6 +3822,94 @@ fn handle_profile(file_path: &str) {
     println!("[OK] Generated Flamegraph SVG visualization: {}", flame_path.display());
 }
 
+fn interpolate_js_string_expressions(input: &str) -> String {
+    if !input.contains('{') || !input.contains('}') || !input.contains('"') {
+        return input.to_string();
+    }
+
+    let mut out = String::new();
+    let chars: Vec<char> = input.chars().collect();
+    let mut i = 0;
+    let mut in_string = false;
+    let mut current_str = String::new();
+    let mut has_interpolation = false;
+
+    while i < chars.len() {
+        let c = chars[i];
+        if c == '\\' && in_string && i + 1 < chars.len() {
+            current_str.push('\\');
+            current_str.push(chars[i + 1]);
+            i += 2;
+            continue;
+        }
+
+        if c == '"' {
+            if in_string {
+                in_string = false;
+                if has_interpolation {
+                    out.push('`');
+                    out.push_str(&current_str);
+                    out.push('`');
+                } else {
+                    out.push('"');
+                    out.push_str(&current_str);
+                    out.push('"');
+                }
+                current_str.clear();
+                has_interpolation = false;
+            } else {
+                in_string = true;
+                current_str.clear();
+                has_interpolation = false;
+            }
+            i += 1;
+        } else if in_string {
+            if c == '{' {
+                let mut j = i + 1;
+                let mut expr_buf = String::new();
+                let mut brace_depth = 1;
+                while j < chars.len() && chars[j] != '"' && chars[j] != '\n' {
+                    if chars[j] == '{' {
+                        brace_depth += 1;
+                        expr_buf.push('{');
+                    } else if chars[j] == '}' {
+                        brace_depth -= 1;
+                        if brace_depth == 0 {
+                            break;
+                        }
+                        expr_buf.push('}');
+                    } else {
+                        expr_buf.push(chars[j]);
+                    }
+                    j += 1;
+                }
+
+                if brace_depth == 0 && is_valid_interpolation_expr(&expr_buf) {
+                    has_interpolation = true;
+                    current_str.push_str(&format!("${{{}}}", expr_buf.trim()));
+                    i = j + 1;
+                } else {
+                    current_str.push(c);
+                    i += 1;
+                }
+            } else {
+                current_str.push(c);
+                i += 1;
+            }
+        } else {
+            out.push(c);
+            i += 1;
+        }
+    }
+
+    if in_string {
+        out.push('"');
+        out.push_str(&current_str);
+    }
+
+    out
+}
+
 fn transpile_zyra_to_js(file_path: &str, content: &str) -> String {
     transpile_zyra_to_js_internal(file_path, content, true)
 }
@@ -3873,7 +4044,10 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function time_unix_ms() { return Date.now(); }\n");
         header.push_str("function time_sleep(ms) { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } catch {} }\n");
         header.push_str("function time_elapsed(start) { return Math.max(0, Date.now() - Number(start)); }\n");
-        header.push_str("function time_format(ts, fmt) { return new Date(Number(ts) * 1000).toISOString(); }\n\n");
+        header.push_str("function time_format(ts, fmt) { return new Date(Number(ts) * 1000).toISOString(); }\n");
+        header.push_str("function zyra_unwrap(v) { if (v === null || v === undefined) throw new Error('Called unwrap on null or undefined'); return v; }\n");
+        header.push_str("function zyra_unwrap_or(v, def) { return (v !== null && v !== undefined) ? v : def; }\n");
+        header.push_str("function zyra_expect(v, msg) { if (v === null || v === undefined) throw new Error(String(msg)); return v; }\n\n");
         header
     } else {
         String::new()
@@ -4099,52 +4273,8 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
                  .replacen("let _ = ", "", 1);
         }
 
-        if s.contains('{') && s.contains('}') && (s.contains("print(") || s.contains("return \"")) {
-            let mut result = String::new();
-            let mut in_str = false;
-            let mut i = 0;
-            let chars: Vec<char> = s.chars().collect();
-            let mut changed = false;
-
-            while i < chars.len() {
-                let c = chars[i];
-                if c == '"' {
-                    in_str = !in_str;
-                    result.push(c);
-                    i += 1;
-                } else if in_str && c == '{' {
-                    let mut j = i + 1;
-                    let mut var_name = String::new();
-                    while j < chars.len() && chars[j] != '}' && chars[j] != '"' && chars[j] != '\n' {
-                        var_name.push(chars[j]);
-                        j += 1;
-                    }
-                    if j < chars.len() && chars[j] == '}' && !var_name.is_empty() && var_name.chars().all(|ch| ch.is_alphanumeric() || ch == '_' || ch == '.' || ch == '(' || ch == ')') {
-                        changed = true;
-                        result.push_str("${");
-                        result.push_str(&var_name);
-                        result.push('}');
-                        i = j + 1;
-                    } else {
-                        result.push(c);
-                        i += 1;
-                    }
-                } else {
-                    result.push(c);
-                    i += 1;
-                }
-            }
-            if changed {
-                if result.starts_with("print(\"") && result.ends_with("\")") {
-                    let inner = &result[7..result.len() - 2];
-                    s = format!("print(`{}`)", inner);
-                } else if result.starts_with("return \"") && result.ends_with('"') {
-                    let inner = &result[8..result.len() - 1];
-                    s = format!("return `{}`", inner);
-                } else {
-                    s = result;
-                }
-            }
+        if s.contains('{') && s.contains('}') && s.contains('"') {
+            s = interpolate_js_string_expressions(&s);
         }
 
         s = s.replace(".to_string()", "").replace(".into()", "").replace("(&", "(");

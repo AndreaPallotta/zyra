@@ -64,6 +64,23 @@ match (user_option) {
 }
 ```
 
+### Tuple Destructuring & Match Guards
+`match` supports tuple patterns with conditional `if` guard expressions:
+
+```zyra
+const point = (5, 5)
+
+const description = match (point) {
+  (0, 0) => "origin",
+  (x, y) if x == y => "diagonal",
+  (x, 0) => "x-axis",
+  (0, y) => "y-axis",
+  (x, y) => "point at ({x}, {y})",
+}
+
+print("Point classification: {description}")
+```
+
 ---
 
 ## Loops and Iteration
