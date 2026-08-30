@@ -10,7 +10,7 @@ const distPackagesDir = path.join(rootDir, 'dist_packages');
 const msixBuildDir = path.join(distPackagesDir, 'msix_build');
 const assetsDir = path.join(msixBuildDir, 'Assets');
 
-let manifestVer = '2.3.0';
+let manifestVer = '2.4.0';
 try {
   const zyraJson = JSON.parse(fs.readFileSync(path.join(rootDir, 'zyra.json'), 'utf8'));
   if (zyraJson.version) manifestVer = zyraJson.version;

@@ -7,11 +7,11 @@ use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-const VERSION: &str = "2.3.0";
+const VERSION: &str = "2.4.0";
 
 fn print_help() {
     println!("==================================================");
-    println!("        Zyra CLI v2.3.0                           ");
+    println!("        Zyra CLI v2.4.0                           ");
     println!("==================================================");
     println!("Usage: zyra <command> [options]\n");
     println!("Commands:");

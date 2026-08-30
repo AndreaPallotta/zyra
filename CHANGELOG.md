@@ -2,7 +2,7 @@
 
 All notable changes to the **Zyra Programming Language & Toolchain** will be documented in this file.
 
-## [v2.4.0] - Unreleased
+## [v2.4.0] - 2026-08-30
 
 - **Postfix Error Propagation Operator (`?`)**:
   - Added native `?` try operator for automatic error bubbling on `Result[T, E]` and `Option[T]` expressions without nested match blocks.

@@ -1,6 +1,6 @@
 ﻿# Codebase Map
-Generated: 2026-08-29 23:04:59
-Commit: f47b018 feat(stdlib): add microbenchmark harness, coverage html, streaming io, and linear algebra
+Generated: 2026-08-29 23:10:48
+Commit: 93ac65c feat(stdlib): add postfix ? try operator and full-duplex websockets (v2.4.0)
 
 This file is a compact index of the codebase for AI agents to understand project structure without full recursive file scans.
 
@@ -15,7 +15,7 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **AGENT.md** (33 lines)
 - **CHANGELOG.md** (188 lines)
 - **CLAUDE.md** (30 lines)
-- **CODEBASE.md** (408 lines)
+- **CODEBASE.md** (409 lines)
 - **core/bin/zyra.js** (30 lines)
 - **core/bin/zyra.rs** (5353 lines)
 - **core/coverage/lcov-report/block-navigation.js** (88 lines)
@@ -92,7 +92,7 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **docs/language/traits-generics.md** (107 lines)
 - **docs/language/variables-types.md** (112 lines)
 - **docs/play.md** (303 lines)
-- **docs/releases.md** (175 lines)
+- **docs/releases.md** (174 lines)
 - **docs/tooling/cli.md** (166 lines)
 - **docs/tooling/self-hosting.md** (13 lines)
 - **docs/tooling/vscode.md** (13 lines)

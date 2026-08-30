@@ -11,7 +11,7 @@ const coreDir = path.join(rootDir, "core");
 const distPackages = path.join(rootDir, "dist_packages");
 const binDir = path.join(coreDir, "bin");
 
-let manifestVer = "2.3.0";
+let manifestVer = "2.4.0";
 try {
   const zyraJson = JSON.parse(fs.readFileSync(path.join(rootDir, "zyra.json"), "utf8"));
   if (zyraJson.version) manifestVer = zyraJson.version;

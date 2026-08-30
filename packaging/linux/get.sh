@@ -8,7 +8,7 @@ echo "=================================================="
 INSTALL_DIR="$HOME/.zyra/bin"
 mkdir -p "$INSTALL_DIR"
 
-URL="https://github.com/AndreaPallotta/zyra/releases/latest/download/zyra-v2.3.0-linux-x64.tar.gz"
+URL="https://github.com/AndreaPallotta/zyra/releases/latest/download/zyra-v2.4.0-linux-x64.tar.gz"
 
 echo "Downloading Zyra compiler..."
 if command -v curl >/dev/null 2>&1; then
