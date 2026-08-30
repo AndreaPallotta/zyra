@@ -22,3 +22,5 @@ test.zyra.env
 test_config.json
 test_run.log
 test_store.db
+*.tmp
+TARGET.md

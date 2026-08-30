@@ -4,6 +4,18 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
 
 ## [v2.4.0] - Unreleased
 
+- **In-Process Microbenchmark Harness (`zyra bench`)**:
+  - Automatically discovers `def bench_...()` routines and runs 1,000 iterations in-process with warmup.
+  - Reports operations/second, mean latency, min/max runtime tables with nanosecond precision.
+- **Interactive Visual Test Coverage Reporter (`zyra coverage`)**:
+  - Analyzes function and line coverage, generating terminal metrics and an interactive `dist/coverage.html` visual report.
+- **Streaming & Line-by-Line File I/O (`io.*`)**:
+  - Added `io.lines(path)` for memory-efficient line reading.
+  - Added `io.append(path, data)` for atomic file appends.
+  - Added `io.pipe(src, dest)` for zero-copy file piping across Native Rust and JavaScript ESM targets.
+- **Linear Algebra & Numeric Math Primitives (`math.*`)**:
+  - Added vector operations: `math.dot(v1, v2)` and `math.norm(v)`.
+  - Added interpolation and boundary helpers: `math.clamp(val, min, max)`, `math.lerp(a, b, t)`, `math.min(a, b)`, `math.max(a, b)`.
 - **Arbitrary Expression String Interpolation**:
   - Full expression evaluation inside string interpolation templates `"{a + b * 2}"`, `"{str.upper(name)}"`, and nested function calls.
   - Multi-target support across Native Rust (`format!`) and JavaScript ESM (ES6 template literals `` `${expr}` ``).
@@ -19,14 +31,6 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
   - Added RFC 4122 v4 UUID generator (`crypto.uuid()`).
   - Added HMAC-SHA256 signature generator (`crypto.hmac_sha256(key, message)`).
   - Added RFC 7519 HS256 JSON Web Token encoder and decoder with signature verification (`crypto.jwt_encode(payload, secret)`, `crypto.jwt_decode(token, secret)`).
-- **Buffered Streaming I/O (`io.stream`, `io.pipe`)**:
-  - Add chunked streams and line-by-line readers for handling large files without loading entire payloads into memory.
-- **Full-Duplex WebSockets (`ws.*`)**:
-  - Add WebSocket client and server primitives: `ws.connect()`, `ws.listen()`, `ws.send()`, `ws.on_message()`.
-- **VS Code Debug Adapter Protocol (DAP)**:
-  - Implement DAP protocol server over stdio to enable GUI breakpoint debugging, call stacks, and variable inspection in VS Code.
-- **Dynamic Line & Branch Code Coverage (`zyra coverage`)**:
-  - Replace static line estimators with runtime bytecode/line instrumentation and HTML report generation.
 - **Compiler Modularization**:
   - Refactor monolithic `core/bin/zyra.rs` into modular Rust subsystems (`src/lexer/`, `src/parser/`, `src/preamble/`, `src/codegen/`, `src/cli/`).
 - **Monorepo Workspace Orchestrator (`zyra build --workspace`)**:

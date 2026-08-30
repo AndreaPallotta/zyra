@@ -17,8 +17,30 @@ const json_data = io.read("config.json")
 ### `io.write(path: String, content: String): Int`
 Writes string `content` to target file path. Returns `0` on success, or `-1` on error.
 
+### `io.lines(path: String): [String]`
+Reads file lines into an array of strings without loading excessive auxiliary buffers.
+
 ```zyra
-const result = io.write("logs/app.log", "Application initialized successfully\n")
+const log_lines = io.lines("app.log")
+for line in log_lines {
+  if (contains(line, "ERROR")) {
+    print("Found error: {line}")
+  }
+}
+```
+
+### `io.append(path: String, content: String): Int`
+Appends string `content` to the end of a file, creating it if it does not already exist. Returns bytes written, or `-1` on failure.
+
+```zyra
+io.append("logs/audit.log", "[2026-08-30] User login from 127.0.0.1\n")
+```
+
+### `io.pipe(src_path: String, dest_path: String): Int`
+Streams source file contents directly to destination file. Returns total bytes transferred, or `-1` on failure.
+
+```zyra
+const bytes_copied = io.pipe("source.dat", "backup.dat")
 ```
 
 ### `io.watch(path: String): FileWatcher`

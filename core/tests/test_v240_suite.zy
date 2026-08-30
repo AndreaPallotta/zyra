@@ -122,3 +122,71 @@ def test_pattern_matching_and_guards(): Int {
   print("[FAIL] pattern match test failed")
   return 0
 }
+
+def test_streaming_and_file_io(): Int {
+  const tmp_file = "test_io_stream.tmp"
+  const pipe_file = "test_io_pipe.tmp"
+  
+  file_write(tmp_file, "line 1\nline 2\nline 3\n")
+  const append_res = io.append(tmp_file, "line 4\n")
+  const lines = io.lines(tmp_file)
+  print("  io.lines count: {len(lines)}")
+  
+  const piped_bytes = io.pipe(tmp_file, pipe_file)
+  print("  io.pipe bytes: {piped_bytes}")
+  const piped_lines = io.lines(pipe_file)
+
+  if (len(lines) >= 4 && contains(lines[0], "line 1") && contains(lines[3], "line 4") && piped_bytes > 0 && len(piped_lines) >= 4) {
+    print("[PASS] Streaming and line-by-line file I/O verified")
+    return 1
+  }
+  print("[FAIL] streaming and file I/O test failed")
+  return 0
+}
+
+def test_linear_algebra_and_math(): Int {
+  const c1 = math.clamp(15.0, 0.0, 10.0)
+  const c2 = math.clamp(-5.0, 0.0, 10.0)
+  const c3 = math.clamp(7.0, 0.0, 10.0)
+  print("  math.clamp results: {c1}, {c2}, {c3}")
+
+  const l1 = math.lerp(10.0, 20.0, 0.5)
+  print("  math.lerp(10, 20, 0.5): {l1}")
+
+  const mn = math.min(10.0, 5.0)
+  const mx = math.max(10.0, 5.0)
+  print("  math.min: {mn}, math.max: {mx}")
+
+  const v1 = [1.0, 2.0, 3.0]
+  const v2 = [4.0, 5.0, 6.0]
+  const dot_res = math.dot(v1, v2)
+  print("  math.dot(v1, v2): {dot_res}")
+
+  const v3 = [3.0, 4.0]
+  const norm_res = math.norm(v3)
+  print("  math.norm([3, 4]): {norm_res}")
+
+  if (c1 == 10.0 && c2 == 0.0 && c3 == 7.0 && l1 == 15.0 && mn == 5.0 && mx == 10.0 && dot_res == 32.0 && norm_res == 5.0) {
+    print("[PASS] Linear algebra and numeric math primitives verified")
+    return 1
+  }
+  print("[FAIL] linear algebra and math test failed")
+  return 0
+}
+
+def bench_vector_dot(): Int {
+  const v1 = [1.0, 2.0, 3.0, 4.0, 5.0]
+  const v2 = [5.0, 4.0, 3.0, 2.0, 1.0]
+  const res = math.dot(v1, v2)
+  return 1
+}
+
+def bench_string_interpolation(): Int {
+  const a = 10
+  const b = 20
+  const name = "zyra"
+  const msg = "result: {a + b * 2}, name: {name}"
+  return len(msg)
+}
+
+

@@ -1,6 +1,6 @@
 ﻿# Codebase Map
-Generated: 2026-08-29 21:44:54
-Commit: a8bc144 feat(stdlib): add time module, uuid, hmac-sha256, and jwt token primitives (v2.4.0)
+Generated: 2026-08-29 21:53:04
+Commit: 32a646b feat(compiler): add arbitrary expression string interpolation and match guards
 
 This file is a compact index of the codebase for AI agents to understand project structure without full recursive file scans.
 
@@ -13,11 +13,11 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **.github/workflows/release.yml** (135 lines)
 - **.vscode/copilot-instructions.md** (84 lines)
 - **AGENT.md** (33 lines)
-- **CHANGELOG.md** (178 lines)
+- **CHANGELOG.md** (182 lines)
 - **CLAUDE.md** (30 lines)
 - **CODEBASE.md** (407 lines)
 - **core/bin/zyra.js** (30 lines)
-- **core/bin/zyra.rs** (5052 lines)
+- **core/bin/zyra.rs** (5190 lines)
 - **core/coverage/lcov-report/block-navigation.js** (88 lines)
 - **core/coverage/lcov-report/prettify.js** (3 lines)
 - **core/coverage/lcov-report/sorter.js** (211 lines)
@@ -74,11 +74,11 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **docs/language/stdlib/env.md** (64 lines)
 - **docs/language/stdlib/http.md** (52 lines)
 - **docs/language/stdlib/index.md** (59 lines)
-- **docs/language/stdlib/io.md** (58 lines)
+- **docs/language/stdlib/io.md** (80 lines)
 - **docs/language/stdlib/json.md** (70 lines)
 - **docs/language/stdlib/log.md** (62 lines)
 - **docs/language/stdlib/map.md** (47 lines)
-- **docs/language/stdlib/math.md** (56 lines)
+- **docs/language/stdlib/math.md** (100 lines)
 - **docs/language/stdlib/path.md** (49 lines)
 - **docs/language/stdlib/pool.md** (40 lines)
 - **docs/language/stdlib/process.md** (26 lines)
@@ -92,7 +92,7 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **docs/language/variables-types.md** (112 lines)
 - **docs/play.md** (303 lines)
 - **docs/releases.md** (175 lines)
-- **docs/tooling/cli.md** (159 lines)
+- **docs/tooling/cli.md** (166 lines)
 - **docs/tooling/self-hosting.md** (13 lines)
 - **docs/tooling/vscode.md** (13 lines)
 - **editors/vscode/build-vsix.js** (36 lines)
@@ -155,6 +155,7 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **site/assets/javascripts/lunr/wordcut.js** (6708 lines)
 - **site/assets/javascripts/workers/search.2c215733.min.js** (43 lines)
 - **site/search/search_index.json** (1 lines)
+- **TARGET.md** (26 lines)
 - **test_config.json** (1 lines)
 - **test_io_data.json** (1 lines)
 - **test_io_data.yaml** (2 lines)

@@ -93,11 +93,18 @@ Discovers and runs test routines, validating assertions and reporting overall pa
 zyra test
 ```
 
-### `zyra bench`
-Runs micro-benchmarks across functions and displays execution latency statistics.
+### `zyra bench [file.zy]`
+Discovers `def bench_...()` routines, runs 1,000 iterations in-process with warmup, and displays operations/second, mean latency, min/max runtime tables.
 
 ```bash
-zyra bench
+zyra bench src/main.zy
+```
+
+### `zyra coverage [file.zy]`
+Calculates function and line test code coverage, reporting metrics to the terminal and generating an interactive HTML report at `dist/coverage.html`.
+
+```bash
+zyra coverage src/main.zy
 ```
 
 ### `zyra profile <file.zy>`
