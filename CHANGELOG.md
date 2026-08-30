@@ -12,12 +12,40 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
   - Implement DAP protocol server (`zyra dap`) over stdio to enable GUI breakpoint debugging, stepping (`F10`/`F11`), call stacks, and variable watch inspection in VS Code.
 - **Monorepo Workspace Orchestrator (`zyra build --workspace`)**:
   - Support `"workspaces"` in `zyra.json` with topological dependency graph resolution, cross-package imports (`@org/pkg`), and parallel module compilation.
+- **Foreign Function Interface (`ffi.*`)**:
+  - Dynamic library loading (`.dll`, `.so`, `.dylib`) and C-ABI native symbol invocation without writing wrapper glue.
 - **Relational SQL Database Engine (`sql.*`)**:
-  - Add parameterized SQLite and PostgreSQL database drivers: `sql.open(url)`, `sql.exec(conn, query, args)`, and `sql.query(conn, query, args)`.
+  - Add parameterized SQLite, PostgreSQL, and MySQL connection pooling and query execution: `sql.open`, `sql.exec`, and `sql.query`.
+- **Zero-Copy Memory-Mapped Files (`io.mmap`)**:
+  - High-performance memory mapping for reading and slicing large binary datasets directly from virtual memory.
+- **Endian-Aware Binary Serialization (`bin.pack`, `bin.unpack`)**:
+  - Structured binary packing and unpacking for custom binary network protocols and serialization formats.
+- **Distributed Event Bus & Pub/Sub (`bus.*`)**:
+  - Thread-safe in-process and inter-worker publish/subscribe event engine with wildcard topic patterns.
+- **Declarative Schema Validation (`schema.*`)**:
+  - Runtime object validation and type coercion engine with detailed error path tracking.
+- **Declarative CLI Flag & Command Parser (`cli.*`)**:
+  - Built-in command line argument parser with automated `--help` generation, typed flag coercion, subcommands, and shell completions.
+- **Interactive Terminal UI Toolkit (`tui.*`)**:
+  - Terminal styling, ANSI formatting, spinners, progress bars, interactive select prompts, and multi-column tables.
+- **In-Memory Background Job Scheduler (`cron.*`, `queue.*`)**:
+  - Threaded cron job scheduling with 5-field syntax and background worker task queues.
+- **Multi-Target Cross-Compilation (`zyra build --cross`)**:
+  - Single-command cross-compilation targeting `linux-x64`, `linux-arm64`, `macos-arm64`, `windows-x64`, and `wasm32-wasi`.
+- **Live-Reloading HTTP & WebSocket Dev Server (`zyra dev`)**:
+  - Instant incremental recompilation and hot-reloading development server for web services and APIs.
+- **OpenAPI Specification Generator (`zyra openapi`)**:
+  - Automatic extraction of REST routes and struct schemas into OpenAPI 3.1 JSON/YAML definitions.
 - **Generative Property-Based Testing (`zyra test --fuzz` / `@fuzz`)**:
   - Built-in fuzz testing engine with automated boundary value matrices and invariant validation.
+- **Snapshot & Golden File Testing (`test.snapshot`, `zyra test --update-snapshots`)**:
+  - Automated assertions against stored `.snap` golden files.
+- **Programmatic HTTP Mock Server (`http.mock`)**:
+  - In-memory HTTP stubbing and mocking server for test isolation.
 - **WebAssembly Browser DOM & Canvas Bindings (`wasm.*`)**:
   - Direct HTML5 Canvas and browser event standard library bindings for WebAssembly targets.
+- **Secure Memory & Hardware Vault (`vault.*`, `crypto.secure_mem`)**:
+  - Zero-on-free memory buffers and encrypted secret management for sensitive keys.
 
 ## [v2.4.0] - 2026-08-30
 
