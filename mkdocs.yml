@@ -86,6 +86,7 @@ nav:
       - String (str): language/stdlib/str.md
       - Process (process): language/stdlib/process.md
       - File I/O & Watcher (io): language/stdlib/io.md
+      - Time & Clock (time): language/stdlib/time.md
       - Cryptography (crypto): language/stdlib/crypto.md
       - Networking & HTTP (http): language/stdlib/http.md
       - JSON Parser & AST (json): language/stdlib/json.md

@@ -884,6 +884,16 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("crypto.md5(", "md5(")
          .replace("crypto.base64_encode(", "base64_encode(")
          .replace("crypto.base64_decode(", "base64_decode(")
+         .replace("crypto.uuid()", "crypto_uuid()")
+         .replace("crypto.hmac_sha256(", "crypto_hmac_sha256(&")
+         .replace("crypto.jwt_encode(", "crypto_jwt_encode(&")
+         .replace("crypto.jwt_decode(", "crypto_jwt_decode(&")
+         .replace("time.now()", "time_now()")
+         .replace("time.unix()", "time_unix()")
+         .replace("time.unix_ms()", "time_unix_ms()")
+         .replace("time.sleep(", "time_sleep(")
+         .replace("time.elapsed(", "time_elapsed(")
+         .replace("time.format(", "time_format(")
          .replace("http.get(", "http_get(")
          .replace("http.post(", "http_post(")
          .replace("http.intercept(", "http_intercept(")
@@ -1534,16 +1544,158 @@ fn base64_decode(data: impl AsRef<str>) -> String {
     String::from_utf8_lossy(&bytes).to_string()
 }
 #[allow(unused)]
-fn now() -> i64 {
+fn crypto_uuid() -> String {
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(42);
+    let pid = std::process::id() as u128;
+    let mut rng_state = (now ^ (pid << 64)) ^ 0x9E3779B97F4A7C15;
+    let mut bytes = [0u8; 16];
+    for chunk in bytes.chunks_mut(4) {
+        rng_state = rng_state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        let val = (rng_state >> 32) as u32;
+        let b = val.to_be_bytes();
+        for (i, slot) in chunk.iter_mut().enumerate() {
+            *slot = b[i];
+        }
+    }
+    bytes[6] = (bytes[6] & 0x0F) | 0x40; // v4
+    bytes[8] = (bytes[8] & 0x3F) | 0x80; // variant
+    format!(
+        "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+        bytes[0], bytes[1], bytes[2], bytes[3],
+        bytes[4], bytes[5],
+        bytes[6], bytes[7],
+        bytes[8], bytes[9],
+        bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]
+    )
+}
+#[allow(unused)]
+fn crypto_hmac_sha256(key: impl AsRef<str>, data: impl AsRef<str>) -> String {
+    let k = key.as_ref();
+    let d = data.as_ref();
+    if cfg!(windows) {
+        let ps_cmd = format!(
+            "$k=[System.Text.Encoding]::UTF8.GetBytes('{}'); $d=[System.Text.Encoding]::UTF8.GetBytes('{}'); [System.BitConverter]::ToString([System.Security.Cryptography.HMACSHA256]::new($k).ComputeHash($d)).Replace('-','').ToLower()",
+            k.replace("'", "''"),
+            d.replace("'", "''")
+        );
+        std::process::Command::new("powershell")
+            .args(["-NoProfile", "-Command", &ps_cmd])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+            .unwrap_or_default()
+    } else {
+        let ps_cmd = format!("echo -n '{}' | openssl dgst -sha256 -hmac '{}' | cut -d' ' -f2", d.replace("'", "'\\''"), k.replace("'", "'\\''"));
+        std::process::Command::new("sh")
+            .args(["-c", &ps_cmd])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+            .unwrap_or_default()
+    }
+}
+#[allow(unused)]
+fn crypto_base64url_encode(data: impl AsRef<str>) -> String {
+    base64_encode(data).replace('+', "-").replace('/', "_").trim_end_matches('=').to_string()
+}
+#[allow(unused)]
+fn crypto_base64url_decode(data: impl AsRef<str>) -> String {
+    let mut s = data.as_ref().replace('-', "+").replace('_', "/");
+    while s.len() % 4 != 0 {
+        s.push('=');
+    }
+    base64_decode(s)
+}
+#[allow(unused)]
+fn crypto_jwt_encode(payload_json: impl AsRef<str>, secret: impl AsRef<str>) -> String {
+    let header = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
+    let h_b64 = crypto_base64url_encode(header);
+    let p_b64 = crypto_base64url_encode(payload_json);
+    let signing_input = format!("{}.{}", h_b64, p_b64);
+    let sig_hex = crypto_hmac_sha256(secret, &signing_input);
+    let sig_b64 = crypto_base64url_encode(&sig_hex);
+    format!("{}.{}.{}", h_b64, p_b64, sig_b64)
+}
+#[allow(unused)]
+fn crypto_jwt_decode(token: impl AsRef<str>, secret: impl AsRef<str>) -> String {
+    let parts: Vec<&str> = token.as_ref().split('.').collect();
+    if parts.len() != 3 {
+        return String::new();
+    }
+    let signing_input = format!("{}.{}", parts[0], parts[1]);
+    let expected_sig_hex = crypto_hmac_sha256(secret, &signing_input);
+    let expected_sig_b64 = crypto_base64url_encode(&expected_sig_hex);
+    if parts[2] != expected_sig_b64 && parts[2] != expected_sig_hex {
+        return String::new();
+    }
+    crypto_base64url_decode(parts[1])
+}
+#[allow(unused)]
+fn time_now() -> String {
+    let now_ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
+    time_format(now_ts, "%Y-%m-%d %H:%M:%S")
+}
+#[allow(unused)]
+fn time_unix() -> i64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
 }
 #[allow(unused)]
-fn timestamp_ms() -> i64 {
+fn time_unix_ms() -> i64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
 }
 #[allow(unused)]
+fn time_sleep(ms: i64) {
+    if ms > 0 {
+        std::thread::sleep(std::time::Duration::from_millis(ms as u64));
+    }
+}
+#[allow(unused)]
+fn time_elapsed(start_ts: i64) -> i64 {
+    let cur = time_unix_ms();
+    (cur - start_ts).max(0)
+}
+#[allow(unused)]
+fn time_format(ts: i64, _fmt: impl AsRef<str>) -> String {
+    let sec = ts.rem_euclid(86400);
+    let days = ts.div_euclid(86400);
+    let hour = sec / 3600;
+    let min = (sec % 3600) / 60;
+    let s = sec % 60;
+    let mut year = 1970;
+    let mut d = days;
+    loop {
+        let leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+        let days_in_year = if leap { 366 } else { 365 };
+        if d >= days_in_year {
+            d -= days_in_year;
+            year += 1;
+        } else {
+            break;
+        }
+    }
+    let leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+    let days_in_months = [31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let mut month = 1;
+    for dim in days_in_months {
+        if d >= dim {
+            d -= dim;
+            month += 1;
+        } else {
+            break;
+        }
+    }
+    let day = d + 1;
+    format!("{:04}-{:02}-{:02} {:02}:{:02}:{:02} UTC", year, month, day, hour, min, s)
+}
+#[allow(unused)]
+fn now() -> i64 {
+    time_unix()
+}
+#[allow(unused)]
+fn timestamp_ms() -> i64 {
+    time_unix_ms()
+}
+#[allow(unused)]
 fn sleep_ms(ms: u64) {
-    std::thread::sleep(std::time::Duration::from_millis(ms));
+    time_sleep(ms as i64);
 }
 #[allow(unused)]
 fn sys_os() -> String {
@@ -3711,7 +3863,17 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("const zyra_http_interceptors = [];\n");
         header.push_str("function http_intercept(fn) { zyra_http_interceptors.push(fn); }\n");
         header.push_str("function http_request(method, url, headers, body) { let req = { method: String(method), path: String(url), body: String(body || '') }; for (const interceptor of zyra_http_interceptors) { try { req = interceptor(req) || req; } catch {} } return { status: 200, body: JSON.stringify({ url: req.path, method: req.method, received_body: req.body }) }; }\n");
-        header.push_str("function thread_spawn(fn) { try { fn(); } catch {} }\n\n");
+        header.push_str("function thread_spawn(fn) { try { fn(); } catch {} }\n");
+        header.push_str("function crypto_uuid() { if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID(); return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8); return v.toString(16); }); }\n");
+        header.push_str("function crypto_hmac_sha256(key, msg) { try { const cryptoMod = require('crypto'); return cryptoMod.createHmac('sha256', String(key)).update(String(msg)).digest('hex'); } catch { return ''; } }\n");
+        header.push_str("function crypto_jwt_encode(payload, secret) { try { const b64 = (s) => Buffer.from(String(s)).toString('base64url'); const h = b64(JSON.stringify({ alg: 'HS256', typ: 'JWT' })); const p = b64(typeof payload === 'object' ? JSON.stringify(payload) : String(payload)); const sig = crypto_hmac_sha256(secret, `${h}.${p}`); return `${h}.${p}.${b64(sig)}`; } catch { return ''; } }\n");
+        header.push_str("function crypto_jwt_decode(token, secret) { try { const parts = String(token).split('.'); if (parts.length !== 3) return ''; const b64 = (s) => Buffer.from(String(s)).toString('base64url'); const sig = crypto_hmac_sha256(secret, `${parts[0]}.${parts[1]}`); if (parts[2] !== b64(sig) && parts[2] !== sig) return ''; return Buffer.from(parts[1], 'base64url').toString('utf8'); } catch { return ''; } }\n");
+        header.push_str("function time_now() { return new Date().toISOString(); }\n");
+        header.push_str("function time_unix() { return Math.floor(Date.now() / 1000); }\n");
+        header.push_str("function time_unix_ms() { return Date.now(); }\n");
+        header.push_str("function time_sleep(ms) { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } catch {} }\n");
+        header.push_str("function time_elapsed(start) { return Math.max(0, Date.now() - Number(start)); }\n");
+        header.push_str("function time_format(ts, fmt) { return new Date(Number(ts) * 1000).toISOString(); }\n\n");
         header
     } else {
         String::new()
@@ -3825,6 +3987,16 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("crypto.md5(", "md5(")
              .replace("crypto.base64_encode(", "base64_encode(")
              .replace("crypto.base64_decode(", "base64_decode(")
+             .replace("crypto.uuid()", "crypto_uuid()")
+             .replace("crypto.hmac_sha256(", "crypto_hmac_sha256(")
+             .replace("crypto.jwt_encode(", "crypto_jwt_encode(")
+             .replace("crypto.jwt_decode(", "crypto_jwt_decode(")
+             .replace("time.now()", "time_now()")
+             .replace("time.unix()", "time_unix()")
+             .replace("time.unix_ms()", "time_unix_ms()")
+             .replace("time.sleep(", "time_sleep(")
+             .replace("time.elapsed(", "time_elapsed(")
+             .replace("time.format(", "time_format(")
              .replace("http.get(", "http_get(")
              .replace("http.post(", "http_post(")
              .replace("http.intercept(", "http_intercept(")

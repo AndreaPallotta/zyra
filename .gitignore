@@ -18,3 +18,7 @@ test.zyra.env
 .zyra_cache/
 .zyra_modules/
 *.pdb
+*.db
+test_config.json
+test_run.log
+test_store.db

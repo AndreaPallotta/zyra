@@ -4,18 +4,17 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
 
 ## [v2.4.0] - Unreleased
 
+- **High-Precision DateTime & Clock Module (`time.*`)**:
+  - Added zero-import `time.*` standard library: `time.now()`, `time.unix()`, `time.unix_ms()`, `time.format(ts, fmt)`, `time.sleep(ms)`, and `time.elapsed(start_ts)`.
+  - Zero-dependency implementation across Native Rust (`std::time`, `SystemTime`, `Duration`) and JavaScript ESM (`Date`, `Atomics.wait`).
+- **Enhanced Cryptography & Token Primitives (`crypto.*`)**:
+  - Added RFC 4122 v4 UUID generator (`crypto.uuid()`).
+  - Added HMAC-SHA256 signature generator (`crypto.hmac_sha256(key, message)`).
+  - Added RFC 7519 HS256 JSON Web Token encoder and decoder with signature verification (`crypto.jwt_encode(payload, secret)`, `crypto.jwt_decode(token, secret)`).
 - **Postfix Error Propagation Operator (`?`)**:
   - Add native postfix `?` try operator on `Result[T, E]` and `Option[T]` expressions (e.g. `const data = json.parse(raw)?`).
 - **Ergonomic Unwrap Primitives**:
   - Implement `.unwrap()`, `.unwrap_or(default)`, and `.expect(msg)` methods across Native Rust and JavaScript ESM preambles.
-- **Arbitrary Expression String Interpolation**:
-  - Support arbitrary expressions within string template `{...}` spans (e.g. `print("Total: {a + b * 2}, User: {str.upper(user.name)}")`).
-- **Destructuring Pattern Matching & Match Guards**:
-  - Add structural pattern matching for tuples, structs, and enum variants with conditional `if` guards.
-- **High-Precision DateTime & Clock Module (`time.*`)**:
-  - Add standard library primitives: `time.now()`, `time.unix()`, `time.format(ts, fmt)`, `time.parse(str, fmt)`, `time.sleep(ms)`, `time.elapsed(start)`.
-- **Enhanced Cryptography & Token Primitives (`crypto.*`)**:
-  - Add UUIDv4 generation (`crypto.uuid()`), HMAC-SHA256 signatures (`crypto.hmac_sha256()`), and lightweight JWT token signing/verification (`crypto.jwt_encode()`, `crypto.jwt_decode()`).
 - **Buffered Streaming I/O (`io.stream`, `io.pipe`)**:
   - Add chunked streams and line-by-line readers for handling large files without loading entire payloads into memory.
 - **Full-Duplex WebSockets (`ws.*`)**:

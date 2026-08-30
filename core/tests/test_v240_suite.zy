@@ -1,0 +1,65 @@
+// test_v240_suite.zy - Unit tests for Zyra v2.4.0 features: time.*, crypto.*, and unwrap primitives
+
+def test_time_module(): Int {
+  const t_now = time.now()
+  const t_unix = time.unix()
+  const t_ms = time.unix_ms()
+  
+  print("  time.now: {t_now}")
+  print("  time.unix: {t_unix}")
+  print("  time.unix_ms: {t_ms}")
+
+  const t0 = time.unix_ms()
+  time.sleep(20)
+  const elapsed = time.elapsed(t0)
+  print("  time.elapsed after sleep(20): {elapsed} ms")
+
+  const formatted = time.format(1700000000, "%Y-%m-%d %H:%M:%S")
+  print("  time.format(1700000000): {formatted}")
+
+  if (len(t_now) > 10 && t_unix > 1700000000 && t_ms > 0 && elapsed >= 15 && contains(formatted, "2023-11-14")) {
+    print("[PASS] time.* module (now, unix, unix_ms, sleep, elapsed, format) verified")
+    return 1
+  }
+  print("[FAIL] time module test failed")
+  return 0
+}
+
+def test_crypto_uuid_and_hmac(): Int {
+  const u1 = crypto.uuid()
+  const u2 = crypto.uuid()
+  print("  crypto.uuid() 1: {u1}")
+  print("  crypto.uuid() 2: {u2}")
+
+  const key = "secret_key_12345"
+  const message = "The quick brown fox jumps over the lazy dog"
+  const hmac = crypto.hmac_sha256(key, message)
+  print("  crypto.hmac_sha256: {hmac}")
+
+  if (len(u1) == 36 && len(u2) == 36 && u1 != u2 && contains(u1, "-") && len(hmac) == 64) {
+    print("[PASS] crypto.uuid and crypto.hmac_sha256 verified")
+    return 1
+  }
+  print("[FAIL] crypto uuid/hmac test failed")
+  return 0
+}
+
+def test_crypto_jwt_encode_decode(): Int {
+  const secret = "zyra_production_jwt_secret_98765"
+  const payload = "{\"sub\":\"1234567890\",\"name\":\"Andrea Pallotta\",\"admin\":true}"
+
+  const token = crypto.jwt_encode(payload, secret)
+  print("  crypto.jwt_encode: {token}")
+
+  const decoded = crypto.jwt_decode(token, secret)
+  print("  crypto.jwt_decode: {decoded}")
+
+  const invalid = crypto.jwt_decode(token, "wrong_secret_key")
+
+  if (contains(token, ".") && contains(decoded, "Andrea Pallotta") && contains(decoded, "1234567890") && len(invalid) == 0) {
+    print("[PASS] crypto.jwt_encode and crypto.jwt_decode verified")
+    return 1
+  }
+  print("[FAIL] crypto jwt test failed")
+  return 0
+}

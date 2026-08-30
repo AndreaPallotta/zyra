@@ -36,7 +36,8 @@ def main(): Int {
 | [**String Utilities**](str.md) | `str` | Substring splitting, case conversions, and pattern replacements |
 | [**Process Management**](process.md) | `process` | Shell command execution and process termination controls |
 | [**File I/O and Watcher**](io.md) | `io` | Multi-format file reader/writer, directory globbing, and file watcher |
-| [**Cryptography**](crypto.md) | `crypto` | SHA-256/MD5 digests and Base64 character encoding/decoding |
+| [**Time and Clock**](time.md) | `time` | ISO-8601 timestamps, epoch clocks, thread sleeping, duration measuring, and formatting |
+| [**Cryptography**](crypto.md) | `crypto` | SHA-256/MD5 digests, Base64, UUIDv4, HMAC-SHA256, and JWT tokens |
 | [**Networking and HTTP**](http.md) | `http` | HTTP client with interceptor pipeline and embedded HTTP server |
 | [**JSON Parser & AST**](json.md) | `json` | Structured JSON parsing, path-based querying, and serialization |
 | [**Regular Expressions**](regex.md) | `regex` | Pattern matching, substring capture, search-and-replace, and splitting |
