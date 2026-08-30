@@ -20,6 +20,7 @@ Official release notes, version history, and commit logs for the Zyra Programmin
 ## Version 2.5.0 (Planned)
 
 ### Key Features & Scope
+- **100% Core Language Syntax Completion & Freeze**: First-class closures (`|x| x * 2`), default & named parameters (`def fn(x: Int = 10)`), struct/array spread syntax (`{ ...state, a: 1 }`), and optional chaining (`user?.profile?.name`).
 - **Compiler Subsystem Modularization**: Architectural refactoring of monolithic `core/bin/zyra.rs` into modular Rust crates (`src/lexer/`, `src/parser/`, `src/ast/`, `src/codegen/`, `src/preamble/`, `src/cli/`).
 - **First-Class Asynchronous Syntax (`async` / `await`)**: Native asynchronous functions and expression awaits with automatic lowering to Native Rust futures and JavaScript ESM Promises.
 - **VS Code Debug Adapter Protocol (DAP)**: Graphical breakpoint debugging, stepping (`F10`/`F11`), call stacks, and variable watches inside VS Code via `zyra dap`.

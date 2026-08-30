@@ -1,6 +1,6 @@
 ﻿# Codebase Map
-Generated: 2026-08-29 23:30:42
-Commit: 2d1f76d docs(changelog): define v2.5.0 roadmap items
+Generated: 2026-08-29 23:32:57
+Commit: e72ff16 docs(changelog): expand comprehensive v2.5.0 milestone roadmap
 
 This file is a compact index of the codebase for AI agents to understand project structure without full recursive file scans.
 
@@ -13,7 +13,7 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **.github/workflows/release.yml** (135 lines)
 - **.vscode/copilot-instructions.md** (84 lines)
 - **AGENT.md** (33 lines)
-- **CHANGELOG.md** (227 lines)
+- **CHANGELOG.md** (232 lines)
 - **CLAUDE.md** (30 lines)
 - **CODEBASE.md** (409 lines)
 - **core/bin/zyra.js** (30 lines)
@@ -92,7 +92,7 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **docs/language/traits-generics.md** (107 lines)
 - **docs/language/variables-types.md** (112 lines)
 - **docs/play.md** (303 lines)
-- **docs/releases.md** (202 lines)
+- **docs/releases.md** (203 lines)
 - **docs/tooling/cli.md** (166 lines)
 - **docs/tooling/self-hosting.md** (13 lines)
 - **docs/tooling/vscode.md** (13 lines)

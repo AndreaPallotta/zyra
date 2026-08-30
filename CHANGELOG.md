@@ -4,6 +4,11 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
 
 ## [v2.5.0] - Unreleased
 
+- **100% Core Language Syntax Completion & Freeze**:
+  - **First-Class Closures & Environment Captures (`|args| expr`, `|args| { ... }`)**: Anonymous lambda expressions with lexical variable capture for callbacks, UI event loops, and array transforms.
+  - **Default Parameter Values & Named Arguments (`def fn(a: Int, b: Int = 10)`)**: Default parameters in function declarations and named arguments at invocation sites (`fn(a = 1, b = 20)`).
+  - **Struct & Array Spread Syntax (`...`)**: Immutable struct field cloning (`{ ...state, updated_field: val }`) and vector concatenation (`[...vec1, ...vec2]`).
+  - **Optional Chaining Navigation (`?.`)**: Short-circuiting property and method navigation on nullable references and options (`user?.profile?.email`).
 - **Compiler Subsystem Modularization**:
   - Refactor monolithic `core/bin/zyra.rs` into modular Rust subsystems (`core/src/lexer/`, `core/src/parser/`, `core/src/ast/`, `core/src/codegen/`, `core/src/preamble/`, `core/src/cli/`).
 - **First-Class Asynchronous Syntax (`async` / `await`)**:
