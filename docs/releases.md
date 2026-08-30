@@ -8,11 +8,25 @@ Official release notes, version history, and commit logs for the Zyra Programmin
 
 | Version | Release Date | Target | Key Highlights | Status |
 | :--- | :--- | :--- | :--- | :--- |
+| **v2.5.0** | *Upcoming* | Native, JS ESM, WASM | Modular compiler architecture, `async`/`await`, VS Code DAP debugger, monorepo workspaces, relational SQL (`sql.*`), generative fuzz testing (`@fuzz`) | **Planned** |
 | **v2.4.0** | 2026-08-30 | Native, JS ESM | Postfix `?` error operator, arbitrary expression interpolation `{expr}`, tuple destructuring & match guards, `time.*`, `crypto.uuid/jwt`, `ws.*`, `io.lines/append/pipe`, `math.clamp/lerp/dot/norm`, `zyra bench`, `zyra coverage` HTML | **Current Stable** |
 | **v2.3.0** | 2026-08-23 | Native, JS ESM | Concurrency & channels, embedded KV db, JSON AST, regex, worker pool, manifest scripts, JS minifier, in-memory map, vector utilities, URL engine, logging, HTTP interceptor client | Supported |
 | **v2.2.0** | 2026-08-16 | Native, JS ESM | Zero-import dot-notation namespacing, structured `zyra.env` parser, non-callback file watcher, expanded standard library | Supported |
 | **v2.1.1** | 2026-08-16 | Native, JS ESM | Multi-format I/O (`io`), native HTTP web primitives (`net`), platform crypto, system info, 28 compiler bug fixes | Supported |
 | **v2.1.0** | 2026-08-09 | Native, JS ESM | Multi-module struct return types, JS parameter type stripping, VS Code extension enhancements | Supported |
+
+---
+
+## Version 2.5.0 (Planned)
+
+### Key Features & Scope
+- **Compiler Subsystem Modularization**: Architectural refactoring of monolithic `core/bin/zyra.rs` into modular Rust crates (`src/lexer/`, `src/parser/`, `src/ast/`, `src/codegen/`, `src/preamble/`, `src/cli/`).
+- **First-Class Asynchronous Syntax (`async` / `await`)**: Native asynchronous functions and expression awaits with automatic lowering to Native Rust futures and JavaScript ESM Promises.
+- **VS Code Debug Adapter Protocol (DAP)**: Graphical breakpoint debugging, stepping (`F10`/`F11`), call stacks, and variable watches inside VS Code via `zyra dap`.
+- **Monorepo Workspace Orchestrator (`zyra build --workspace`)**: Multi-package dependency graph resolution, cross-package package imports (`@org/pkg`), and parallel module compilation.
+- **Relational SQL Database Engine (`sql.*`)**: Parameterized SQLite and PostgreSQL database drivers: `sql.open`, `sql.exec`, and `sql.query`.
+- **Generative Property-Based Testing (`zyra test --fuzz` / `@fuzz`)**: Built-in fuzz testing engine with automated boundary value matrices.
+- **WebAssembly DOM & Canvas Bindings (`wasm.*`)**: HTML5 Canvas and browser event standard library bindings for WebAssembly targets.
 
 ---
 

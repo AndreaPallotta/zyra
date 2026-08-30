@@ -2,6 +2,23 @@
 
 All notable changes to the **Zyra Programming Language & Toolchain** will be documented in this file.
 
+## [v2.5.0] - Unreleased
+
+- **Compiler Subsystem Modularization**:
+  - Refactor monolithic `core/bin/zyra.rs` into modular Rust subsystems (`core/src/lexer/`, `core/src/parser/`, `core/src/ast/`, `core/src/codegen/`, `core/src/preamble/`, `core/src/cli/`).
+- **First-Class Asynchronous Syntax (`async` / `await`)**:
+  - Native asynchronous functions (`async def`) and expression awaits (`await`) with automatic lowering to Native Rust futures and JavaScript ESM Promises.
+- **VS Code Debug Adapter Protocol (DAP)**:
+  - Implement DAP protocol server (`zyra dap`) over stdio to enable GUI breakpoint debugging, stepping (`F10`/`F11`), call stacks, and variable watch inspection in VS Code.
+- **Monorepo Workspace Orchestrator (`zyra build --workspace`)**:
+  - Support `"workspaces"` in `zyra.json` with topological dependency graph resolution, cross-package imports (`@org/pkg`), and parallel module compilation.
+- **Relational SQL Database Engine (`sql.*`)**:
+  - Add parameterized SQLite and PostgreSQL database drivers: `sql.open(url)`, `sql.exec(conn, query, args)`, and `sql.query(conn, query, args)`.
+- **Generative Property-Based Testing (`zyra test --fuzz` / `@fuzz`)**:
+  - Built-in fuzz testing engine with automated boundary value matrices and invariant validation.
+- **WebAssembly Browser DOM & Canvas Bindings (`wasm.*`)**:
+  - Direct HTML5 Canvas and browser event standard library bindings for WebAssembly targets.
+
 ## [v2.4.0] - 2026-08-30
 
 - **Postfix Error Propagation Operator (`?`)**:
@@ -37,12 +54,6 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
   - Added RFC 4122 v4 UUID generator (`crypto.uuid()`).
   - Added HMAC-SHA256 signature generator (`crypto.hmac_sha256(key, message)`).
   - Added RFC 7519 HS256 JSON Web Token encoder and decoder with signature verification (`crypto.jwt_encode(payload, secret)`, `crypto.jwt_decode(token, secret)`).
-- **Compiler Modularization**:
-  - Refactor monolithic `core/bin/zyra.rs` into modular Rust subsystems (`src/lexer/`, `src/parser/`, `src/preamble/`, `src/codegen/`, `src/cli/`).
-- **Monorepo Workspace Orchestrator (`zyra build --workspace`)**:
-  - Implement workspace dependency graph resolution and parallel package compilation from `zyra.json`.
-- **Multi-Architecture Release Packaging**:
-  - Add release pipelines for macOS ARM64 (Apple Silicon) and Linux `aarch64`.
 
 ## [v2.3.0] - 2026-08-23
 
