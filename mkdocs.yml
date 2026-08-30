@@ -97,6 +97,7 @@ nav:
       - In-Memory Map (map): language/stdlib/map.md
       - Vector Utilities (vec): language/stdlib/vec.md
       - URL & Query Parser (url): language/stdlib/url.md
+      - WebSockets (ws): language/stdlib/ws.md
       - Logging Framework (log): language/stdlib/log.md
   - Tooling & IDE:
       - CLI Commands & Driver: tooling/cli.md

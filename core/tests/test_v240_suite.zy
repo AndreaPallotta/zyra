@@ -174,6 +174,59 @@ def test_linear_algebra_and_math(): Int {
   return 0
 }
 
+def helper_safe_divide(a: Int, b: Int): Result[Int, String] {
+  if (b == 0) {
+    return Err("Division by zero")
+  }
+  return Ok(a / b)
+}
+
+def helper_chained_computation(a: Int, b: Int, c: Int): Result[Int, String] {
+  const step1 = helper_safe_divide(a, b)?
+  const step2 = helper_safe_divide(step1, c)?
+  return Ok(step2)
+}
+
+def test_try_operator_and_error_propagation(): Int {
+  const ok_res = helper_chained_computation(100, 2, 5)
+  const err_res = helper_chained_computation(100, 0, 5)
+  
+  const is_ok_match = match (ok_res) {
+    Ok(val) if val == 10 => true,
+    _ => false,
+  }
+
+  const is_err_match = match (err_res) {
+    Err(e) if contains(e, "Division by zero") => true,
+    _ => false,
+  }
+
+  if (is_ok_match && is_err_match) {
+    print("[PASS] Postfix ? error propagation operator verified")
+    return 1
+  }
+  print("[FAIL] try operator test failed")
+  return 0
+}
+
+def test_websocket_duplex_communication(): Int {
+  var socket = ws.connect("ws://127.0.0.1:9090/live")
+  const bytes_sent = ws.send(socket, "ping:zyra_client_v240")
+  print("  ws.send bytes: {bytes_sent}")
+  
+  const msg_received = ws.recv(socket)
+  print("  ws.recv message: {msg_received}")
+  
+  const close_status = ws.close(socket)
+
+  if (bytes_sent > 0 && contains(msg_received, "ping:zyra_client_v240") && close_status == 0) {
+    print("[PASS] Full-duplex WebSocket client primitives verified")
+    return 1
+  }
+  print("[FAIL] websocket test failed")
+  return 0
+}
+
 def bench_vector_dot(): Int {
   const v1 = [1.0, 2.0, 3.0, 4.0, 5.0]
   const v2 = [5.0, 4.0, 3.0, 2.0, 1.0]
@@ -188,5 +241,6 @@ def bench_string_interpolation(): Int {
   const msg = "result: {a + b * 2}, name: {name}"
   return len(msg)
 }
+
 
 

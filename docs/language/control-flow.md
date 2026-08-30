@@ -83,6 +83,22 @@ print("Point classification: {description}")
 
 ---
 
+## Error Propagation Operator (`?`)
+
+Zyra provides a postfix `?` try operator for propagating `Err` or `None` up to calling functions without nested `match` boilerplate:
+
+```zyra
+def read_config(path: String): Result[Config, String] {
+  const content = file_read(path)?
+  const config = json.parse(content)?
+  return Ok(config)
+}
+```
+
+When an expression evaluates to `Ok(val)` or `Some(val)`, the `?` operator extracts the underlying value. If it evaluates to `Err(e)` or `None`, the function returns early with that failure.
+
+---
+
 ## Loops and Iteration
 
 Zyra supports both conditional `while` loops and sequence iteration via `for`.

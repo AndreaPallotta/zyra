@@ -4,6 +4,12 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
 
 ## [v2.4.0] - Unreleased
 
+- **Postfix Error Propagation Operator (`?`)**:
+  - Added native `?` try operator for automatic error bubbling on `Result[T, E]` and `Option[T]` expressions without nested match blocks.
+  - Full support for bracketed generic return types (`Result[T, E]` -> `Result<T, E>`) and auto-converted error strings.
+- **Full-Duplex WebSockets (`ws.*`)**:
+  - Added zero-dependency WebSocket client module: `ws.connect(url)`, `ws.send(socket, msg)`, `ws.recv(socket)`, and `ws.close(socket)`.
+  - Implemented RFC 6455 frame builder/parser over TCP in Native Rust and client abstraction in JavaScript ESM.
 - **In-Process Microbenchmark Harness (`zyra bench`)**:
   - Automatically discovers `def bench_...()` routines and runs 1,000 iterations in-process with warmup.
   - Reports operations/second, mean latency, min/max runtime tables with nanosecond precision.

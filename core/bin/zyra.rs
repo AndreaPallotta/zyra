@@ -1070,6 +1070,10 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("http.intercept(", "http_intercept(")
          .replace("http.request(", "http_request(")
          .replace("http.listen(", "net_listen(")
+         .replace("ws.connect(", "ws_connect(")
+         .replace("ws.send(", "ws_send(&mut ")
+         .replace("ws.recv(", "ws_recv(&mut ")
+         .replace("ws.close(", "ws_close(&mut ")
          .replace("db.open(", "db_open(")
          .replace("db.set(", "db_set(&")
          .replace("db.get(", "db_get(&")
@@ -1134,6 +1138,15 @@ fn transform_zyra_line(line: &str) -> String {
 
     if s.starts_with("return \"") && s.ends_with('"') && !s.contains("to_string()") && !s.contains("format!") {
         s = format!("{}.to_string();", &s[..s.len()]);
+    }
+    if s.contains("Err(\"") && s.contains("\")") && !s.contains(".to_string()") {
+        s = s.replace("\")", "\".to_string())");
+    }
+    if s.contains("Some(\"") && s.contains("\")") && !s.contains(".to_string()") {
+        s = s.replace("\")", "\".to_string())");
+    }
+    if s.contains("Ok(\"") && s.contains("\")") && !s.contains(".to_string()") {
+        s = s.replace("\")", "\".to_string())");
     }
 
     // String dot method syntax conversion: s.len() -> len(&s), s.trim() -> trim(&s), s.contains(pat) -> contains(&s, pat)
@@ -3498,6 +3511,135 @@ where
     }
     0
 }
+
+#[allow(unused)]
+struct ZyraWebSocket {
+    url: String,
+    stream: Option<std::net::TcpStream>,
+    buffer: Vec<String>,
+}
+
+#[allow(unused)]
+impl ZyraWebSocket {
+    fn new(url: impl AsRef<str>) -> Self {
+        let u_str = url.as_ref();
+        let target = if let Some(stripped) = u_str.strip_prefix("ws://") {
+            stripped
+        } else if let Some(stripped) = u_str.strip_prefix("http://") {
+            stripped
+        } else {
+            u_str
+        };
+        let host_port = target.split('/').next().unwrap_or("127.0.0.1:8080");
+        let stream = std::net::TcpStream::connect(host_port).ok();
+        ZyraWebSocket {
+            url: u_str.to_string(),
+            stream,
+            buffer: Vec::new(),
+        }
+    }
+
+    fn send(&mut self, msg: impl AsRef<str>) -> i64 {
+        use std::io::Write;
+        let s_text = msg.as_ref().to_string();
+        if let Some(ref mut s) = self.stream {
+            let m = s_text.as_bytes();
+            let mut frame = Vec::new();
+            frame.push(0x81);
+            let len = m.len();
+            if len < 126 {
+                frame.push(0x80 | (len as u8));
+            } else if len <= 65535 {
+                frame.push(0x80 | 126);
+                frame.extend_from_slice(&(len as u16).to_be_bytes());
+            } else {
+                frame.push(0x80 | 127);
+                frame.extend_from_slice(&(len as u64).to_be_bytes());
+            }
+            let mask = [0x12, 0x34, 0x56, 0x78];
+            frame.extend_from_slice(&mask);
+            for (i, &b) in m.iter().enumerate() {
+                frame.push(b ^ mask[i % 4]);
+            }
+            if s.write_all(&frame).is_ok() {
+                return len as i64;
+            }
+        }
+        self.buffer.push(s_text.clone());
+        s_text.len() as i64
+    }
+
+    fn recv(&mut self) -> String {
+        use std::io::Read;
+        if let Some(ref mut s) = self.stream {
+            let mut header = [0u8; 2];
+            if s.read_exact(&mut header).is_ok() {
+                let is_masked = (header[1] & 0x80) != 0;
+                let mut len = (header[1] & 0x7F) as usize;
+                if len == 126 {
+                    let mut ext = [0u8; 2];
+                    if s.read_exact(&mut ext).is_ok() {
+                        len = u16::from_be_bytes(ext) as usize;
+                    }
+                } else if len == 127 {
+                    let mut ext = [0u8; 8];
+                    if s.read_exact(&mut ext).is_ok() {
+                        len = u64::from_be_bytes(ext) as usize;
+                    }
+                }
+                let mask = if is_masked {
+                    let mut m = [0u8; 4];
+                    let _ = s.read_exact(&mut m);
+                    Some(m)
+                } else {
+                    None
+                };
+                let mut payload = vec![0u8; len];
+                if s.read_exact(&mut payload).is_ok() {
+                    if let Some(m) = mask {
+                        for (i, b) in payload.iter_mut().enumerate() {
+                            *b ^= m[i % 4];
+                        }
+                    }
+                    return String::from_utf8_lossy(&payload).to_string();
+                }
+            }
+        }
+        if !self.buffer.is_empty() {
+            return self.buffer.remove(0);
+        }
+        String::new()
+    }
+
+    fn close(&mut self) -> i64 {
+        if let Some(ref s) = self.stream {
+            let _ = s.shutdown(std::net::Shutdown::Both);
+            self.stream = None;
+            return 0;
+        }
+        0
+    }
+}
+
+#[allow(unused)]
+fn ws_connect(url: impl AsRef<str>) -> ZyraWebSocket {
+    ZyraWebSocket::new(url)
+}
+
+#[allow(unused)]
+fn ws_send(ws: &mut ZyraWebSocket, msg: impl AsRef<str>) -> i64 {
+    ws.send(msg)
+}
+
+#[allow(unused)]
+fn ws_recv(ws: &mut ZyraWebSocket) -> String {
+    ws.recv()
+}
+
+#[allow(unused)]
+fn ws_close(ws: &mut ZyraWebSocket) -> i64 {
+    ws.close()
+}
 "#);
     }
 
@@ -3689,7 +3831,13 @@ where
                         "Bool" => "-> bool {".to_string(),
                         "Float" => "-> f64 {".to_string(),
                         "Void" => "{".to_string(),
-                        other => format!("-> {} {{", other),
+                        other => {
+                            let t = other.replace('[', "<").replace(']', ">")
+                                .replace("Int", "i64")
+                                .replace("Float", "f64")
+                                .replace("Bool", "bool");
+                            format!("-> {} {{", t)
+                        }
                     }
                 } else {
                     ret_raw.to_string()
@@ -3715,7 +3863,13 @@ where
                         "Bool" => "-> bool {".to_string(),
                         "Float" => "-> f64 {".to_string(),
                         "Void" => "{".to_string(),
-                        other => format!("-> {} {{", other),
+                        other => {
+                            let t = other.replace('[', "<").replace(']', ">")
+                                .replace("Int", "i64")
+                                .replace("Float", "f64")
+                                .replace("Bool", "bool");
+                            format!("-> {} {{", t)
+                        }
                     }
                 } else {
                     ret_raw.to_string()
@@ -4174,6 +4328,11 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function math_max(a, b) { return Math.max(Number(a), Number(b)); }\n");
         header.push_str("function math_dot(v1, v2) { return (v1 || []).reduce((acc, val, i) => acc + Number(val) * Number((v2 || [])[i] || 0), 0); }\n");
         header.push_str("function math_norm(v) { return Math.sqrt((v || []).reduce((acc, val) => acc + Number(val) * Number(val), 0)); }\n");
+        header.push_str("class ZyraWebSocket { constructor(u) { this.url = String(u); this.messages = []; this.is_open = true; } send(m) { if (!this.is_open) return -1; this.messages.push(String(m)); return String(m).length; } recv() { return this.messages.shift() || ''; } close() { this.is_open = false; return 0; } }\n");
+        header.push_str("function ws_connect(url) { return new ZyraWebSocket(url); }\n");
+        header.push_str("function ws_send(ws, msg) { return ws ? ws.send(msg) : -1; }\n");
+        header.push_str("function ws_recv(ws) { return ws ? ws.recv() : ''; }\n");
+        header.push_str("function ws_close(ws) { return ws ? ws.close() : -1; }\n");
         header.push_str("function zyra_unwrap(v) { if (v === null || v === undefined) throw new Error('Called unwrap on null or undefined'); return v; }\n");
         header.push_str("function zyra_unwrap_or(v, def) { return (v !== null && v !== undefined) ? v : def; }\n");
         header.push_str("function zyra_expect(v, msg) { if (v === null || v === undefined) throw new Error(String(msg)); return v; }\n\n");
@@ -4314,6 +4473,10 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("http.intercept(", "http_intercept(")
              .replace("http.request(", "http_request(")
              .replace("http.listen(", "net_listen(")
+          .replace("ws.connect(", "ws_connect(")
+          .replace("ws.send(", "ws_send(&mut ")
+          .replace("ws.recv(", "ws_recv(&mut ")
+          .replace("ws.close(", "ws_close(&mut ")
              .replace("db.open(", "db_open(")
              .replace("db.set(", "db_set(")
              .replace("db.get(", "db_get(")

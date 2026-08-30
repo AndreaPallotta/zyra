@@ -1,6 +1,6 @@
 ﻿# Codebase Map
-Generated: 2026-08-29 21:53:04
-Commit: 32a646b feat(compiler): add arbitrary expression string interpolation and match guards
+Generated: 2026-08-29 23:04:59
+Commit: f47b018 feat(stdlib): add microbenchmark harness, coverage html, streaming io, and linear algebra
 
 This file is a compact index of the codebase for AI agents to understand project structure without full recursive file scans.
 
@@ -13,11 +13,11 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **.github/workflows/release.yml** (135 lines)
 - **.vscode/copilot-instructions.md** (84 lines)
 - **AGENT.md** (33 lines)
-- **CHANGELOG.md** (182 lines)
+- **CHANGELOG.md** (188 lines)
 - **CLAUDE.md** (30 lines)
-- **CODEBASE.md** (407 lines)
+- **CODEBASE.md** (408 lines)
 - **core/bin/zyra.js** (30 lines)
-- **core/bin/zyra.rs** (5190 lines)
+- **core/bin/zyra.rs** (5353 lines)
 - **core/coverage/lcov-report/block-navigation.js** (88 lines)
 - **core/coverage/lcov-report/prettify.js** (3 lines)
 - **core/coverage/lcov-report/sorter.js** (211 lines)
@@ -66,7 +66,7 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **docs/getting-started/installation.md** (49 lines)
 - **docs/getting-started/quickstart.md** (60 lines)
 - **docs/index.md** (84 lines)
-- **docs/language/control-flow.md** (131 lines)
+- **docs/language/control-flow.md** (147 lines)
 - **docs/language/functions-modules.md** (135 lines)
 - **docs/language/stdlib/chan.md** (48 lines)
 - **docs/language/stdlib/crypto.md** (75 lines)
@@ -87,6 +87,7 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **docs/language/stdlib/time.md** (59 lines)
 - **docs/language/stdlib/url.md** (36 lines)
 - **docs/language/stdlib/vec.md** (56 lines)
+- **docs/language/stdlib/ws.md** (37 lines)
 - **docs/language/structs-enums.md** (138 lines)
 - **docs/language/traits-generics.md** (107 lines)
 - **docs/language/variables-types.md** (112 lines)
@@ -107,7 +108,7 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **lsp/package.json** (22 lines)
 - **lsp/src/server.ts** (246 lines)
 - **lsp/tsconfig.json** (14 lines)
-- **mkdocs.yml** (106 lines)
+- **mkdocs.yml** (107 lines)
 - **package.json** (6 lines)
 - **package-lock.json** (3158 lines)
 - **packaging/build-packages.js** (150 lines)
