@@ -2,6 +2,42 @@
 
 All notable changes to the **Zyra Programming Language & Toolchain** will be documented in this file.
 
+## [v2.6.0] - Unreleased
+
+### Compiler Architecture & Autonomy
+- **Direct JIT & Machine Code Generation (`--backend llvm`, `--jit`)**:
+  - Direct compilation to native machine code without requiring an external `rustc` toolchain.
+  - Sub-millisecond script startup via native in-process JIT execution.
+- **Compiler Subsystem Modularization**:
+  - Decompose monolithic `core/bin/zyra.rs` into modular Rust subsystems (`core/src/lexer/`, `core/src/parser/`, `core/src/ast/`, `core/src/codegen/`, `core/src/runtime/`, `core/src/cli/`).
+- **Monorepo Workspace Orchestrator (`zyra build --workspace`)**:
+  - Multi-package root manifest resolution (`zyra.json`), topological build graphs, and parallel compilation of workspace members.
+
+### Packaging, Sandboxing & Tooling
+- **Hermetic Standalone Packaging & WASI Sandbox (`zyra pack`, `zyra sandbox`)**:
+  - Single-binary zero-dependency packaging embedding user code, static assets, and runtime.
+  - Capability-based security sandbox (`--allow-net`, `--allow-read`, `--allow-env`) for isolated plugin execution without Docker.
+- **VS Code Debug Adapter Protocol (`zyra dap`)**:
+  - Full DAP server implementation over stdio for graphical breakpoints, line stepping (`F10`/`F11`), call stacks, and variable watches.
+- **OpenAPI 3.1 Specification Generator (`zyra openapi`)**:
+  - Automatic zero-annotation extraction of REST routes and struct schemas into standard OpenAPI JSON/YAML.
+- **Source-Level LCOV Code Coverage Reporter (`zyra test --coverage`)**:
+  - Statement and branch coverage instrumentation outputting terminal summaries, `lcov.info`, and interactive `coverage.html`.
+- **Generative Property-Based Fuzzing Engine (`zyra test --fuzz` / `@fuzz`)**:
+  - Automated boundary value stress testing and invariant verification.
+
+### Systems Runtime & Cryptography
+- **Zero-Copy Memory Streams & Buffer Pools (`buf.*`, `io.pipe_zero_copy`)**:
+  - Slabs, ring buffers (`buf.ring`), and non-allocating buffer slicing for high-throughput network and file I/O.
+- **Structured Concurrency & Task Nurseries (`task.*`)**:
+  - Cooperative task groups (`task.group`), structured lifecycles, and cancellation tokens.
+- **Native Cryptographic Cipher Suite & TLS Engine (`crypto.cipher`, `tls.*`)**:
+  - Symmetric encryption (AES-256-GCM, ChaCha20-Poly1305), Ed25519 signatures, and native TLS client/server sockets.
+- **Declarative Configuration Schema & Type Coercion (`config.*`)**:
+  - Strongly-typed configuration loader with automatic environment variable overrides and schema validation.
+
+---
+
 ## [v2.5.0] - 2026-09-05
 
 - **100% Core Language Syntax Completion & Freeze**:
