@@ -2112,6 +2112,7 @@ trait ZyraLen { fn zyra_len(&self) -> i64; }
 impl ZyraLen for str { fn zyra_len(&self) -> i64 { self.len() as i64 } }
 impl ZyraLen for String { fn zyra_len(&self) -> i64 { self.len() as i64 } }
 impl ZyraLen for &str { fn zyra_len(&self) -> i64 { self.len() as i64 } }
+impl ZyraLen for &String { fn zyra_len(&self) -> i64 { (*self).len() as i64 } }
 impl<T> ZyraLen for Vec<T> { fn zyra_len(&self) -> i64 { self.len() as i64 } }
 impl<T> ZyraLen for [T] { fn zyra_len(&self) -> i64 { self.len() as i64 } }
 impl<T, const N: usize> ZyraLen for [T; N] { fn zyra_len(&self) -> i64 { N as i64 } }
@@ -4855,7 +4856,7 @@ fn vec_spread<T: Clone>(slices: &[&[T]]) -> Vec<T> {
 
                 let clean_params = params
                     .replace(": Int", ": i64")
-                    .replace(": String", ": impl Into<String> + std::fmt::Display")
+                    .replace(": String", ": impl Into<String> + std::fmt::Display + AsRef<str>")
                     .replace(": Bool", ": bool")
                     .replace(": Float", ": f64");
 
