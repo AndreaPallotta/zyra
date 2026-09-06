@@ -1234,10 +1234,6 @@ fn transform_zyra_line(line: &str) -> String {
             }
         }
     }
-    if s.contains("trim(") {
-        s = s.replace("trim(", "&trim(");
-        s = s.replace("&&trim(", "&trim(");
-    }
     if s.contains(" + ") && s.contains('"') && !s.contains("format!(") {
         s = s.replace(" + ", ".to_string() + &");
         s = s.replace(".to_string() + &.to_string()", " + ");
@@ -4850,13 +4846,29 @@ fn vec_spread<T: Clone>(slices: &[&[T]]) -> Vec<T> {
             let mut fn_line = trimmed.to_string();
             fn_line = fn_line.replace("def ", "fn ");
 
+            let mut string_params: Vec<String> = Vec::new();
+            if let Some(open_paren) = fn_line.find('(') {
+                if let Some(close_paren) = fn_line.find(')') {
+                    let inside_parens = &fn_line[open_paren + 1..close_paren];
+                    for param_decl in inside_parens.split(',') {
+                        let parts: Vec<&str> = param_decl.split(':').collect();
+                        if parts.len() == 2 && parts[1].trim() == "String" {
+                            let p_name = parts[0].trim().trim_start_matches("mut ").trim();
+                            if !p_name.is_empty() {
+                                string_params.push(p_name.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+
             if let Some(ret_idx) = fn_line.find("):") {
                 let params = &fn_line[..ret_idx + 1];
                 let rest = &fn_line[ret_idx + 2..];
 
                 let clean_params = params
                     .replace(": Int", ": i64")
-                    .replace(": String", ": impl Into<String> + std::fmt::Display + AsRef<str>")
+                    .replace(": String", ": impl Into<String>")
                     .replace(": Bool", ": bool")
                     .replace(": Float", ": f64");
 
@@ -4888,7 +4900,7 @@ fn vec_spread<T: Clone>(slices: &[&[T]]) -> Vec<T> {
 
                 let clean_params = params
                     .replace(": Int", ": i64")
-                    .replace(": String", ": String")
+                    .replace(": String", ": impl Into<String>")
                     .replace(": Bool", ": bool")
                     .replace(": Float", ": f64");
 
@@ -4921,6 +4933,9 @@ fn vec_spread<T: Clone>(slices: &[&[T]]) -> Vec<T> {
                 fn_line = fn_line.replace("fn main()", "fn _zyra_user_main()");
             }
             func_lines.push(fn_line);
+            for p in string_params {
+                func_lines.push(format!("    let {}: String = {}.into();", p, p));
+            }
             continue;
         }
 
