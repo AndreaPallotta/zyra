@@ -2,7 +2,7 @@
 
 All notable changes to the **Zyra Programming Language & Toolchain** will be documented in this file.
 
-## [v2.5.0] - Unreleased
+## [v2.5.0] - 2026-09-05
 
 - **100% Core Language Syntax Completion & Freeze**:
   - **First-Class Closures & Environment Captures (`|args| expr`, `|args| { ... }`)**: Anonymous lambda expressions with lexical variable capture for callbacks, UI event loops, and array transforms.

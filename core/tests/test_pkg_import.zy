@@ -1,6 +1,7 @@
 import "github.com/zyra-lang/sample-lib"
 
-def main(): Int {
+@test
+def test_pkg_import(): Int {
   const msg = greet_from_pkg("Zyra Developer")
   print(msg)
   if (contains(msg, "Hello from package")) {

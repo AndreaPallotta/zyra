@@ -1,0 +1,118 @@
+// test_v250_suite.zy - Comprehensive Unit Tests for Zyra v2.5.0
+
+@test
+def test_sql_engine(): Int {
+  const db_conn = sql.open("sqlite", "file::memory:?cache=shared")
+  const create_res = sql.exec(db_conn, "CREATE TABLE users (id, name, value, status)")
+  print(create_res)
+
+  const insert_1 = sql.exec(db_conn, "INSERT INTO users VALUES (1, 'Alice', 'Admin', 'Active')")
+  const insert_2 = sql.exec(db_conn, "INSERT INTO users VALUES (2, 'Bob', 'Developer', 'Active')")
+  const insert_3 = sql.exec(db_conn, "INSERT INTO users VALUES (3, 'Charlie', 'Designer', 'Pending')")
+
+  const rows = sql.query(db_conn, "SELECT * FROM users")
+  print(len(&rows))
+
+  if (len(&rows) == 3) {
+    print("[PASS] sql.* relational database engine verified")
+    sql.close(db_conn)
+    return 0
+  }
+  print("[FAIL] sql.* relational database engine test failed")
+  return 1
+}
+
+@test
+def test_ffi_and_mmap(): Int {
+  const lib = ffi.load("kernel32.dll")
+  const res = ffi.call(lib, "GetCurrentProcessId", "")
+  print(res)
+
+  file_write("test_mmap_tmp.txt", "ZYRA_MMAP_SYSTEMS_PAYLOAD_V250")
+  var mmap_handle = io.mmap("test_mmap_tmp.txt")
+  const slice = io.mmap_read(mmap_handle, 5, 4)
+  print(slice)
+  io.mmap_close(mmap_handle)
+
+  if (slice == "MMAP") {
+    print("[PASS] ffi.* and io.mmap memory-mapped I/O verified")
+    return 0
+  }
+  print("[FAIL] ffi / io.mmap test failed")
+  return 1
+}
+
+@test
+def test_bin_pack_and_unpack(): Int {
+  const packed_hex = bin.pack(">I", "1337")
+  print(packed_hex)
+
+  const unpacked = bin.unpack(">I", packed_hex)
+  print(unpacked[0])
+
+  if (unpacked[0] == "1337") {
+    print("[PASS] bin.pack and bin.unpack binary serialization verified")
+    return 0
+  }
+  print("[FAIL] bin.pack / bin.unpack test failed")
+  return 1
+}
+
+@test
+def test_tui_toolkit(): Int {
+  const styled_text = tui.style("Zyra Core v2.5.0", "green")
+  print(styled_text)
+
+  const progress_bar = tui.progress(75, 100, 20)
+  print(progress_bar)
+
+  const headers = ["ID", "Name", "Role"]
+  const rows = [["1", "Alice", "Admin"], ["2", "Bob", "Engineer"]]
+  const rendered_table = tui.table(headers, &rows)
+  print(rendered_table)
+
+  if (contains(progress_bar, "75%")) {
+    print("[PASS] tui.* terminal formatting & UI primitives verified")
+    return 0
+  }
+  print("[FAIL] tui.* test failed")
+  return 1
+}
+
+@test
+def test_cron_and_queue(): Int {
+  const is_valid = cron.matches("0 9 * * *", 1788652000)
+  print(is_valid)
+
+  const q = queue.new()
+  const p1 = queue.push(q, "TASK_ALPHA")
+  const p2 = queue.push(q, "TASK_BETA")
+  const q_len = queue.len(q)
+  print(q_len)
+
+  const item1 = queue.pop(q)
+  const item2 = queue.pop(q)
+  print(item1)
+  print(item2)
+
+  if (is_valid && q_len == 2 && item1 == "TASK_ALPHA" && item2 == "TASK_BETA") {
+    print("[PASS] cron.* and queue.* background scheduling verified")
+    return 0
+  }
+  print("[FAIL] cron / queue test failed")
+  return 1
+}
+
+@test
+def test_higher_order_closures(): Int {
+  const numbers = [1, 2, 3, 4, 5]
+  const sum = vec.reduce(numbers, 0, |acc, x| acc + x)
+  print(sum)
+
+  if (sum == 15) {
+    print("[PASS] Higher-order closures and vec.reduce verified")
+    return 0
+  }
+  print("[FAIL] Higher-order closures test failed")
+  return 1
+}

@@ -1,6 +1,6 @@
 ﻿# Codebase Map
-Generated: 2026-08-29 23:32:57
-Commit: e72ff16 docs(changelog): expand comprehensive v2.5.0 milestone roadmap
+Generated: 2026-09-05 20:42:09
+Commit: 551d399 docs(changelog): prioritize 100% core language syntax freeze for v2.5.0
 
 This file is a compact index of the codebase for AI agents to understand project structure without full recursive file scans.
 
@@ -17,7 +17,7 @@ See [DEPS.md](file:///c:/Users/andre/OneDrive/Desktop/projects/agent-devkit/DEPS
 - **CLAUDE.md** (30 lines)
 - **CODEBASE.md** (409 lines)
 - **core/bin/zyra.js** (30 lines)
-- **core/bin/zyra.rs** (5353 lines)
+- **core/bin/zyra.rs** (5672 lines)
 - **core/coverage/lcov-report/block-navigation.js** (88 lines)
 - **core/coverage/lcov-report/prettify.js** (3 lines)
 - **core/coverage/lcov-report/sorter.js** (211 lines)
