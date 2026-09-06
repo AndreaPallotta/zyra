@@ -12,6 +12,10 @@ def Badge(status: String, badge_class: String): String {
   return <span class={badge_class}>{status}</span>
 }
 
+def InterpolatedBadge(status: String, variant: String): String {
+  return <span class="badge badge-{variant}">{status}</span>
+}
+
 def FormField(field_type: String): String {
   return (
     <div class="form-group">
@@ -41,6 +45,13 @@ def main(): Int {
   if !contains(&badge_html, "<span class=\"badge-success\">Active</span>") {
     print("FAILED: badge_html content mismatch")
     print(badge_html)
+    return 1
+  }
+
+  let interp_badge = InterpolatedBadge("Pending".to_string(), "warning".to_string())
+  if !contains(&interp_badge, "<span class=\"badge badge-warning\">Pending</span>") {
+    print("FAILED: interp_badge content mismatch")
+    print(interp_badge)
     return 1
   }
 

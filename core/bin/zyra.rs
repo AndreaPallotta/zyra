@@ -1688,7 +1688,46 @@ fn lower_elem_to_rust(elem: &JsxElem, fmt_str: &mut String, args: &mut Vec<Strin
             match val {
                 AttrVal::Str(s) => {
                     fmt_str.push_str("=\\\"");
-                    fmt_str.push_str(&s.replace('{', "{{").replace('}', "}}").replace('"', "\\\""));
+                    let chars: Vec<char> = s.chars().collect();
+                    let mut i = 0;
+                    while i < chars.len() {
+                        if chars[i] == '{' {
+                            let mut j = i + 1;
+                            let mut expr = String::new();
+                            let mut depth = 1;
+                            while j < chars.len() {
+                                if chars[j] == '{' {
+                                    depth += 1;
+                                    expr.push('{');
+                                } else if chars[j] == '}' {
+                                    depth -= 1;
+                                    if depth == 0 {
+                                        break;
+                                    }
+                                    expr.push('}');
+                                } else {
+                                    expr.push(chars[j]);
+                                }
+                                j += 1;
+                            }
+                            if depth == 0 && !expr.trim().is_empty() {
+                                fmt_str.push_str("{}");
+                                args.push(expr.trim().to_string());
+                                i = j + 1;
+                                continue;
+                            }
+                        }
+                        if chars[i] == '"' {
+                            fmt_str.push_str("\\\"");
+                        } else if chars[i] == '{' {
+                            fmt_str.push_str("{{");
+                        } else if chars[i] == '}' {
+                            fmt_str.push_str("}}");
+                        } else {
+                            fmt_str.push(chars[i]);
+                        }
+                        i += 1;
+                    }
                     fmt_str.push_str("\\\"");
                 }
                 AttrVal::Expr(e) => {
@@ -1739,7 +1778,49 @@ fn lower_elem_to_js(elem: &JsxElem, out_str: &mut String, has_exprs: &mut bool) 
             match val {
                 AttrVal::Str(s) => {
                     out_str.push_str("=\\\"");
-                    out_str.push_str(&s.replace('`', "\\`").replace('"', "\\\""));
+                    let chars: Vec<char> = s.chars().collect();
+                    let mut i = 0;
+                    while i < chars.len() {
+                        if chars[i] == '{' {
+                            let mut j = i + 1;
+                            let mut expr = String::new();
+                            let mut depth = 1;
+                            while j < chars.len() {
+                                if chars[j] == '{' {
+                                    depth += 1;
+                                    expr.push('{');
+                                } else if chars[j] == '}' {
+                                    depth -= 1;
+                                    if depth == 0 {
+                                        break;
+                                    }
+                                    expr.push('}');
+                                } else {
+                                    expr.push(chars[j]);
+                                }
+                                j += 1;
+                            }
+                            if depth == 0 && !expr.trim().is_empty() {
+                                out_str.push_str("${");
+                                out_str.push_str(expr.trim());
+                                out_str.push('}');
+                                *has_exprs = true;
+                                i = j + 1;
+                                continue;
+                            }
+                        }
+                        if chars[i] == '`' {
+                            out_str.push_str("\\`");
+                        } else if chars[i] == '"' {
+                            out_str.push_str("\\\"");
+                        } else if chars[i] == '$' && i + 1 < chars.len() && chars[i + 1] == '{' {
+                            out_str.push_str("\\${");
+                            i += 1;
+                        } else {
+                            out_str.push(chars[i]);
+                        }
+                        i += 1;
+                    }
                     out_str.push_str("\\\"");
                 }
                 AttrVal::Expr(e) => {
