@@ -1321,16 +1321,20 @@ fn resolve_module_import_path(file_path: &str, import_rel: &str) -> Option<PathB
 
     // Read zyra.json to find declared version for package imports (e.g. github.com/user/repo)
     let mut pkg_ver = String::from("latest");
+    let mut pkg_key = String::new();
+    let mut subpath = String::new();
     if let Ok(manifest) = fs::read_to_string("zyra.json") {
         for line in manifest.lines() {
-            let t = line.trim();
+            let t = line.trim().trim_end_matches(',');
             if t.contains(':') && t.contains('"') {
                 let parts: Vec<&str> = t.split(':').collect();
                 if parts.len() >= 2 {
                     let key = parts[0].trim().trim_matches('"');
-                    let val = parts[1].trim().trim_matches(',').trim().trim_matches('"');
+                    let val = parts[1].trim().trim_matches(',').trim_matches('}').trim().trim_matches('"');
                     if import_rel.starts_with(key) && !key.is_empty() {
+                        pkg_key = key.to_string();
                         pkg_ver = val.to_string();
+                        subpath = import_rel[key.len()..].trim_start_matches('/').trim_start_matches('\\').to_string();
                         break;
                     }
                 }
@@ -1340,11 +1344,19 @@ fn resolve_module_import_path(file_path: &str, import_rel: &str) -> Option<PathB
 
     // Try resolving in .zyra_modules directory
     let modules_root = Path::new(".zyra_modules");
-    let candidates = vec![
-        modules_root.join(import_rel),
-        modules_root.join(import_rel).join(&pkg_ver),
-        modules_root.join(import_rel).join("latest"),
-    ];
+    let mut candidates = Vec::new();
+    if !pkg_key.is_empty() {
+        if !subpath.is_empty() {
+            candidates.push(modules_root.join(&pkg_key).join(&pkg_ver).join(&subpath));
+            candidates.push(modules_root.join(&pkg_key).join("latest").join(&subpath));
+        } else {
+            candidates.push(modules_root.join(&pkg_key).join(&pkg_ver));
+            candidates.push(modules_root.join(&pkg_key).join("latest"));
+        }
+    }
+    candidates.push(modules_root.join(import_rel));
+    candidates.push(modules_root.join(import_rel).join(&pkg_ver));
+    candidates.push(modules_root.join(import_rel).join("latest"));
 
     for base in candidates {
         if base.is_file() {
@@ -1355,7 +1367,7 @@ fn resolve_module_import_path(file_path: &str, import_rel: &str) -> Option<PathB
             return Some(base_zy);
         }
         if base.is_dir() {
-            for entry_name in &["mod.zy", "lib.zy", "main.zy", "index.zy"] {
+            for entry_name in &["mod.zy", "lib.zy", "main.zy", "index.zy", "src/lib.zy", "src/mod.zy"] {
                 let entry_file = base.join(entry_name);
                 if entry_file.is_file() {
                     return Some(entry_file);
