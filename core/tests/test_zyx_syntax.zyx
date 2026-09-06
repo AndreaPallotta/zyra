@@ -1,0 +1,63 @@
+def Card(title: String, user_role: String): String {
+  return (
+    <div class="card">
+      <h1 class="title">Welcome, {title}!</h1>
+      <p class="role">Role: {user_role}</p>
+      <button class="btn-primary" disabled>Access Dashboard</button>
+    </div>
+  )
+}
+
+def Badge(status: String, badge_class: String): String {
+  return <span class={badge_class}>{status}</span>
+}
+
+def FormField(field_type: String): String {
+  return (
+    <div class="form-group">
+      <label class="label">Field</label>
+      <input type={field_type} disabled />
+    </div>
+  )
+}
+
+def CounterView(count: Int): String {
+  return (
+    <div class="counter">
+      <span class="count">Count: {count + 1}</span>
+    </div>
+  )
+}
+
+def main(): Int {
+  let card_html = Card("Andrea".to_string(), "Architect".to_string())
+  if !contains(&card_html, "<div class=\"card\"><h1 class=\"title\">Welcome, Andrea!</h1><p class=\"role\">Role: Architect</p><button class=\"btn-primary\" disabled>Access Dashboard</button></div>") {
+    print("FAILED: card_html content mismatch")
+    print(card_html)
+    return 1
+  }
+
+  let badge_html = Badge("Active".to_string(), "badge-success".to_string())
+  if !contains(&badge_html, "<span class=\"badge-success\">Active</span>") {
+    print("FAILED: badge_html content mismatch")
+    print(badge_html)
+    return 1
+  }
+
+  let form_html = FormField("text".to_string())
+  if !contains(&form_html, "<div class=\"form-group\"><label class=\"label\">Field</label><input type=\"text\" disabled /></div>") {
+    print("FAILED: form_html content mismatch")
+    print(form_html)
+    return 1
+  }
+
+  let counter_html = CounterView(41)
+  if !contains(&counter_html, "<div class=\"counter\"><span class=\"count\">Count: 42</span></div>") {
+    print("FAILED: counter_html content mismatch")
+    print(counter_html)
+    return 1
+  }
+
+  print("[PASS] ZYX declarative syntax verified: parenthesized, inline, attributes, expressions, self-closing")
+  return 0
+}

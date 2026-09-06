@@ -1309,7 +1309,6 @@ fn transform_zyra_line(line: &str) -> String {
 fn resolve_module_import_path(file_path: &str, import_rel: &str) -> Option<PathBuf> {
     let parent_dir = Path::new(file_path).parent().unwrap_or_else(|| Path::new("."));
 
-    // Check direct relative path or relative path + .zy
     let direct = parent_dir.join(import_rel);
     if direct.is_file() {
         return Some(direct);
@@ -1318,8 +1317,11 @@ fn resolve_module_import_path(file_path: &str, import_rel: &str) -> Option<PathB
     if direct_zy.is_file() {
         return Some(direct_zy);
     }
+    let direct_zyx = parent_dir.join(format!("{}.zyx", import_rel));
+    if direct_zyx.is_file() {
+        return Some(direct_zyx);
+    }
 
-    // Read zyra.json to find declared version for package imports (e.g. github.com/user/repo)
     let mut pkg_ver = String::from("latest");
     let mut pkg_key = String::new();
     let mut subpath = String::new();
@@ -1342,7 +1344,6 @@ fn resolve_module_import_path(file_path: &str, import_rel: &str) -> Option<PathB
         }
     }
 
-    // Try resolving in .zyra_modules directory
     let modules_root = Path::new(".zyra_modules");
     let mut candidates = Vec::new();
     if !pkg_key.is_empty() {
@@ -1366,8 +1367,15 @@ fn resolve_module_import_path(file_path: &str, import_rel: &str) -> Option<PathB
         if base_zy.is_file() {
             return Some(base_zy);
         }
+        let base_zyx = PathBuf::from(format!("{}.zyx", base.display()));
+        if base_zyx.is_file() {
+            return Some(base_zyx);
+        }
         if base.is_dir() {
-            for entry_name in &["mod.zy", "lib.zy", "main.zy", "index.zy", "src/lib.zy", "src/mod.zy"] {
+            for entry_name in &[
+                "mod.zy", "lib.zy", "main.zy", "index.zy", "src/lib.zy", "src/mod.zy",
+                "App.zyx", "src/App.zyx", "mod.zyx", "lib.zyx", "index.zyx"
+            ] {
                 let entry_file = base.join(entry_name);
                 if entry_file.is_file() {
                     return Some(entry_file);
@@ -1379,13 +1387,630 @@ fn resolve_module_import_path(file_path: &str, import_rel: &str) -> Option<PathB
     None
 }
 
+#[derive(Debug)]
+enum AttrVal {
+    Str(String),
+    Expr(String),
+    Bool,
+}
+
+#[derive(Debug)]
+enum JsxChild {
+    Text(String),
+    Expr(String),
+    Elem(JsxElem),
+}
+
+#[derive(Debug)]
+struct JsxElem {
+    tag: String,
+    attrs: Vec<(String, AttrVal)>,
+    children: Vec<JsxChild>,
+    self_closing: bool,
+}
+
+struct JsxParser<'a> {
+    src: &'a [char],
+    pos: usize,
+}
+
+impl<'a> JsxParser<'a> {
+    fn new(chars: &'a [char], pos: usize) -> Self {
+        Self { src: chars, pos }
+    }
+
+    fn peek(&self) -> Option<char> {
+        if self.pos < self.src.len() {
+            Some(self.src[self.pos])
+        } else {
+            None
+        }
+    }
+
+    fn next_char(&mut self) -> Option<char> {
+        if self.pos < self.src.len() {
+            let c = self.src[self.pos];
+            self.pos += 1;
+            Some(c)
+        } else {
+            None
+        }
+    }
+
+    fn skip_ws(&mut self) {
+        while let Some(c) = self.peek() {
+            if c.is_whitespace() {
+                self.pos += 1;
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn parse_element(&mut self) -> Option<JsxElem> {
+        if self.peek()? != '<' {
+            return None;
+        }
+        self.next_char();
+
+        let is_fragment = if self.peek() == Some('>') {
+            self.next_char();
+            true
+        } else {
+            false
+        };
+
+        let tag = if is_fragment {
+            String::new()
+        } else {
+            let mut name = String::new();
+            while let Some(c) = self.peek() {
+                if c.is_alphanumeric() || c == '_' || c == '-' || c == ':' {
+                    name.push(c);
+                    self.pos += 1;
+                } else {
+                    break;
+                }
+            }
+            if name.is_empty() {
+                return None;
+            }
+            name
+        };
+
+        let mut attrs = Vec::new();
+        let mut self_closing = false;
+
+        if !is_fragment {
+            loop {
+                self.skip_ws();
+                if let Some(c) = self.peek() {
+                    if c == '/' {
+                        self.pos += 1;
+                        if self.peek() == Some('>') {
+                            self.pos += 1;
+                            self_closing = true;
+                            break;
+                        }
+                    } else if c == '>' {
+                        self.pos += 1;
+                        break;
+                    } else if c.is_alphabetic() || c == '_' || c == '-' {
+                        let mut attr_name = String::new();
+                        while let Some(ac) = self.peek() {
+                            if ac.is_alphanumeric() || ac == '_' || ac == '-' || ac == ':' {
+                                attr_name.push(ac);
+                                self.pos += 1;
+                            } else {
+                                break;
+                            }
+                        }
+                        self.skip_ws();
+                        if self.peek() == Some('=') {
+                            self.pos += 1;
+                            self.skip_ws();
+                            if self.peek() == Some('"') {
+                                self.pos += 1;
+                                let mut val = String::new();
+                                while let Some(vc) = self.peek() {
+                                    self.pos += 1;
+                                    if vc == '"' {
+                                        break;
+                                    }
+                                    val.push(vc);
+                                }
+                                attrs.push((attr_name, AttrVal::Str(val)));
+                            } else if self.peek() == Some('\'') {
+                                self.pos += 1;
+                                let mut val = String::new();
+                                while let Some(vc) = self.peek() {
+                                    self.pos += 1;
+                                    if vc == '\'' {
+                                        break;
+                                    }
+                                    val.push(vc);
+                                }
+                                attrs.push((attr_name, AttrVal::Str(val)));
+                            } else if self.peek() == Some('{') {
+                                self.pos += 1;
+                                let mut depth = 1;
+                                let mut expr = String::new();
+                                while let Some(ec) = self.peek() {
+                                    self.pos += 1;
+                                    if ec == '{' {
+                                        depth += 1;
+                                        expr.push('{');
+                                    } else if ec == '}' {
+                                        depth -= 1;
+                                        if depth == 0 {
+                                            break;
+                                        }
+                                        expr.push('}');
+                                    } else {
+                                        expr.push(ec);
+                                    }
+                                }
+                                attrs.push((attr_name, AttrVal::Expr(expr)));
+                            }
+                        } else {
+                            attrs.push((attr_name, AttrVal::Bool));
+                        }
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if self_closing {
+            return Some(JsxElem {
+                tag,
+                attrs,
+                children: Vec::new(),
+                self_closing: true,
+            });
+        }
+
+        let mut children = Vec::new();
+        while self.pos < self.src.len() {
+            if self.peek() == Some('<') {
+                if self.pos + 1 < self.src.len() && self.src[self.pos + 1] == '/' {
+                    self.pos += 2;
+                    let mut close_tag = String::new();
+                    while let Some(c) = self.peek() {
+                        if c.is_alphanumeric() || c == '_' || c == '-' || c == ':' {
+                            close_tag.push(c);
+                            self.pos += 1;
+                        } else {
+                            break;
+                        }
+                    }
+                    self.skip_ws();
+                    if self.peek() == Some('>') {
+                        self.pos += 1;
+                    }
+                    break;
+                } else {
+                    if let Some(child_elem) = self.parse_element() {
+                        children.push(JsxChild::Elem(child_elem));
+                    } else {
+                        break;
+                    }
+                }
+            } else if self.peek() == Some('{') {
+                self.pos += 1;
+                let mut depth = 1;
+                let mut expr = String::new();
+                while let Some(c) = self.peek() {
+                    self.pos += 1;
+                    if c == '{' {
+                        depth += 1;
+                        expr.push('{');
+                    } else if c == '}' {
+                        depth -= 1;
+                        if depth == 0 {
+                            break;
+                        }
+                        expr.push('}');
+                    } else {
+                        expr.push(c);
+                    }
+                }
+                children.push(JsxChild::Expr(expr));
+            } else {
+                let mut text = String::new();
+                while let Some(c) = self.peek() {
+                    if c == '<' || c == '{' {
+                        break;
+                    }
+                    text.push(c);
+                    self.pos += 1;
+                }
+                if let Some(normalized) = normalize_jsx_text(&text) {
+                    children.push(JsxChild::Text(normalized));
+                }
+            }
+        }
+
+        Some(JsxElem {
+            tag,
+            attrs,
+            children,
+            self_closing: false,
+        })
+    }
+}
+
+fn normalize_jsx_text(raw: &str) -> Option<String> {
+    if raw.trim().is_empty() && raw.contains('\n') {
+        return None;
+    }
+    let has_leading_space = raw.starts_with(|c: char| c.is_whitespace() && c != '\n');
+    let has_trailing_space = raw.ends_with(|c: char| c.is_whitespace() && c != '\n');
+
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Some(" ".to_string());
+    }
+
+    let mut result = String::new();
+    if has_leading_space {
+        result.push(' ');
+    }
+    let mut prev_ws = false;
+    for c in trimmed.chars() {
+        if c.is_whitespace() {
+            if !prev_ws {
+                result.push(' ');
+                prev_ws = true;
+            }
+        } else {
+            result.push(c);
+            prev_ws = false;
+        }
+    }
+    if has_trailing_space {
+        result.push(' ');
+    }
+
+    Some(result)
+}
+
+fn lower_elem_to_rust(elem: &JsxElem, fmt_str: &mut String, args: &mut Vec<String>) {
+    if !elem.tag.is_empty() {
+        fmt_str.push('<');
+        fmt_str.push_str(&elem.tag);
+        for (name, val) in &elem.attrs {
+            fmt_str.push(' ');
+            fmt_str.push_str(name);
+            match val {
+                AttrVal::Str(s) => {
+                    fmt_str.push_str("=\\\"");
+                    fmt_str.push_str(&s.replace('{', "{{").replace('}', "}}").replace('"', "\\\""));
+                    fmt_str.push_str("\\\"");
+                }
+                AttrVal::Expr(e) => {
+                    fmt_str.push_str("=\\\"{}\\\"");
+                    args.push(e.trim().to_string());
+                }
+                AttrVal::Bool => {}
+            }
+        }
+        if elem.self_closing {
+            fmt_str.push_str(" />");
+            return;
+        } else {
+            fmt_str.push('>');
+        }
+    }
+
+    for child in &elem.children {
+        match child {
+            JsxChild::Text(t) => {
+                let escaped = t.replace('{', "{{").replace('}', "}}").replace('"', "\\\"");
+                fmt_str.push_str(&escaped);
+            }
+            JsxChild::Expr(e) => {
+                fmt_str.push_str("{}");
+                args.push(e.trim().to_string());
+            }
+            JsxChild::Elem(c) => {
+                lower_elem_to_rust(c, fmt_str, args);
+            }
+        }
+    }
+
+    if !elem.tag.is_empty() {
+        fmt_str.push_str("</");
+        fmt_str.push_str(&elem.tag);
+        fmt_str.push('>');
+    }
+}
+
+fn lower_elem_to_js(elem: &JsxElem, out_str: &mut String, has_exprs: &mut bool) {
+    if !elem.tag.is_empty() {
+        out_str.push('<');
+        out_str.push_str(&elem.tag);
+        for (name, val) in &elem.attrs {
+            out_str.push(' ');
+            out_str.push_str(name);
+            match val {
+                AttrVal::Str(s) => {
+                    out_str.push_str("=\\\"");
+                    out_str.push_str(&s.replace('`', "\\`").replace('"', "\\\""));
+                    out_str.push_str("\\\"");
+                }
+                AttrVal::Expr(e) => {
+                    out_str.push_str("=\\\"${");
+                    out_str.push_str(e.trim());
+                    out_str.push_str("}\\\"");
+                    *has_exprs = true;
+                }
+                AttrVal::Bool => {}
+            }
+        }
+        if elem.self_closing {
+            out_str.push_str(" />");
+            return;
+        } else {
+            out_str.push('>');
+        }
+    }
+
+    for child in &elem.children {
+        match child {
+            JsxChild::Text(t) => {
+                let escaped = t.replace('`', "\\`").replace("${", "\\${").replace('"', "\\\"");
+                out_str.push_str(&escaped);
+            }
+            JsxChild::Expr(e) => {
+                out_str.push_str("${");
+                out_str.push_str(e.trim());
+                out_str.push('}');
+                *has_exprs = true;
+            }
+            JsxChild::Elem(c) => {
+                lower_elem_to_js(c, out_str, has_exprs);
+            }
+        }
+    }
+
+    if !elem.tag.is_empty() {
+        out_str.push_str("</");
+        out_str.push_str(&elem.tag);
+        out_str.push('>');
+    }
+}
+
+fn lower_zyx_markup_rust(input: &str) -> String {
+    let chars: Vec<char> = input.chars().collect();
+    let mut out = String::new();
+    let mut i = 0;
+
+    while i < chars.len() {
+        if chars[i] == '"' {
+            out.push('"');
+            i += 1;
+            while i < chars.len() {
+                let c = chars[i];
+                out.push(c);
+                i += 1;
+                if c == '\\' && i < chars.len() {
+                    out.push(chars[i]);
+                    i += 1;
+                } else if c == '"' {
+                    break;
+                }
+            }
+            continue;
+        }
+
+        if chars[i] == '/' && i + 1 < chars.len() && chars[i + 1] == '/' {
+            while i < chars.len() && chars[i] != '\n' {
+                out.push(chars[i]);
+                i += 1;
+            }
+            continue;
+        }
+
+        if chars[i] == '/' && i + 1 < chars.len() && chars[i + 1] == '*' {
+            out.push('/');
+            out.push('*');
+            i += 2;
+            while i + 1 < chars.len() && !(chars[i] == '*' && chars[i + 1] == '/') {
+                out.push(chars[i]);
+                i += 1;
+            }
+            if i + 1 < chars.len() {
+                out.push('*');
+                out.push('/');
+                i += 2;
+            }
+            continue;
+        }
+
+        if chars[i] == '(' {
+            let mut j = i + 1;
+            while j < chars.len() && chars[j].is_whitespace() {
+                j += 1;
+            }
+            if j < chars.len() && chars[j] == '<' && j + 1 < chars.len() && (chars[j + 1].is_alphabetic() || chars[j + 1] == '>') {
+                let mut parser = JsxParser::new(&chars, j);
+                if let Some(elem) = parser.parse_element() {
+                    let mut after = parser.pos;
+                    while after < chars.len() && chars[after].is_whitespace() {
+                        after += 1;
+                    }
+                    if after < chars.len() && chars[after] == ')' {
+                        let mut fmt_str = String::new();
+                        let mut args = Vec::new();
+                        lower_elem_to_rust(&elem, &mut fmt_str, &mut args);
+
+                        if args.is_empty() {
+                            out.push_str(&format!("\"{}\".to_string()", fmt_str));
+                        } else {
+                            out.push_str(&format!("format!(\"{}\", {})", fmt_str, args.join(", ")));
+                        }
+                        i = after + 1;
+                        continue;
+                    }
+                }
+            }
+        }
+
+        if chars[i] == '<' && i + 1 < chars.len() && (chars[i + 1].is_alphabetic() || chars[i + 1] == '>') {
+            let prev_is_ident = if i > 0 {
+                chars[i - 1].is_alphanumeric() || chars[i - 1] == '_'
+            } else {
+                false
+            };
+            if !prev_is_ident {
+                let mut parser = JsxParser::new(&chars, i);
+                if let Some(elem) = parser.parse_element() {
+                    let mut fmt_str = String::new();
+                    let mut args = Vec::new();
+                    lower_elem_to_rust(&elem, &mut fmt_str, &mut args);
+
+                    if args.is_empty() {
+                        out.push_str(&format!("\"{}\".to_string()", fmt_str));
+                    } else {
+                        out.push_str(&format!("format!(\"{}\", {})", fmt_str, args.join(", ")));
+                    }
+                    i = parser.pos;
+                    continue;
+                }
+            }
+        }
+
+        out.push(chars[i]);
+        i += 1;
+    }
+
+    out
+}
+
+fn lower_zyx_markup_js(input: &str) -> String {
+    let chars: Vec<char> = input.chars().collect();
+    let mut out = String::new();
+    let mut i = 0;
+
+    while i < chars.len() {
+        if chars[i] == '"' {
+            out.push('"');
+            i += 1;
+            while i < chars.len() {
+                let c = chars[i];
+                out.push(c);
+                i += 1;
+                if c == '\\' && i < chars.len() {
+                    out.push(chars[i]);
+                    i += 1;
+                } else if c == '"' {
+                    break;
+                }
+            }
+            continue;
+        }
+
+        if chars[i] == '/' && i + 1 < chars.len() && chars[i + 1] == '/' {
+            while i < chars.len() && chars[i] != '\n' {
+                out.push(chars[i]);
+                i += 1;
+            }
+            continue;
+        }
+
+        if chars[i] == '/' && i + 1 < chars.len() && chars[i + 1] == '*' {
+            out.push('/');
+            out.push('*');
+            i += 2;
+            while i + 1 < chars.len() && !(chars[i] == '*' && chars[i + 1] == '/') {
+                out.push(chars[i]);
+                i += 1;
+            }
+            if i + 1 < chars.len() {
+                out.push('*');
+                out.push('/');
+                i += 2;
+            }
+            continue;
+        }
+
+        if chars[i] == '(' {
+            let mut j = i + 1;
+            while j < chars.len() && chars[j].is_whitespace() {
+                j += 1;
+            }
+            if j < chars.len() && chars[j] == '<' && j + 1 < chars.len() && (chars[j + 1].is_alphabetic() || chars[j + 1] == '>') {
+                let mut parser = JsxParser::new(&chars, j);
+                if let Some(elem) = parser.parse_element() {
+                    let mut after = parser.pos;
+                    while after < chars.len() && chars[after].is_whitespace() {
+                        after += 1;
+                    }
+                    if after < chars.len() && chars[after] == ')' {
+                        let mut tpl_str = String::new();
+                        let mut has_exprs = false;
+                        lower_elem_to_js(&elem, &mut tpl_str, &mut has_exprs);
+
+                        if has_exprs {
+                            out.push('`');
+                            out.push_str(&tpl_str);
+                            out.push('`');
+                        } else {
+                            out.push_str(&format!("\"{}\"", tpl_str));
+                        }
+                        i = after + 1;
+                        continue;
+                    }
+                }
+            }
+        }
+
+        if chars[i] == '<' && i + 1 < chars.len() && (chars[i + 1].is_alphabetic() || chars[i + 1] == '>') {
+            let prev_is_ident = if i > 0 {
+                chars[i - 1].is_alphanumeric() || chars[i - 1] == '_'
+            } else {
+                false
+            };
+            if !prev_is_ident {
+                let mut parser = JsxParser::new(&chars, i);
+                if let Some(elem) = parser.parse_element() {
+                    let mut tpl_str = String::new();
+                    let mut has_exprs = false;
+                    lower_elem_to_js(&elem, &mut tpl_str, &mut has_exprs);
+
+                    if has_exprs {
+                        out.push('`');
+                        out.push_str(&tpl_str);
+                        out.push('`');
+                    } else {
+                        out.push_str(&format!("\"{}\"", tpl_str));
+                    }
+                    i = parser.pos;
+                    continue;
+                }
+            }
+        }
+
+        out.push(chars[i]);
+        i += 1;
+    }
+
+    out
+}
+
 fn transpile_zyra_to_rust(file_path: &str, content: &str) -> String {
     transpile_zyra_to_rust_internal(file_path, content, true)
 }
 
 fn transpile_zyra_to_rust_internal(file_path: &str, content: &str, is_root: bool) -> String {
+    let content_lowered = lower_zyx_markup_rust(content);
+    let content = content_lowered.as_str();
     let mut rs = if is_root {
-        String::from("#![allow(dead_code, unused_variables, unused_mut, unused_imports, unreachable_code)]\n\n")
+        String::from("#![allow(dead_code, unused_variables, unused_mut, unused_imports, unreachable_code, non_snake_case)]\n\n")
     } else {
         String::new()
     };
@@ -4307,7 +4932,7 @@ fn handle_manifest_script(script_name: &str) -> bool {
 }
 
 fn handle_run(file_path: &str) {
-    if !Path::new(file_path).exists() && !file_path.ends_with(".zy") {
+    if !Path::new(file_path).exists() && !file_path.ends_with(".zy") && !file_path.ends_with(".zyx") {
         if handle_manifest_script(file_path) {
             return;
         }
@@ -4520,6 +5145,8 @@ fn transpile_zyra_to_js(file_path: &str, content: &str) -> String {
 }
 
 fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) -> String {
+    let content_lowered = lower_zyx_markup_js(content);
+    let content = content_lowered.as_str();
     let mut js = if is_root {
         let mut header = String::from("// Zyra JS ESM Output\nimport fs from 'node:fs';\nimport http from 'node:http';\nimport crypto from 'node:crypto';\nimport os from 'node:os';\nimport path from 'node:path';\nimport child_process from 'node:child_process';\n\n");
         header.push_str("function print(...args) { console.log(...args); }\n");
@@ -5578,7 +6205,15 @@ fn main() {
         }
         "start" => {
             if !handle_manifest_script("start") {
-                let default_entry = "src/main.zy";
+                let default_entry = if Path::new("src/main.zy").exists() {
+                    "src/main.zy"
+                } else if Path::new("src/App.zyx").exists() {
+                    "src/App.zyx"
+                } else if Path::new("src/main.zyx").exists() {
+                    "src/main.zyx"
+                } else {
+                    "src/main.zy"
+                };
                 if Path::new(default_entry).exists() {
                     handle_run(default_entry);
                 } else {
@@ -5587,15 +6222,42 @@ fn main() {
             }
         }
         "run" => {
-            let file = if args.len() > 2 { &args[2] } else { "src/main.zy" };
+            let default_entry = if Path::new("src/main.zy").exists() {
+                "src/main.zy"
+            } else if Path::new("src/App.zyx").exists() {
+                "src/App.zyx"
+            } else if Path::new("src/main.zyx").exists() {
+                "src/main.zyx"
+            } else {
+                "src/main.zy"
+            };
+            let file = if args.len() > 2 { &args[2] } else { default_entry };
             handle_run(file);
         }
         "dev" | "watch" => {
-            let file = if args.len() > 2 { &args[2] } else { "src/main.zy" };
+            let default_entry = if Path::new("src/main.zy").exists() {
+                "src/main.zy"
+            } else if Path::new("src/App.zyx").exists() {
+                "src/App.zyx"
+            } else if Path::new("src/main.zyx").exists() {
+                "src/main.zyx"
+            } else {
+                "src/main.zy"
+            };
+            let file = if args.len() > 2 { &args[2] } else { default_entry };
             handle_watch(file);
         }
         "build" => {
-            let mut file = "src/main.zy";
+            let default_entry = if Path::new("src/main.zy").exists() {
+                "src/main.zy"
+            } else if Path::new("src/App.zyx").exists() {
+                "src/App.zyx"
+            } else if Path::new("src/main.zyx").exists() {
+                "src/main.zyx"
+            } else {
+                "src/main.zy"
+            };
+            let mut file = default_entry;
             for (idx, arg) in args.iter().enumerate().skip(2) {
                 if !arg.starts_with('-') && arg != "js" && arg != "wasm" && arg != "wasm32" && arg != "rust" && arg != "python" && arg != "node" {
                     if idx > 2 && (args[idx - 1] == "--target" || args[idx - 1] == "--binding" || args[idx - 1] == "--arch" || args[idx - 1] == "--gc") {
