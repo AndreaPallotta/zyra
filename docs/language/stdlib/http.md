@@ -24,6 +24,29 @@ Executes an HTTP POST request to the target `url` with payload `body`.
 const response = http.post("https://httpbin.org/post", "{\"key\":\"value\"}")
 ```
 
+### In-Memory Network Mocking (`http.mock`)
+Enables zero-socket in-memory network stubbing for unit tests and local simulation:
+
+- `http.mock(pattern: String, status: Int, body: String): Void`: Registers a mock responder for any matching URL. Supports exact URLs and wildcard patterns (`*`, `**`).
+- `http.mock_history(): [String]`: Returns an audit log of all intercepted calls in `"METHOD URL"` format.
+- `http.mock_reset(): Void`: Clears all registered mock routes and flushes recorded call history.
+
+```zyra
+def main(): Int {
+  http.mock("https://api.zyra.io/v1/users", 200, "{\"status\": \"ok\", \"count\": 42}")
+  http.mock("https://api.zyra.io/v1/audit/*", 200, "{\"audit\": true}")
+
+  const res = http.get("https://api.zyra.io/v1/users")
+  print("Response: {res}")
+
+  const history = http.mock_history()
+  print("Calls recorded: {len(history)}")
+
+  http.mock_reset()
+  return 0
+}
+```
+
 ### `http.listen(addr: String, handler: Function): Int`
 Spawns an embedded HTTP web server listening on `addr` (e.g. `"0.0.0.0:8080"`). Incoming requests pass an `HttpRequest` object to `handler`, which must return an `HttpResponse` object.
 

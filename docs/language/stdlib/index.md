@@ -48,6 +48,15 @@ def main(): Int {
 | [**Vector Utilities**](vec.md) | `vec` | Vector sorting, filtering, deduplication, reversing, and slicing |
 | [**URL & Query Parser**](url.md) | `url` | URL component extraction and query parameter parsing |
 | [**Logging Framework**](log.md) | `log` | Structured multi-level logging with console and file sinks |
+| [**CSV & TSV Processing**](csv.md) | `csv` | RFC-4180 CSV & TSV parsing, keyed headers, and serialization |
+| [**Semantic Versioning**](semver.md) | `semver` | SemVer 2.0.0 parsing, comparison, range evaluation, and bumping |
+| [**Mathematical Set**](set.md) | `set` | Thread-safe set data structure with union, intersection, and difference |
+| [**Diff & Similarity**](diff.md) | `diff` | Unified diff lines, Levenshtein distance, and similarity ratio |
+| [**UUID Generation**](uuid.md) | `uuid` | RFC-9562 timestamp-ordered UUIDv7 and random UUIDv4 |
+| [**Distributed Event Bus**](bus.md) | `bus` | Wildcard pub/sub broker with bounded history and handles |
+| [**Schema Validation**](schema.md) | `schema` | Declarative object, primitive, and JSON constraint validation |
+| [**Binary Protocol Codec**](bin.md) | `bin` | Endian-aware format-string pack and unpack |
+| [**Terminal UI Prompts**](tui.md) | `tui` | Interactive CLI prompts with headless fallback |
 
 ---
 

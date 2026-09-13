@@ -78,6 +78,7 @@ nav:
       - Structs & Enums: language/structs-enums.md
       - Functions & Modules: language/functions-modules.md
       - Traits & Generics: language/traits-generics.md
+      - Zy UI (ZYX Declarative UI): language/zyx-ui.md
   - Standard Library:
       - Overview: language/stdlib/index.md
       - Environment (env): language/stdlib/env.md
@@ -99,6 +100,15 @@ nav:
       - URL & Query Parser (url): language/stdlib/url.md
       - WebSockets (ws): language/stdlib/ws.md
       - Logging Framework (log): language/stdlib/log.md
+      - CSV & TSV (csv): language/stdlib/csv.md
+      - Semantic Versioning (semver): language/stdlib/semver.md
+      - Mathematical Set (set): language/stdlib/set.md
+      - Diff & Similarity (diff): language/stdlib/diff.md
+      - UUID Generation (uuid): language/stdlib/uuid.md
+      - Event Bus (bus): language/stdlib/bus.md
+      - Schema Validation (schema): language/stdlib/schema.md
+      - Binary Protocol Codec (bin): language/stdlib/bin.md
+      - Terminal UI (tui): language/stdlib/tui.md
   - Tooling & IDE:
       - CLI Commands & Driver: tooling/cli.md
       - VS Code Extension: tooling/vscode.md
