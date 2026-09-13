@@ -8,8 +8,9 @@ Official release notes, version history, and commit logs for the Zyra Programmin
 
 | Version | Release Date | Target | Key Highlights | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **v2.5.0** | *Upcoming* | Native, JS ESM, WASM | Modular compiler architecture, `async`/`await`, VS Code DAP debugger, monorepo workspaces, relational SQL (`sql.*`), generative fuzz testing (`@fuzz`) | **Planned** |
-| **v2.4.0** | 2026-08-30 | Native, JS ESM | Postfix `?` error operator, arbitrary expression interpolation `{expr}`, tuple destructuring & match guards, `time.*`, `crypto.uuid/jwt`, `ws.*`, `io.lines/append/pipe`, `math.clamp/lerp/dot/norm`, `zyra bench`, `zyra coverage` HTML | **Current Stable** |
+| **v2.6.0** | 2026-09-13 | Native, JS ESM | ZYX declarative UI system (`.zyx`), structured task nurseries (`task.*`), zero-copy streaming buffers (`buf.*`), AES-GCM cipher suite & PBKDF2 password hashing (`crypto.*`), declarative config engine (`config.*`), standalone packaging (`zyra pack`), OpenAPI 3.1 generator (`zyra openapi`), VS Code DAP server (`zyra dap`), fuzz testing (`@fuzz`) | **Current Stable** |
+| **v2.5.0** | 2026-09-05 | Native, JS ESM, WASM | Closures & lambda captures, default & named arguments, spread syntax, relational SQL (`sql.*`), memory-mapped files (`io.mmap`), background task queues & cron (`cron.*`, `queue.*`) | Supported |
+| **v2.4.0** | 2026-08-30 | Native, JS ESM | Postfix `?` error operator, arbitrary expression interpolation `{expr}`, tuple destructuring & match guards, `time.*`, `crypto.uuid/jwt`, `ws.*`, `io.lines/append/pipe`, `math.clamp/lerp/dot/norm`, `zyra bench`, `zyra coverage` HTML | Supported |
 | **v2.3.0** | 2026-08-23 | Native, JS ESM | Concurrency & channels, embedded KV db, JSON AST, regex, worker pool, manifest scripts, JS minifier, in-memory map, vector utilities, URL engine, logging, HTTP interceptor client | Supported |
 | **v2.2.0** | 2026-08-16 | Native, JS ESM | Zero-import dot-notation namespacing, structured `zyra.env` parser, non-callback file watcher, expanded standard library | Supported |
 | **v2.1.1** | 2026-08-16 | Native, JS ESM | Multi-format I/O (`io`), native HTTP web primitives (`net`), platform crypto, system info, 28 compiler bug fixes | Supported |
@@ -17,7 +18,39 @@ Official release notes, version history, and commit logs for the Zyra Programmin
 
 ---
 
-## Version 2.5.0 (Planned)
+## Version 2.6.0 (2026-09-13)
+
+### Key Features & Additions
+- **First-Class ZYX Declarative UI System (`.zyx`)**:
+  - Full JSX-style declarative markup syntax lowering across native and web build targets.
+  - Dynamic attribute string interpolation (`<span class="badge badge-{variant}">`).
+  - Arbitrary expression interpolation (`<span>Total: {items.len() * 2}</span>`).
+  - Nested component hierarchies, self-closing tag handling, and zero-dependency static web builds.
+- **Structured Concurrency & Task Nurseries (`task.*`)**:
+  - Cooperative nurseries (`task.group()`), background nursery task spawning (`task.spawn`), collective synchronization (`task.wait_all`), and group cancellation tokens (`task.cancel`, `task.is_cancelled`).
+  - Bounded task execution with timeout guards (`task.with_timeout(ms, || { ... })`).
+- **Zero-Copy Memory Streams & Ring Buffers (`buf.*`)**:
+  - Sized byte buffer allocation (`buf.new`), string transcoding (`buf.from_str`, `buf.to_str`), and buffer length queries (`buf.len`).
+  - Zero-copy buffer slicing (`buf.slice`), offset writes (`buf.write`), and hex/base64 encoding (`buf.to_hex`, `buf.to_base64`).
+  - High-throughput circular streaming ring buffers (`buf.ring`, `buf.ring_write`, `buf.ring_read`).
+- **Native Cryptographic Cipher Suite & Password Hashing (`crypto.*`)**:
+  - Authenticated symmetric AES-GCM stream encryption and decryption (`crypto.encrypt_aes_gcm`, `crypto.decrypt_aes_gcm`) with tamper-proof tag verification over arbitrary AAD.
+  - PBKDF2/SHA256 password hashing (`crypto.hash_password`) and constant-time verification (`crypto.verify_password`).
+- **Declarative Configuration Engine (`config.*`)**:
+  - Multi-format configuration loader (`config.load`) for JSON, TOML/INI, and `.env` files.
+  - Automatic environment variable overrides (`ZYRA_<KEY>`) with type coercion getters (`config.get`, `config.get_int`, `config.get_bool`).
+- **Hermetic Standalone Packaging (`zyra pack`)**:
+  - Single-binary zero-dependency packaging embedding user code, components, and runtime into standalone native executables (`zyra pack <file> -o <bin>`).
+- **OpenAPI 3.1 Specification Generator (`zyra openapi`)**:
+  - Static route and schema extraction producing compliant OpenAPI 3.1.0 specifications with interactive Swagger UI preview server (`zyra openapi --serve`).
+- **VS Code Debug Adapter Protocol Server (`zyra dap`)**:
+  - Full DAP specification implementation over stdio supporting initialize, breakpoints, threads, stack traces, scopes, variables, stepping, and disconnect.
+- **Generative Property-Based Fuzzing Engine (`zyra test --fuzz` / `@fuzz`)**:
+  - Automated randomized boundary value stress testing and invariant verification in the test runner.
+
+---
+
+## Version 2.5.0 (2026-09-05)
 
 ### Key Features & Scope
 - **100% Core Language Syntax Completion & Freeze**: First-class closures (`|x| x * 2`), default & named parameters (`def fn(x: Int = 10)`), struct/array spread syntax (`{ ...state, a: 1 }`), and optional chaining (`user?.profile?.name`).

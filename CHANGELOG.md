@@ -2,39 +2,41 @@
 
 All notable changes to the **Zyra Programming Language & Toolchain** will be documented in this file.
 
-## [v2.6.0] - Unreleased
+## [v2.6.0] - 2026-09-13
 
-### Compiler Architecture & Autonomy
-- **Direct JIT & Machine Code Generation (`--backend llvm`, `--jit`)**:
-  - Direct compilation to native machine code without requiring an external `rustc` toolchain.
-  - Sub-millisecond script startup via native in-process JIT execution.
-- **Compiler Subsystem Modularization**:
-  - Decompose monolithic `core/bin/zyra.rs` into modular Rust subsystems (`core/src/lexer/`, `core/src/parser/`, `core/src/ast/`, `core/src/codegen/`, `core/src/runtime/`, `core/src/cli/`).
-- **Monorepo Workspace Orchestrator (`zyra build --workspace`)**:
-  - Multi-package root manifest resolution (`zyra.json`), topological build graphs, and parallel compilation of workspace members.
+### Declarative UI & Front-End Systems
+- **First-Class ZYX Declarative UI System (`.zyx`)**:
+  - Native JSX-style declarative markup lowering for user interfaces and web applications.
+  - Dynamic attribute string interpolation (`<span class="badge badge-{variant}">`).
+  - Arbitrary expression interpolation (`<span>Total: {items.len() * 2}</span>`).
+  - Nested component hierarchies, self-closing tag handling, and zero-dependency static web builds.
 
-### Packaging, Sandboxing & Tooling
-- **Hermetic Standalone Packaging & WASI Sandbox (`zyra pack`, `zyra sandbox`)**:
-  - Single-binary zero-dependency packaging embedding user code, static assets, and runtime.
-  - Capability-based security sandbox (`--allow-net`, `--allow-read`, `--allow-env`) for isolated plugin execution without Docker.
-- **VS Code Debug Adapter Protocol (`zyra dap`)**:
-  - Full DAP server implementation over stdio for graphical breakpoints, line stepping (`F10`/`F11`), call stacks, and variable watches.
-- **OpenAPI 3.1 Specification Generator (`zyra openapi`)**:
-  - Automatic zero-annotation extraction of REST routes and struct schemas into standard OpenAPI JSON/YAML.
-- **Source-Level LCOV Code Coverage Reporter (`zyra test --coverage`)**:
-  - Statement and branch coverage instrumentation outputting terminal summaries, `lcov.info`, and interactive `coverage.html`.
-- **Generative Property-Based Fuzzing Engine (`zyra test --fuzz` / `@fuzz`)**:
-  - Automated boundary value stress testing and invariant verification.
-
-### Systems Runtime & Cryptography
-- **Zero-Copy Memory Streams & Buffer Pools (`buf.*`, `io.pipe_zero_copy`)**:
-  - Slabs, ring buffers (`buf.ring`), and non-allocating buffer slicing for high-throughput network and file I/O.
+### Concurrency, Memory & Systems Runtime
 - **Structured Concurrency & Task Nurseries (`task.*`)**:
-  - Cooperative task groups (`task.group`), structured lifecycles, and cancellation tokens.
-- **Native Cryptographic Cipher Suite & TLS Engine (`crypto.cipher`, `tls.*`)**:
-  - Symmetric encryption (AES-256-GCM, ChaCha20-Poly1305), Ed25519 signatures, and native TLS client/server sockets.
-- **Declarative Configuration Schema & Type Coercion (`config.*`)**:
-  - Strongly-typed configuration loader with automatic environment variable overrides and schema validation.
+  - Cooperative nurseries (`task.group()`), background nursery task spawning (`task.spawn`), collective synchronization (`task.wait_all`), and group cancellation tokens (`task.cancel`, `task.is_cancelled`).
+  - Bounded task execution with timeout guards (`task.with_timeout(ms, || { ... })`).
+- **Zero-Copy Memory Streams & Ring Buffers (`buf.*`)**:
+  - Sized byte buffer allocation (`buf.new`), string transcoding (`buf.from_str`, `buf.to_str`), and buffer length queries (`buf.len`).
+  - Zero-copy buffer slicing (`buf.slice`), offset writes (`buf.write`), and hex/base64 encoding (`buf.to_hex`, `buf.to_base64`).
+  - High-throughput circular streaming ring buffers (`buf.ring`, `buf.ring_write`, `buf.ring_read`).
+
+### Cryptography & Configuration
+- **Native Cryptographic Cipher Suite & Password Hashing (`crypto.*`)**:
+  - Authenticated symmetric AES-GCM stream encryption and decryption (`crypto.encrypt_aes_gcm`, `crypto.decrypt_aes_gcm`) with tamper-proof tag verification over arbitrary AAD.
+  - PBKDF2/SHA256 password hashing (`crypto.hash_password`) and constant-time verification (`crypto.verify_password`).
+- **Declarative Configuration Engine (`config.*`)**:
+  - Multi-format configuration loader (`config.load`) for JSON, TOML/INI, and `.env` files.
+  - Automatic environment variable overrides (`ZYRA_<KEY>`) with type coercion getters (`config.get`, `config.get_int`, `config.get_bool`).
+
+### Standalone Packaging & Toolchain
+- **Hermetic Standalone Packaging (`zyra pack`)**:
+  - Single-binary zero-dependency packaging embedding user code, components, and runtime into standalone native executables (`zyra pack <file> -o <bin>`).
+- **OpenAPI 3.1 Specification Generator (`zyra openapi`)**:
+  - Static route and schema extraction producing compliant OpenAPI 3.1.0 specifications with interactive Swagger UI preview server (`zyra openapi --serve`).
+- **VS Code Debug Adapter Protocol Server (`zyra dap`)**:
+  - Full DAP specification implementation over stdio supporting initialize, breakpoints, threads, stack traces, scopes, variables, stepping, and disconnect.
+- **Generative Property-Based Fuzzing Engine (`zyra test --fuzz` / `@fuzz`)**:
+  - Automated randomized boundary value stress testing and invariant verification in the test runner.
 
 ---
 

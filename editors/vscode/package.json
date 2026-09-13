@@ -1,8 +1,8 @@
 {
   "name": "zyra-vscode",
-  "displayName": "Zyra Programming Language v2.4",
-  "description": "Official VS Code Extension for Zyra v2.4 (LSP language server, autocompletion, hover docs, Code Lens, formatter, debugger, and test runner).",
-  "version": "2.4.0",
+  "displayName": "Zyra Programming Language v2.6",
+  "description": "Official VS Code Extension for Zyra v2.6 (LSP language server, DAP debug adapter, ZYX declarative syntax, autocompletion, hover docs, Code Lens, formatter, debugger, and test runner).",
+  "version": "2.6.0",
   "publisher": "AndreaPallotta",
   "icon": "icon.png",
   "repository": {
@@ -25,7 +25,7 @@
       {
         "id": "zyra",
         "aliases": ["Zyra", "zyra"],
-        "extensions": [".zy"],
+        "extensions": [".zy", ".zyx"],
         "configuration": "./language-configuration.json",
         "icon": {
           "light": "./icon.png",

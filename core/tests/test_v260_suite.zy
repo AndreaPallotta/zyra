@@ -1,0 +1,147 @@
+def test_task_nursery(): Int {
+  const g = task.group()
+  const ch = chan.new()
+  const tx1 = chan.clone(ch)
+  const tx2 = chan.clone(ch)
+
+  task.spawn(g, move || {
+    chan.send(tx1, "worker1_finished")
+  })
+
+  task.spawn(g, move || {
+    chan.send(tx2, "worker2_finished")
+  })
+
+  task.wait_all(g)
+
+  const r1 = chan.recv(ch)
+  const r2 = chan.recv(ch)
+
+  if (len(r1) > 0 && len(r2) > 0 && r1 != r2) {
+    const completed = task.with_timeout(500, move || {
+      time.sleep(10)
+    })
+    if (completed) {
+      print("[PASS] Structured task nurseries and with_timeout verified")
+      return 1
+    }
+  }
+  print("[FAIL] Task nursery verification failed")
+  return 0
+}
+
+def test_zero_copy_buffers(): Int {
+  const b = buf.new(16)
+  if (buf.len(b) != 16) {
+    return 0
+  }
+
+  buf.write(b, 0, "hello world")
+  const str_val = buf.to_str(b)
+  if (!contains(str_val, "hello world")) {
+    return 0
+  }
+
+  const sub = buf.slice(b, 0, 5)
+  if (buf.to_str(sub) != "hello") {
+    return 0
+  }
+
+  const b2 = buf.from_str("zyra260")
+  const hex_val = buf.to_hex(b2)
+  const b64_val = buf.to_base64(b2)
+  if (len(hex_val) != 14 || len(b64_val) == 0) {
+    return 0
+  }
+
+  const rb = buf.ring(8)
+  buf.ring_write(rb, "12345678")
+  buf.ring_write(rb, "AB")
+  const read_back = buf.ring_read(rb, 4)
+  if (len(read_back) != 4) {
+    return 0
+  }
+
+  print("[PASS] Zero-copy buffers and streaming ring buffer verified")
+  return 1
+}
+
+def test_crypto_cipher_and_passwords(): Int {
+  const key = "1234567890123456"
+  const nonce = "123456789012"
+  const plaintext = "Zyra v2.6.0 Flagship Cryptographic Security"
+  const aad = "header_authenticated_data"
+
+  const encrypted = crypto.encrypt_aes_gcm(key, nonce, plaintext, aad)
+  if (len(encrypted) == 0) {
+    return 0
+  }
+
+  const decrypted = crypto.decrypt_aes_gcm(key, nonce, encrypted, aad)
+  if (decrypted != plaintext) {
+    return 0
+  }
+
+  const tampered_decrypted = crypto.decrypt_aes_gcm(key, nonce, encrypted, "wrong_aad")
+  if (len(tampered_decrypted) != 0) {
+    return 0
+  }
+
+  const password = "super_secret_password_2026"
+  const hashed = crypto.hash_password(password)
+  if (!contains(hashed, "pbkdf2_sha256")) {
+    return 0
+  }
+
+  const valid = crypto.verify_password(password, hashed)
+  const invalid = crypto.verify_password("wrong_password", hashed)
+  if (!valid || invalid) {
+    return 0
+  }
+
+  print("[PASS] AES-GCM authenticated cipher suite and PBKDF2 password hashing verified")
+  return 1
+}
+
+def test_config_engine(): Int {
+  const sample_cfg = "app_name = ZyraService\nport = 9090\nenable_tls = true"
+  const cfg = config.load(sample_cfg)
+
+  const name = config.get(cfg, "app_name")
+  const port = config.get_int(cfg, "port")
+  const tls = config.get_bool(cfg, "enable_tls")
+
+  if (name != "ZyraService" || port != 9090 || !tls) {
+    return 0
+  }
+
+  env.set("ZYRA_DATABASE_PORT", "5432")
+  const db_port = config.get_int(cfg, "database.port")
+  if (db_port != 5432) {
+    return 0
+  }
+
+  print("[PASS] Declarative configuration engine and ZYRA environment overlays verified")
+  return 1
+}
+
+def main(): Int {
+  print("==========================================")
+  print("      Zyra v2.6.0 Feature Verification    ")
+  print("==========================================")
+
+  const t1 = test_task_nursery()
+  const t2 = test_zero_copy_buffers()
+  const t3 = test_crypto_cipher_and_passwords()
+  const t4 = test_config_engine()
+
+  const passed = t1 + t2 + t3 + t4
+  print("------------------------------------------")
+  print("Results: {passed}/4 v2.6.0 Tests PASSED")
+  print("==========================================")
+
+  if (passed == 4) {
+    return 0
+  }
+  return 1
+}

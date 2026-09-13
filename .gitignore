@@ -24,3 +24,4 @@ test_run.log
 test_store.db
 *.tmp
 TARGET.md
+openapi.json
