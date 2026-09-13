@@ -287,6 +287,244 @@ def test_terminal_ui_prompts(): Int {
   return 1
 }
 
+def test_http_mocking(): Int {
+  http.mock("https://api.zyra.io/v1/users", 200, "{\"status\":\"ok\",\"count\":42}")
+  http.mock("https://api.zyra.io/v1/audit/*", 200, "{\"audit\":true}")
+
+  const users_res = http.get("https://api.zyra.io/v1/users")
+  if (!contains(users_res, "count\":42")) {
+    return 0
+  }
+
+  const audit_res = http.get("https://api.zyra.io/v1/audit/task_100")
+  if (!contains(audit_res, "audit\":true")) {
+    return 0
+  }
+
+  const hist = http.mock_history()
+  if (len(hist) < 2) {
+    return 0
+  }
+  if (!contains(hist[0], "GET https://api.zyra.io/v1/users")) {
+    return 0
+  }
+
+  http.mock_reset()
+  const hist_after = http.mock_history()
+  if (len(hist_after) != 0) {
+    return 0
+  }
+
+  print("[PASS] HTTP network mocking and zero-socket call verification verified")
+  return 1
+}
+
+def test_csv_engine(): Int {
+  const raw_csv = "id,name,department\n1,Alice,\"Core, Systems\"\n2,Bob,QA"
+  const rows = csv.parse(raw_csv)
+  if (len(rows) != 3) {
+    return 0
+  }
+
+  const row1 = rows[1]
+  if (row1[0] != "1" || row1[1] != "Alice" || row1[2] != "Core, Systems") {
+    return 0
+  }
+
+  const raw_tsv = "key\tvalue\nk1\tv1\nk2\tv2"
+  const tsv_rows = csv.parse_tsv(raw_tsv)
+  if (len(tsv_rows) != 3) {
+    return 0
+  }
+  const tsv_r1 = tsv_rows[1]
+  if (tsv_r1[0] != "k1" || tsv_r1[1] != "v1") {
+    return 0
+  }
+
+  const records = csv.parse_with_headers("name,role\nAlice,Architect\nBob,Engineer")
+  if (len(records) != 2) {
+    return 0
+  }
+  const rec0 = records[0]
+  if (map.get(rec0, "name") != "Alice" || map.get(rec0, "role") != "Architect") {
+    return 0
+  }
+
+  const out_csv = csv.stringify(rows, ",")
+  if (!contains(out_csv, "\"Core, Systems\"")) {
+    return 0
+  }
+
+  print("[PASS] RFC-4180 CSV, TSV parsing, keyed headers, and stringify verified")
+  return 1
+}
+
+def test_semver_engine(): Int {
+  const v = semver.parse("2.6.0-rc.1+build.123")
+  if (v.major != 2 || v.minor != 6 || v.patch != 0 || v.prerelease != "rc.1" || v.build != "build.123") {
+    return 0
+  }
+
+  if (semver.compare("2.6.0", "2.5.9") != 1) {
+    return 0
+  }
+  if (semver.compare("1.0.0-alpha", "1.0.0") != -1) {
+    return 0
+  }
+  if (semver.compare("2.0.0", "2.0.0") != 0) {
+    return 0
+  }
+
+  if (!semver.satisfies("2.6.4", "^2.6.0")) {
+    return 0
+  }
+  if (semver.satisfies("3.0.0", "^2.6.0")) {
+    return 0
+  }
+  if (!semver.satisfies("2.6.8", "~2.6.0")) {
+    return 0
+  }
+  if (semver.satisfies("2.7.0", "~2.6.0")) {
+    return 0
+  }
+  if (!semver.satisfies("2.6.0", ">=2.0.0")) {
+    return 0
+  }
+
+  const b_maj = semver.bump_major("1.2.3")
+  const b_min = semver.bump_minor("1.2.3")
+  const b_pat = semver.bump_patch("1.2.3")
+  if (b_maj.major != 2 || b_maj.minor != 0 || b_maj.patch != 0) {
+    return 0
+  }
+  if (b_min.major != 1 || b_min.minor != 3 || b_min.patch != 0) {
+    return 0
+  }
+  if (b_pat.major != 1 || b_pat.minor != 2 || b_pat.patch != 4) {
+    return 0
+  }
+
+  print("[PASS] SemVer 2.0.0 parser, comparator, range evaluation, and bumping verified")
+  return 1
+}
+
+def test_set_algebra(): Int {
+  const s = set.new()
+  set.add(s, "apple")
+  set.add(s, "banana")
+  set.add(s, "cherry")
+
+  if (set.len(s) != 3) {
+    return 0
+  }
+  if (!set.has(s, "banana")) {
+    return 0
+  }
+
+  set.remove(s, "banana")
+  if (set.len(s) != 2 || set.has(s, "banana")) {
+    return 0
+  }
+
+  const a = set.new()
+  set.add(a, "x")
+  set.add(a, "y")
+
+  const b = set.new()
+  set.add(b, "y")
+  set.add(b, "z")
+
+  const u = set.union(a, b)
+  if (set.len(u) != 3 || !set.has(u, "x") || !set.has(u, "y") || !set.has(u, "z")) {
+    return 0
+  }
+
+  const inter = set.intersection(a, b)
+  if (set.len(inter) != 1 || !set.has(inter, "y")) {
+    return 0
+  }
+
+  const diff_set = set.difference(a, b)
+  if (set.len(diff_set) != 1 || !set.has(diff_set, "x")) {
+    return 0
+  }
+
+  if (!set.is_subset(inter, a)) {
+    return 0
+  }
+  if (set.is_subset(a, b)) {
+    return 0
+  }
+
+  const items = set.to_vec(u)
+  if (len(items) != 3 || items[0] != "x" || items[1] != "y" || items[2] != "z") {
+    return 0
+  }
+
+  print("[PASS] Mathematical set data structure and algebraic operations verified")
+  return 1
+}
+
+def test_diff_and_similarity(): Int {
+  const d1 = diff.levenshtein("kitten", "sitting")
+  if (d1 != 3) {
+    return 0
+  }
+
+  const d2 = diff.levenshtein("zyra", "zyra")
+  if (d2 != 0) {
+    return 0
+  }
+
+  const sim = diff.similarity("zyra", "zyra")
+  if (sim != 1.0) {
+    return 0
+  }
+
+  const diffs = diff.lines("hello\nworld", "hello\nzyra")
+  if (len(diffs) != 3) {
+    return 0
+  }
+  if (diffs[0] != " hello" || diffs[1] != "-world" || diffs[2] != "+zyra") {
+    return 0
+  }
+
+  print("[PASS] Unified diff lines, Levenshtein distance, and similarity ratio verified")
+  return 1
+}
+
+def test_uuid_v7_generation(): Int {
+  const u4 = uuid.v4()
+  if (!uuid.is_valid(u4) || len(u4) != 36) {
+    return 0
+  }
+
+  const u7_1 = uuid.v7()
+  if (!uuid.is_valid(u7_1) || len(u7_1) != 36) {
+    return 0
+  }
+
+  time.sleep(5)
+  const u7_2 = uuid.v7()
+  if (!uuid.is_valid(u7_2) || len(u7_2) != 36) {
+    return 0
+  }
+
+  if (u7_1 >= u7_2) {
+    return 0
+  }
+
+  if (uuid.is_valid("invalid-uuid-string")) {
+    return 0
+  }
+  if (uuid.is_valid("12345")) {
+    return 0
+  }
+
+  print("[PASS] RFC-9562 timestamp-ordered UUIDv7 and format validation verified")
+  return 1
+}
+
 def main(): Int {
   print("==========================================")
   print("      Zyra v2.6.0 Feature Verification    ")
@@ -301,13 +539,19 @@ def main(): Int {
   const t7 = test_snapshot_testing()
   const t8 = test_binary_protocol_codec()
   const t9 = test_terminal_ui_prompts()
+  const t10 = test_http_mocking()
+  const t11 = test_csv_engine()
+  const t12 = test_semver_engine()
+  const t13 = test_set_algebra()
+  const t14 = test_diff_and_similarity()
+  const t15 = test_uuid_v7_generation()
 
-  const passed = t1 + t2 + t3 + t4 + t5 + t6 + t7 + t8 + t9
+  const passed = t1 + t2 + t3 + t4 + t5 + t6 + t7 + t8 + t9 + t10 + t11 + t12 + t13 + t14 + t15
   print("------------------------------------------")
-  print("Results: {passed}/9 v2.6.0 Tests PASSED")
+  print("Results: {passed}/15 v2.6.0 Tests PASSED")
   print("==========================================")
 
-  if (passed == 9) {
+  if (passed == 15) {
     return 0
   }
   return 1

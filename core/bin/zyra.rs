@@ -1491,7 +1491,36 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("schema.validate(", "schema_validate(&")
          .replace("schema.is_valid(", "schema_is_valid(&")
          .replace("schema.validate_json(", "schema_validate_json(&")
-         .replace("test.snapshot(", "test_snapshot(&");
+         .replace("test.snapshot(", "test_snapshot(&")
+         .replace("http.mock(", "http_mock(&")
+         .replace("http.mock_history()", "http_mock_history()")
+         .replace("http.mock_reset()", "http_mock_reset()")
+         .replace("csv.parse_with_headers(", "csv_parse_with_headers(&")
+         .replace("csv.parse_tsv(", "csv_parse_tsv(&")
+         .replace("csv.parse(", "csv_parse(&")
+         .replace("csv.stringify(", "csv_stringify(&")
+         .replace("semver.parse(", "semver_parse(&")
+         .replace("semver.compare(", "semver_compare(&")
+         .replace("semver.satisfies(", "semver_satisfies(&")
+         .replace("semver.bump_major(", "semver_bump_major(&")
+         .replace("semver.bump_minor(", "semver_bump_minor(&")
+         .replace("semver.bump_patch(", "semver_bump_patch(&")
+         .replace("set.new()", "set_new()")
+         .replace("set.add(", "set_add(&")
+         .replace("set.has(", "set_has(&")
+         .replace("set.remove(", "set_remove(&")
+         .replace("set.len(", "set_len(&")
+         .replace("set.union(", "set_union(&")
+         .replace("set.intersection(", "set_intersection(&")
+         .replace("set.difference(", "set_difference(&")
+         .replace("set.is_subset(", "set_is_subset(&")
+         .replace("set.to_vec(", "set_to_vec(&")
+         .replace("diff.lines(", "diff_lines(&")
+         .replace("diff.levenshtein(", "diff_levenshtein(&")
+         .replace("diff.similarity(", "diff_similarity(&")
+         .replace("uuid.v4()", "uuid_v4()")
+         .replace("uuid.v7()", "uuid_v7()")
+         .replace("uuid.is_valid(", "uuid_is_valid(&");
 
     if let Some(pos) = s.find("bus_pub(&") {
         let after = &s[pos + "bus_pub(&".len()..];
@@ -1738,6 +1767,175 @@ fn transform_zyra_line(line: &str) -> String {
             }
         }
     }
+    if let Some(pos) = s.find("http_mock(&") {
+        let after = &s[pos + "http_mock(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 3 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim();
+                let a3 = parts[2].trim().trim_start_matches('&');
+                s = format!("{}http_mock(&{}, {}, &{}){}", &s[..pos], a1, a2, a3, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("csv_stringify(&") {
+        let after = &s[pos + "csv_stringify(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}csv_stringify(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("semver_compare(&") {
+        let after = &s[pos + "semver_compare(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}semver_compare(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("semver_satisfies(&") {
+        let after = &s[pos + "semver_satisfies(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}semver_satisfies(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("set_add(&") {
+        let after = &s[pos + "set_add(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}set_add(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("set_has(&") {
+        let after = &s[pos + "set_has(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}set_has(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("set_remove(&") {
+        let after = &s[pos + "set_remove(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}set_remove(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("set_union(&") {
+        let after = &s[pos + "set_union(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}set_union(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("set_intersection(&") {
+        let after = &s[pos + "set_intersection(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}set_intersection(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("set_difference(&") {
+        let after = &s[pos + "set_difference(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}set_difference(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("set_is_subset(&") {
+        let after = &s[pos + "set_is_subset(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}set_is_subset(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("diff_levenshtein(&") {
+        let after = &s[pos + "diff_levenshtein(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}diff_levenshtein(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("diff_similarity(&") {
+        let after = &s[pos + "diff_similarity(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}diff_similarity(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("diff_lines(&") {
+        let after = &s[pos + "diff_lines(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}diff_lines(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
 
     if s.starts_with("return \"") && s.ends_with('"') && !s.contains("to_string()") && !s.contains("format!") {
         s = format!("{}.to_string();", &s[..s.len()]);
@@ -1796,6 +1994,11 @@ fn transform_zyra_line(line: &str) -> String {
         "vec_filter", "vec_map", "vec_sort", "vec_reverse", "vec_unique", "vec_join", "vec_contains", "vec_find", "vec_slice",
         "url_get", "url_get_param", "url_encode", "url_decode",
         "log_info", "log_warn", "log_error", "log_debug", "log_set_level", "log_set_output", "log_set_file",
+        "csv_parse", "csv_parse_tsv", "csv_parse_with_headers", "csv_stringify",
+        "semver_parse", "semver_compare", "semver_satisfies", "semver_bump_major", "semver_bump_minor", "semver_bump_patch",
+        "set_add", "set_has", "set_remove", "set_len", "set_union", "set_intersection", "set_difference", "set_is_subset", "set_to_vec",
+        "diff_lines", "diff_levenshtein", "diff_similarity",
+        "uuid_is_valid",
     ];
     for func in &auto_borrow_fns {
         let pat = format!("{}(", func);
@@ -2927,20 +3130,84 @@ fn math_norm(v: impl AsRef<[f64]>) -> f64 {
     let sum_sq: f64 = v.as_ref().iter().map(|&x| x * x).sum();
     sum_sq.sqrt()
 }
+struct ZyraHttpMockEntry {
+    pattern: String,
+    status: i64,
+    body: String,
+}
+
+static HTTP_MOCKS: std::sync::OnceLock<std::sync::Mutex<Vec<ZyraHttpMockEntry>>> = std::sync::OnceLock::new();
+static HTTP_MOCK_HISTORY: std::sync::OnceLock<std::sync::Mutex<Vec<String>>> = std::sync::OnceLock::new();
+
+#[allow(unused)]
+fn http_mock(url_pattern: impl AsRef<str>, status: i64, body: impl AsRef<str>) {
+    let p = url_pattern.as_ref().to_string();
+    let b = body.as_ref().to_string();
+    let lock = HTTP_MOCKS.get_or_init(|| std::sync::Mutex::new(Vec::new()));
+    if let Ok(mut list) = lock.lock() {
+        list.push(ZyraHttpMockEntry { pattern: p, status, body: b });
+    }
+}
+
+#[allow(unused)]
+fn http_mock_history() -> Vec<String> {
+    let lock = HTTP_MOCK_HISTORY.get_or_init(|| std::sync::Mutex::new(Vec::new()));
+    if let Ok(hist) = lock.lock() {
+        hist.clone()
+    } else {
+        Vec::new()
+    }
+}
+
+#[allow(unused)]
+fn http_mock_reset() {
+    let mocks = HTTP_MOCKS.get_or_init(|| std::sync::Mutex::new(Vec::new()));
+    if let Ok(mut list) = mocks.lock() {
+        list.clear();
+    }
+    let hist = HTTP_MOCK_HISTORY.get_or_init(|| std::sync::Mutex::new(Vec::new()));
+    if let Ok(mut h) = hist.lock() {
+        h.clear();
+    }
+}
+
+fn check_http_mock(method: &str, url: &str) -> Option<String> {
+    let hist = HTTP_MOCK_HISTORY.get_or_init(|| std::sync::Mutex::new(Vec::new()));
+    if let Ok(mut h) = hist.lock() {
+        h.push(format!("{} {}", method, url));
+    }
+    let mocks = HTTP_MOCKS.get_or_init(|| std::sync::Mutex::new(Vec::new()));
+    if let Ok(list) = mocks.lock() {
+        for entry in list.iter().rev() {
+            if entry.pattern == "*" || entry.pattern == "**" || url == entry.pattern || url.starts_with(entry.pattern.trim_end_matches('*')) {
+                return Some(entry.body.clone());
+            }
+        }
+    }
+    None
+}
+
 #[allow(unused)]
 fn http_get(url: impl AsRef<str>) -> String {
-    // #14: Use Command args directly to prevent shell injection
+    let u = url.as_ref();
+    if let Some(mocked) = check_http_mock("GET", u) {
+        return mocked;
+    }
     std::process::Command::new("curl")
-        .args(["-s", url.as_ref()])
+        .args(["-s", u])
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
         .unwrap_or_default()
 }
 #[allow(unused)]
 fn http_post(url: impl AsRef<str>, body: impl AsRef<str>) -> String {
-    // #14: Use Command args directly to prevent shell injection
+    let u = url.as_ref();
+    let b = body.as_ref();
+    if let Some(mocked) = check_http_mock("POST", u) {
+        return mocked;
+    }
     std::process::Command::new("curl")
-        .args(["-s", "-X", "POST", "-d", body.as_ref(), url.as_ref()])
+        .args(["-s", "-X", "POST", "-d", b, u])
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
         .unwrap_or_default()
@@ -6628,6 +6895,545 @@ fn test_snapshot(name: impl AsRef<str>, actual: impl AsRef<str>) -> bool {
         }
     }
 }
+
+#[allow(unused)]
+fn csv_parse_delim(text: impl AsRef<str>, delim: char) -> Vec<Vec<String>> {
+    let s = text.as_ref();
+    let mut rows: Vec<Vec<String>> = Vec::new();
+    let mut current_row: Vec<String> = Vec::new();
+    let mut current_field = String::new();
+    let mut in_quotes = false;
+    let chars: Vec<char> = s.chars().collect();
+    let len = chars.len();
+    let mut i = 0;
+
+    while i < len {
+        let c = chars[i];
+        if in_quotes {
+            if c == '"' {
+                if i + 1 < len && chars[i + 1] == '"' {
+                    current_field.push('"');
+                    i += 2;
+                    continue;
+                } else {
+                    in_quotes = false;
+                }
+            } else {
+                current_field.push(c);
+            }
+        } else {
+            if c == '"' {
+                in_quotes = true;
+            } else if c == delim {
+                current_row.push(current_field);
+                current_field = String::new();
+            } else if c == '\r' {
+                if i + 1 < len && chars[i + 1] == '\n' {
+                    i += 1;
+                }
+                current_row.push(current_field);
+                current_field = String::new();
+                rows.push(current_row);
+                current_row = Vec::new();
+            } else if c == '\n' {
+                current_row.push(current_field);
+                current_field = String::new();
+                rows.push(current_row);
+                current_row = Vec::new();
+            } else {
+                current_field.push(c);
+            }
+        }
+        i += 1;
+    }
+    if !current_field.is_empty() || !current_row.is_empty() {
+        current_row.push(current_field);
+        rows.push(current_row);
+    }
+    if let Some(last) = rows.last() {
+        if last.len() == 1 && last[0].is_empty() && s.ends_with('\n') {
+            rows.pop();
+        }
+    }
+    rows
+}
+
+#[allow(unused)]
+fn csv_parse(text: impl AsRef<str>) -> Vec<Vec<String>> {
+    csv_parse_delim(text, ',')
+}
+
+#[allow(unused)]
+fn csv_parse_tsv(text: impl AsRef<str>) -> Vec<Vec<String>> {
+    csv_parse_delim(text, '\t')
+}
+
+#[allow(unused)]
+fn csv_parse_with_headers(text: impl AsRef<str>) -> Vec<ZyraMap> {
+    let rows = csv_parse(text);
+    if rows.is_empty() {
+        return Vec::new();
+    }
+    let headers = &rows[0];
+    let mut result = Vec::new();
+    for row in rows.iter().skip(1) {
+        let map = ZyraMap::new();
+        for (i, h) in headers.iter().enumerate() {
+            let val = row.get(i).map(|s| s.as_str()).unwrap_or("");
+            map.set(h, val);
+        }
+        result.push(map);
+    }
+    result
+}
+
+#[allow(unused)]
+fn csv_stringify(rows: &[Vec<String>], delimiter: impl AsRef<str>) -> String {
+    let delim = delimiter.as_ref();
+    let mut out = String::new();
+    for (r_idx, row) in rows.iter().enumerate() {
+        if r_idx > 0 {
+            out.push('\n');
+        }
+        for (c_idx, cell) in row.iter().enumerate() {
+            if c_idx > 0 {
+                out.push_str(delim);
+            }
+            if cell.contains(delim) || cell.contains('"') || cell.contains('\n') || cell.contains('\r') {
+                out.push('"');
+                out.push_str(&cell.replace('"', "\"\""));
+                out.push('"');
+            } else {
+                out.push_str(cell);
+            }
+        }
+    }
+    out
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ZyraSemver {
+    pub major: i64,
+    pub minor: i64,
+    pub patch: i64,
+    pub prerelease: String,
+    pub build: String,
+}
+
+impl std::fmt::Display for ZyraSemver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut s = format!("{}.{}.{}", self.major, self.minor, self.patch);
+        if !self.prerelease.is_empty() {
+            s.push('-');
+            s.push_str(&self.prerelease);
+        }
+        if !self.build.is_empty() {
+            s.push('+');
+            s.push_str(&self.build);
+        }
+        write!(f, "{}", s)
+    }
+}
+
+pub trait IntoZyraSemver {
+    fn to_semver(&self) -> ZyraSemver;
+}
+
+impl IntoZyraSemver for ZyraSemver {
+    fn to_semver(&self) -> ZyraSemver { self.clone() }
+}
+impl IntoZyraSemver for str {
+    fn to_semver(&self) -> ZyraSemver { semver_parse(self) }
+}
+impl IntoZyraSemver for String {
+    fn to_semver(&self) -> ZyraSemver { semver_parse(self.as_str()) }
+}
+impl IntoZyraSemver for &str {
+    fn to_semver(&self) -> ZyraSemver { semver_parse(*self) }
+}
+impl IntoZyraSemver for &String {
+    fn to_semver(&self) -> ZyraSemver { semver_parse(self.as_str()) }
+}
+
+#[allow(unused)]
+fn semver_parse(v: impl AsRef<str>) -> ZyraSemver {
+    let mut s = v.as_ref().trim();
+    if s.starts_with('v') || s.starts_with('V') {
+        s = &s[1..];
+    }
+    let mut build = String::new();
+    let s_no_build = if let Some(idx) = s.find('+') {
+        build = s[idx + 1..].to_string();
+        &s[..idx]
+    } else {
+        s
+    };
+    let mut prerelease = String::new();
+    let s_core = if let Some(idx) = s_no_build.find('-') {
+        prerelease = s_no_build[idx + 1..].to_string();
+        &s_no_build[..idx]
+    } else {
+        s_no_build
+    };
+    let parts: Vec<&str> = s_core.split('.').collect();
+    let major = parts.get(0).and_then(|x| x.parse::<i64>().ok()).unwrap_or(0);
+    let minor = parts.get(1).and_then(|x| x.parse::<i64>().ok()).unwrap_or(0);
+    let patch = parts.get(2).and_then(|x| x.parse::<i64>().ok()).unwrap_or(0);
+    ZyraSemver { major, minor, patch, prerelease, build }
+}
+
+#[allow(unused)]
+fn semver_compare(v1: &impl IntoZyraSemver, v2: &impl IntoZyraSemver) -> i64 {
+    let s1 = v1.to_semver();
+    let s2 = v2.to_semver();
+    if s1.major != s2.major {
+        return if s1.major > s2.major { 1 } else { -1 };
+    }
+    if s1.minor != s2.minor {
+        return if s1.minor > s2.minor { 1 } else { -1 };
+    }
+    if s1.patch != s2.patch {
+        return if s1.patch > s2.patch { 1 } else { -1 };
+    }
+    if s1.prerelease.is_empty() && !s2.prerelease.is_empty() {
+        return 1;
+    }
+    if !s1.prerelease.is_empty() && s2.prerelease.is_empty() {
+        return -1;
+    }
+    if s1.prerelease != s2.prerelease {
+        return if s1.prerelease > s2.prerelease { 1 } else { -1 };
+    }
+    0
+}
+
+#[allow(unused)]
+fn semver_satisfies(v: &impl IntoZyraSemver, range: impl AsRef<str>) -> bool {
+    let ver = v.to_semver();
+    let r = range.as_ref().trim();
+    if r == "*" || r.is_empty() {
+        return true;
+    }
+    if r.starts_with('^') {
+        let base = semver_parse(&r[1..]);
+        if semver_compare(&ver, &base) < 0 {
+            return false;
+        }
+        if base.major > 0 {
+            return ver.major == base.major;
+        }
+        if base.minor > 0 {
+            return ver.minor == base.minor;
+        }
+        return ver.patch == base.patch;
+    }
+    if r.starts_with('~') {
+        let base = semver_parse(&r[1..]);
+        if semver_compare(&ver, &base) < 0 {
+            return false;
+        }
+        return ver.major == base.major && ver.minor == base.minor;
+    }
+    if r.starts_with(">=") {
+        let target = semver_parse(&r[2..]);
+        return semver_compare(&ver, &target) >= 0;
+    }
+    if r.starts_with("<=") {
+        let target = semver_parse(&r[2..]);
+        return semver_compare(&ver, &target) <= 0;
+    }
+    if r.starts_with('>') {
+        let target = semver_parse(&r[1..]);
+        return semver_compare(&ver, &target) > 0;
+    }
+    if r.starts_with('<') {
+        let target = semver_parse(&r[1..]);
+        return semver_compare(&ver, &target) < 0;
+    }
+    if r.starts_with('=') {
+        let target = semver_parse(&r[1..]);
+        return semver_compare(&ver, &target) == 0;
+    }
+    let target = semver_parse(r);
+    semver_compare(&ver, &target) == 0
+}
+
+#[allow(unused)]
+fn semver_bump_major(v: &impl IntoZyraSemver) -> ZyraSemver {
+    let s = v.to_semver();
+    ZyraSemver { major: s.major + 1, minor: 0, patch: 0, prerelease: String::new(), build: String::new() }
+}
+
+#[allow(unused)]
+fn semver_bump_minor(v: &impl IntoZyraSemver) -> ZyraSemver {
+    let s = v.to_semver();
+    ZyraSemver { major: s.major, minor: s.minor + 1, patch: 0, prerelease: String::new(), build: String::new() }
+}
+
+#[allow(unused)]
+fn semver_bump_patch(v: &impl IntoZyraSemver) -> ZyraSemver {
+    let s = v.to_semver();
+    ZyraSemver { major: s.major, minor: s.minor, patch: s.patch + 1, prerelease: String::new(), build: String::new() }
+}
+
+#[derive(Clone, Debug)]
+pub struct ZyraSet {
+    pub data: std::sync::Arc<std::sync::RwLock<std::collections::BTreeSet<String>>>,
+}
+
+impl PartialEq for ZyraSet {
+    fn eq(&self, other: &Self) -> bool {
+        if let (Ok(s1), Ok(s2)) = (self.data.read(), other.data.read()) {
+            *s1 == *s2
+        } else {
+            false
+        }
+    }
+}
+impl Eq for ZyraSet {}
+
+impl ZyraSet {
+    pub fn new() -> Self {
+        ZyraSet {
+            data: std::sync::Arc::new(std::sync::RwLock::new(std::collections::BTreeSet::new())),
+        }
+    }
+    pub fn add(&self, elem: impl AsRef<str>) -> bool {
+        if let Ok(mut set) = self.data.write() {
+            set.insert(elem.as_ref().to_string())
+        } else {
+            false
+        }
+    }
+    pub fn has(&self, elem: impl AsRef<str>) -> bool {
+        if let Ok(set) = self.data.read() {
+            set.contains(elem.as_ref())
+        } else {
+            false
+        }
+    }
+    pub fn remove(&self, elem: impl AsRef<str>) -> bool {
+        if let Ok(mut set) = self.data.write() {
+            set.remove(elem.as_ref())
+        } else {
+            false
+        }
+    }
+    pub fn len(&self) -> i64 {
+        if let Ok(set) = self.data.read() {
+            set.len() as i64
+        } else {
+            0
+        }
+    }
+    pub fn to_vec(&self) -> Vec<String> {
+        if let Ok(set) = self.data.read() {
+            set.iter().cloned().collect()
+        } else {
+            Vec::new()
+        }
+    }
+    pub fn union(&self, other: &ZyraSet) -> ZyraSet {
+        let res = ZyraSet::new();
+        if let (Ok(s1), Ok(s2)) = (self.data.read(), other.data.read()) {
+            if let Ok(mut out) = res.data.write() {
+                *out = s1.union(&s2).cloned().collect();
+            }
+        }
+        res
+    }
+    pub fn intersection(&self, other: &ZyraSet) -> ZyraSet {
+        let res = ZyraSet::new();
+        if let (Ok(s1), Ok(s2)) = (self.data.read(), other.data.read()) {
+            if let Ok(mut out) = res.data.write() {
+                *out = s1.intersection(&s2).cloned().collect();
+            }
+        }
+        res
+    }
+    pub fn difference(&self, other: &ZyraSet) -> ZyraSet {
+        let res = ZyraSet::new();
+        if let (Ok(s1), Ok(s2)) = (self.data.read(), other.data.read()) {
+            if let Ok(mut out) = res.data.write() {
+                *out = s1.difference(&s2).cloned().collect();
+            }
+        }
+        res
+    }
+    pub fn is_subset(&self, other: &ZyraSet) -> bool {
+        if let (Ok(s1), Ok(s2)) = (self.data.read(), other.data.read()) {
+            s1.is_subset(&s2)
+        } else {
+            false
+        }
+    }
+}
+
+impl std::fmt::Display for ZyraSet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Ok(set) = self.data.read() {
+            let items: Vec<String> = set.iter().cloned().collect();
+            write!(f, "{{{}}}", items.join(", "))
+        } else {
+            write!(f, "{{}}")
+        }
+    }
+}
+
+#[allow(unused)]
+fn set_new() -> ZyraSet { ZyraSet::new() }
+#[allow(unused)]
+fn set_add(s: &ZyraSet, elem: impl AsRef<str>) -> bool { s.add(elem) }
+#[allow(unused)]
+fn set_has(s: &ZyraSet, elem: impl AsRef<str>) -> bool { s.has(elem) }
+#[allow(unused)]
+fn set_remove(s: &ZyraSet, elem: impl AsRef<str>) -> bool { s.remove(elem) }
+#[allow(unused)]
+fn set_len(s: &ZyraSet) -> i64 { s.len() }
+#[allow(unused)]
+fn set_to_vec(s: &ZyraSet) -> Vec<String> { s.to_vec() }
+#[allow(unused)]
+fn set_union(a: &ZyraSet, b: &ZyraSet) -> ZyraSet { a.union(b) }
+#[allow(unused)]
+fn set_intersection(a: &ZyraSet, b: &ZyraSet) -> ZyraSet { a.intersection(b) }
+#[allow(unused)]
+fn set_difference(a: &ZyraSet, b: &ZyraSet) -> ZyraSet { a.difference(b) }
+#[allow(unused)]
+fn set_is_subset(a: &ZyraSet, b: &ZyraSet) -> bool { a.is_subset(b) }
+
+#[allow(unused)]
+fn diff_levenshtein(a: impl AsRef<str>, b: impl AsRef<str>) -> i64 {
+    let s1: Vec<char> = a.as_ref().chars().collect();
+    let s2: Vec<char> = b.as_ref().chars().collect();
+    let m = s1.len();
+    let n = s2.len();
+    if m == 0 { return n as i64; }
+    if n == 0 { return m as i64; }
+
+    let mut dp: Vec<usize> = (0..=n).collect();
+    for i in 1..=m {
+        let mut prev = dp[0];
+        dp[0] = i;
+        for j in 1..=n {
+            let temp = dp[j];
+            if s1[i - 1] == s2[j - 1] {
+                dp[j] = prev;
+            } else {
+                dp[j] = 1 + prev.min(dp[j]).min(dp[j - 1]);
+            }
+            prev = temp;
+        }
+    }
+    dp[n] as i64
+}
+
+#[allow(unused)]
+fn diff_similarity(a: impl AsRef<str>, b: impl AsRef<str>) -> f64 {
+    let s1 = a.as_ref();
+    let s2 = b.as_ref();
+    let max_len = s1.chars().count().max(s2.chars().count());
+    if max_len == 0 {
+        return 1.0;
+    }
+    let dist = diff_levenshtein(s1, s2) as f64;
+    1.0 - (dist / (max_len as f64))
+}
+
+#[allow(unused)]
+fn diff_lines(a: impl AsRef<str>, b: impl AsRef<str>) -> Vec<String> {
+    let lines1: Vec<&str> = a.as_ref().lines().collect();
+    let lines2: Vec<&str> = b.as_ref().lines().collect();
+    let m = lines1.len();
+    let n = lines2.len();
+
+    let mut lcs = vec![vec![0usize; n + 1]; m + 1];
+    for i in 0..m {
+        for j in 0..n {
+            if lines1[i] == lines2[j] {
+                lcs[i + 1][j + 1] = lcs[i][j] + 1;
+            } else {
+                lcs[i + 1][j + 1] = lcs[i + 1][j].max(lcs[i][j + 1]);
+            }
+        }
+    }
+
+    let mut diff = Vec::new();
+    let mut i = m;
+    let mut j = n;
+    while i > 0 || j > 0 {
+        if i > 0 && j > 0 && lines1[i - 1] == lines2[j - 1] {
+            diff.push(format!(" {}", lines1[i - 1]));
+            i -= 1;
+            j -= 1;
+        } else if j > 0 && (i == 0 || lcs[i][j - 1] >= lcs[i - 1][j]) {
+            diff.push(format!("+{}", lines2[j - 1]));
+            j -= 1;
+        } else if i > 0 {
+            diff.push(format!("-{}", lines1[i - 1]));
+            i -= 1;
+        }
+    }
+    diff.reverse();
+    diff
+}
+
+#[allow(unused)]
+fn uuid_v4() -> String {
+    crypto_uuid()
+}
+
+#[allow(unused)]
+fn uuid_v7() -> String {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default();
+    let millis = now.as_millis() as u64;
+
+    let time_hex = format!("{:012x}", millis & 0xFFFFFFFFFFFF);
+    let mut rand_bytes = [0u8; 10];
+    let seed = now.as_nanos() ^ (millis as u128);
+    let mut state = seed;
+    for b in rand_bytes.iter_mut() {
+        state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        *b = (state >> 32) as u8;
+    }
+
+    rand_bytes[0] = (rand_bytes[0] & 0x0F) | 0x70;
+    rand_bytes[2] = (rand_bytes[2] & 0x3F) | 0x80;
+
+    let mut rand_hex = String::with_capacity(20);
+    for b in rand_bytes {
+        rand_hex.push_str(&format!("{:02x}", b));
+    }
+
+    format!(
+        "{}-{}-{}-{}-{}",
+        &time_hex[..8],
+        &time_hex[8..12],
+        &rand_hex[..4],
+        &rand_hex[4..8],
+        &rand_hex[8..20]
+    )
+}
+
+#[allow(unused)]
+fn uuid_is_valid(id: impl AsRef<str>) -> bool {
+    let s = id.as_ref();
+    if s.len() != 36 {
+        return false;
+    }
+    let bytes = s.as_bytes();
+    for (idx, &b) in bytes.iter().enumerate() {
+        if idx == 8 || idx == 13 || idx == 18 || idx == 23 {
+            if b != b'-' {
+                return false;
+            }
+        } else if !b.is_ascii_hexdigit() {
+            return false;
+        }
+    }
+    true
+}
 "#);
     }
 
@@ -7407,7 +8213,43 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function bin_unpack_u64_le(h) { let s = ''; for (let i = 14; i >= 0; i -= 2) s += h.slice(i, i + 2); return Number(BigInt('0x' + s)); }\n");
         header.push_str("function tui_prompt(q, d) { return d; }\n");
         header.push_str("function tui_confirm(q, d) { return d; }\n");
-        header.push_str("function tui_select(q, o, d) { return d; }\n\n");
+        header.push_str("function tui_select(q, o, d) { return d; }\n");
+        header.push_str("const global_http_mocks = [];\n");
+        header.push_str("const global_http_mock_history = [];\n");
+        header.push_str("function http_mock(p, s, b) { global_http_mocks.push({ pattern: String(p), status: Number(s), body: String(b) }); }\n");
+        header.push_str("function http_mock_history() { return [...global_http_mock_history]; }\n");
+        header.push_str("function http_mock_reset() { global_http_mocks.length = 0; global_http_mock_history.length = 0; }\n");
+        header.push_str("function check_http_mock(method, url) { global_http_mock_history.push(`${method} ${url}`); for (let i = global_http_mocks.length - 1; i >= 0; i--) { const m = global_http_mocks[i]; if (m.pattern === '*' || m.pattern === '**' || m.pattern === url || (m.pattern.endsWith('*') && url.startsWith(m.pattern.slice(0, -1)))) return m.body; } return null; }\n");
+        header.push_str("function http_get(url) { const mocked = check_http_mock('GET', url); if (mocked !== null) return mocked; try { return child_process.execSync(`curl -s \"${url}\"`, { encoding: 'utf8' }); } catch { return ''; } }\n");
+        header.push_str("function http_post(url, body) { const mocked = check_http_mock('POST', url); if (mocked !== null) return mocked; try { return child_process.execSync(`curl -s -X POST -d \"${body}\" \"${url}\"`, { encoding: 'utf8' }); } catch { return ''; } }\n");
+        header.push_str("function csv_parse(text) { const s = String(text); const rows = []; let row = []; let field = ''; let inQuotes = false; let i = 0; while (i < s.length) { const c = s[i]; if (inQuotes) { if (c === '\"') { if (i + 1 < s.length && s[i + 1] === '\"') { field += '\"'; i += 2; continue; } inQuotes = false; } else { field += c; } } else { if (c === '\"') inQuotes = true; else if (c === ',') { row.push(field); field = ''; } else if (c === '\\r') { if (i + 1 < s.length && s[i + 1] === '\\n') i++; row.push(field); field = ''; rows.push(row); row = []; } else if (c === '\\n') { row.push(field); field = ''; rows.push(row); row = []; } else { field += c; } } i++; } if (field || row.length > 0) { row.push(field); rows.push(row); } if (rows.length > 0 && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '' && s.endsWith('\\n')) rows.pop(); return rows; }\n");
+        header.push_str("function csv_parse_tsv(text) { const s = String(text); const rows = []; let row = []; let field = ''; let inQuotes = false; let i = 0; while (i < s.length) { const c = s[i]; if (inQuotes) { if (c === '\"') { if (i + 1 < s.length && s[i + 1] === '\"') { field += '\"'; i += 2; continue; } inQuotes = false; } else { field += c; } } else { if (c === '\"') inQuotes = true; else if (c === '\\t') { row.push(field); field = ''; } else if (c === '\\r') { if (i + 1 < s.length && s[i + 1] === '\\n') i++; row.push(field); field = ''; rows.push(row); row = []; } else if (c === '\\n') { row.push(field); field = ''; rows.push(row); row = []; } else { field += c; } } i++; } if (field || row.length > 0) { row.push(field); rows.push(row); } if (rows.length > 0 && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '' && s.endsWith('\\n')) rows.pop(); return rows; }\n");
+        header.push_str("function csv_parse_with_headers(text) { const rows = csv_parse(text); if (rows.length === 0) return []; const headers = rows[0]; const res = []; for (let i = 1; i < rows.length; i++) { const m = new ZyraMap(); for (let j = 0; j < headers.length; j++) m.set(headers[j], rows[i][j] || ''); res.push(m); } return res; }\n");
+        header.push_str("function csv_stringify(rows, delim) { const d = delim || ','; return (rows || []).map(r => (r || []).map(c => { const s = String(c); if (s.includes(d) || s.includes('\"') || s.includes('\\n') || s.includes('\\r')) return '\"' + s.replaceAll('\"', '\"\"') + '\"'; return s; }).join(d)).join('\\n'); }\n");
+        header.push_str("class ZyraSemver { constructor(maj, min, pat, pre, bld) { this.major = Number(maj); this.minor = Number(min); this.patch = Number(pat); this.prerelease = String(pre || ''); this.build = String(bld || ''); } toString() { let s = `${this.major}.${this.minor}.${this.patch}`; if (this.prerelease) s += `-${this.prerelease}`; if (this.build) s += `+${this.build}`; return s; } }\n");
+        header.push_str("function semver_parse(v) { let s = String(v).trim().replace(/^v/i, ''); let build = ''; const bIdx = s.indexOf('+'); if (bIdx >= 0) { build = s.slice(bIdx + 1); s = s.slice(0, bIdx); } let pre = ''; const pIdx = s.indexOf('-'); if (pIdx >= 0) { pre = s.slice(pIdx + 1); s = s.slice(0, pIdx); } const parts = s.split('.'); return new ZyraSemver(parseInt(parts[0] || '0', 10), parseInt(parts[1] || '0', 10), parseInt(parts[2] || '0', 10), pre, build); }\n");
+        header.push_str("function semver_compare(v1, v2) { const s1 = typeof v1 === 'string' ? semver_parse(v1) : v1; const s2 = typeof v2 === 'string' ? semver_parse(v2) : v2; if (s1.major !== s2.major) return s1.major > s2.major ? 1 : -1; if (s1.minor !== s2.minor) return s1.minor > s2.minor ? 1 : -1; if (s1.patch !== s2.patch) return s1.patch > s2.patch ? 1 : -1; if (!s1.prerelease && s2.prerelease) return 1; if (s1.prerelease && !s2.prerelease) return -1; if (s1.prerelease !== s2.prerelease) return s1.prerelease > s2.prerelease ? 1 : -1; return 0; }\n");
+        header.push_str("function semver_satisfies(v, range) { const ver = typeof v === 'string' ? semver_parse(v) : v; const r = String(range).trim(); if (r === '*' || r === '') return true; if (r.startsWith('^')) { const base = semver_parse(r.slice(1)); if (semver_compare(ver, base) < 0) return false; if (base.major > 0) return ver.major === base.major; if (base.minor > 0) return ver.minor === base.minor; return ver.patch === base.patch; } if (r.startsWith('~')) { const base = semver_parse(r.slice(1)); if (semver_compare(ver, base) < 0) return false; return ver.major === base.major && ver.minor === base.minor; } if (r.startsWith('>=')) return semver_compare(ver, semver_parse(r.slice(2))) >= 0; if (r.startsWith('<=')) return semver_compare(ver, semver_parse(r.slice(2))) <= 0; if (r.startsWith('>')) return semver_compare(ver, semver_parse(r.slice(1))) > 0; if (r.startsWith('<')) return semver_compare(ver, semver_parse(r.slice(1))) < 0; if (r.startsWith('=')) return semver_compare(ver, semver_parse(r.slice(1))) === 0; return semver_compare(ver, semver_parse(r)) === 0; }\n");
+        header.push_str("function semver_bump_major(v) { const s = typeof v === 'string' ? semver_parse(v) : v; return new ZyraSemver(s.major + 1, 0, 0, '', ''); }\n");
+        header.push_str("function semver_bump_minor(v) { const s = typeof v === 'string' ? semver_parse(v) : v; return new ZyraSemver(s.major, s.minor + 1, 0, '', ''); }\n");
+        header.push_str("function semver_bump_patch(v) { const s = typeof v === 'string' ? semver_parse(v) : v; return new ZyraSemver(s.major, s.minor, s.patch + 1, '', ''); }\n");
+        header.push_str("class ZyraSet { constructor() { this.items = new Set(); } add(x) { const had = this.items.has(String(x)); this.items.add(String(x)); return !had; } has(x) { return this.items.has(String(x)); } remove(x) { return this.items.delete(String(x)); } len() { return this.items.size; } to_vec() { return Array.from(this.items).sort(); } union(other) { const res = new ZyraSet(); for (const x of this.items) res.add(x); for (const x of other.items) res.add(x); return res; } intersection(other) { const res = new ZyraSet(); for (const x of this.items) { if (other.has(x)) res.add(x); } return res; } difference(other) { const res = new ZyraSet(); for (const x of this.items) { if (!other.has(x)) res.add(x); } return res; } is_subset(other) { for (const x of this.items) { if (!other.has(x)) return false; } return true; } toString() { return `{${this.to_vec().join(', ')}}`; } }\n");
+        header.push_str("function set_new() { return new ZyraSet(); }\n");
+        header.push_str("function set_add(s, x) { return s.add(x); }\n");
+        header.push_str("function set_has(s, x) { return s.has(x); }\n");
+        header.push_str("function set_remove(s, x) { return s.remove(x); }\n");
+        header.push_str("function set_len(s) { return s.len(); }\n");
+        header.push_str("function set_to_vec(s) { return s.to_vec(); }\n");
+        header.push_str("function set_union(a, b) { return a.union(b); }\n");
+        header.push_str("function set_intersection(a, b) { return a.intersection(b); }\n");
+        header.push_str("function set_difference(a, b) { return a.difference(b); }\n");
+        header.push_str("function set_is_subset(a, b) { return a.is_subset(b); }\n");
+        header.push_str("function diff_levenshtein(a, b) { const s1 = String(a); const s2 = String(b); const m = s1.length; const n = s2.length; let dp = Array.from({ length: n + 1 }, (_, i) => i); for (let i = 1; i <= m; i++) { let prev = dp[0]; dp[0] = i; for (let j = 1; j <= n; j++) { const temp = dp[j]; dp[j] = s1[i - 1] === s2[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]); prev = temp; } } return dp[n]; }\n");
+        header.push_str("function diff_similarity(a, b) { const s1 = String(a); const s2 = String(b); const maxLen = Math.max(s1.length, s2.length); if (maxLen === 0) return 1.0; return 1.0 - (diff_levenshtein(s1, s2) / maxLen); }\n");
+        header.push_str("function diff_lines(a, b) { const l1 = String(a).split('\\n'); const l2 = String(b).split('\\n'); const m = l1.length; const n = l2.length; const lcs = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0)); for (let i = 0; i < m; i++) { for (let j = 0; j < n; j++) { lcs[i + 1][j + 1] = l1[i] === l2[j] ? lcs[i][j] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]); } } const diff = []; let i = m, j = n; while (i > 0 || j > 0) { if (i > 0 && j > 0 && l1[i - 1] === l2[j - 1]) { diff.push(' ' + l1[i - 1]); i--; j--; } else if (j > 0 && (i === 0 || lcs[i][j - 1] >= lcs[i - 1][j])) { diff.push('+' + l2[j - 1]); j--; } else if (i > 0) { diff.push('-' + l1[i - 1]); i--; } } diff.reverse(); return diff; }\n");
+        header.push_str("function uuid_v4() { return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16); }); }\n");
+        header.push_str("function uuid_v7() { const now = Date.now(); const hexTime = now.toString(16).padStart(12, '0'); const bytes = crypto.randomBytes ? crypto.randomBytes(10) : Array.from({length: 10}, () => Math.floor(Math.random() * 256)); bytes[0] = (bytes[0] & 0x0f) | 0x70; bytes[2] = (bytes[2] & 0x3f) | 0x80; const hexRest = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(''); return `${hexTime.slice(0, 8)}-${hexTime.slice(8, 12)}-${hexRest.slice(0, 4)}-${hexRest.slice(4, 8)}-${hexRest.slice(8, 20)}`; }\n");
+        header.push_str("function uuid_is_valid(id) { return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(id)); }\n\n");
         header
     } else {
         String::new()
@@ -7665,6 +8507,35 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("tui.prompt(", "tui_prompt(")
              .replace("tui.confirm(", "tui_confirm(")
              .replace("tui.select(", "tui_select(")
+             .replace("http.mock(", "http_mock(")
+             .replace("http.mock_history()", "http_mock_history()")
+             .replace("http.mock_reset()", "http_mock_reset()")
+             .replace("csv.parse_with_headers(", "csv_parse_with_headers(")
+             .replace("csv.parse_tsv(", "csv_parse_tsv(")
+             .replace("csv.parse(", "csv_parse(")
+             .replace("csv.stringify(", "csv_stringify(")
+             .replace("semver.parse(", "semver_parse(")
+             .replace("semver.compare(", "semver_compare(")
+             .replace("semver.satisfies(", "semver_satisfies(")
+             .replace("semver.bump_major(", "semver_bump_major(")
+             .replace("semver.bump_minor(", "semver_bump_minor(")
+             .replace("semver.bump_patch(", "semver_bump_patch(")
+             .replace("set.new()", "set_new()")
+             .replace("set.add(", "set_add(")
+             .replace("set.has(", "set_has(")
+             .replace("set.remove(", "set_remove(")
+             .replace("set.len(", "set_len(")
+             .replace("set.union(", "set_union(")
+             .replace("set.intersection(", "set_intersection(")
+             .replace("set.difference(", "set_difference(")
+             .replace("set.is_subset(", "set_is_subset(")
+             .replace("set.to_vec(", "set_to_vec(")
+             .replace("diff.lines(", "diff_lines(")
+             .replace("diff.levenshtein(", "diff_levenshtein(")
+             .replace("diff.similarity(", "diff_similarity(")
+             .replace("uuid.v4()", "uuid_v4()")
+             .replace("uuid.v7()", "uuid_v7()")
+             .replace("uuid.is_valid(", "uuid_is_valid(")
              .replace("spawn(||", "thread_spawn(() =>")
              .replace("spawn(move ||", "thread_spawn(() =>")
              .replace("spawn(|", "thread_spawn(|")

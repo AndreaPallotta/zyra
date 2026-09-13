@@ -8,7 +8,7 @@ Official release notes, version history, and commit logs for the Zyra Programmin
 
 | Version | Release Date | Target | Key Highlights | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **v2.6.0** | 2026-09-13 | Native, JS ESM | ZYX declarative UI (`.zyx`), task nurseries (`task.*`), zero-copy buffers (`buf.*`), AES-GCM & PBKDF2 (`crypto.*`), declarative config (`config.*`), event bus (`bus.*`), schema validation (`schema.*`), snapshot testing (`test.snapshot`), binary codec (`bin.pack`/`unpack`), terminal UI prompts (`tui.*`), hermetic pack (`zyra pack`), OpenAPI 3.1 (`zyra openapi`), VS Code DAP (`zyra dap`), fuzzing (`@fuzz`) | **Current Stable** |
+| **v2.6.0** | 2026-09-13 | Native, JS ESM | ZYX declarative UI (`.zyx`), task nurseries (`task.*`), zero-copy buffers (`buf.*`), AES-GCM & PBKDF2 (`crypto.*`), declarative config (`config.*`), event bus (`bus.*`), schema validation (`schema.*`), snapshot testing (`test.snapshot`), binary codec (`bin.pack`/`unpack`), terminal UI prompts (`tui.*`), HTTP mock (`http.mock`), CSV/TSV (`csv.*`), SemVer 2.0 (`semver.*`), set algebra (`set.*`), diff & similarity (`diff.*`), UUIDv7 (`uuid.*`), hermetic pack (`zyra pack`), OpenAPI 3.1 (`zyra openapi`), VS Code DAP (`zyra dap`), fuzzing (`@fuzz`) | **Current Stable** |
 | **v2.5.0** | 2026-09-05 | Native, JS ESM, WASM | Closures & lambda captures, default & named arguments, spread syntax, relational SQL (`sql.*`), memory-mapped files (`io.mmap`), background task queues & cron (`cron.*`, `queue.*`) | Supported |
 | **v2.4.0** | 2026-08-30 | Native, JS ESM | Postfix `?` error operator, arbitrary expression interpolation `{expr}`, tuple destructuring & match guards, `time.*`, `crypto.uuid/jwt`, `ws.*`, `io.lines/append/pipe`, `math.clamp/lerp/dot/norm`, `zyra bench`, `zyra coverage` HTML | Supported |
 | **v2.3.0** | 2026-08-23 | Native, JS ESM | Concurrency & channels, embedded KV db, JSON AST, regex, worker pool, manifest scripts, JS minifier, in-memory map, vector utilities, URL engine, logging, HTTP interceptor client | Supported |
@@ -57,6 +57,18 @@ Official release notes, version history, and commit logs for the Zyra Programmin
   - Full DAP specification implementation over stdio supporting initialize, breakpoints, threads, stack traces, scopes, variables, stepping, and disconnect.
 - **Generative Property-Based Fuzzing Engine (`zyra test --fuzz` / `@fuzz`)**:
   - Automated randomized boundary value stress testing and invariant verification in the test runner.
+- **In-Memory Network Stubbing & Mocking (`http.mock`)**:
+  - Zero-socket network interception for HTTP GET and POST requests (`http.mock(pattern, status, body)`), wildcard endpoint routing (`*` and `**`), call history auditing (`http.mock_history()`), and state teardown (`http.mock_reset()`).
+- **RFC-4180 CSV & TSV Data Processing (`csv.*`)**:
+  - Deterministic CSV parser (`csv.parse`) supporting quoted multi-line fields and escaped double quotes, tab-delimited parser (`csv.parse_tsv`), header-aware record extraction into maps (`csv.parse_with_headers`), and RFC-compliant serializer (`csv.stringify`).
+- **Semantic Versioning Engine (`semver.*`)**:
+  - SemVer 2.0.0 parser with prerelease and build metadata extraction (`semver.parse`), relative precedence comparator (`semver.compare`), range satisfaction evaluator (`semver.satisfies` with `^`, `~`, `>=`, `<=`, `>`, `<`, `=`), and release bumper (`semver.bump_major`, `semver.bump_minor`, `semver.bump_patch`).
+- **Mathematical Set Data Structure & Algebra (`set.*`)**:
+  - Thread-safe unique element set (`set.new`, `set.add`, `set.has`, `set.remove`, `set.len`, `set.to_vec`) with algebraic set operations: union (`set.union`), intersection (`set.intersection`), difference (`set.difference`), and subset testing (`set.is_subset`).
+- **Unified Diff & Levenshtein Similarity (`diff.*`)**:
+  - Unified diff line generator (`diff.lines`), Wagner-Fischer edit distance computation (`diff.levenshtein`), and normalized string similarity ratio 0.0 to 1.0 (`diff.similarity`).
+- **RFC-9562 Timestamp-Ordered UUID Generation (`uuid.*`)**:
+  - RFC-9562 UUIDv7 generator (`uuid.v7()`) with millisecond Unix epoch time prefix for lexicographical index ordering, random UUIDv4 (`uuid.v4()`), and canonical 36-character hyphenated format validation (`uuid.is_valid`).
 
 ---
 
