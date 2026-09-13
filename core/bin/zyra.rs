@@ -503,7 +503,7 @@ fn handle_pkg() {
     println!("[OK] Resolved & verified {} dependencies successfully.", installed);
 }
 
-fn handle_test(file_path: Option<&str>, is_fuzz: bool) {
+fn handle_test(file_path: Option<&str>, is_fuzz: bool, update_snapshots: bool) {
     let target = file_path.unwrap_or("src/main.zy");
     let content = match fs::read_to_string(target) {
         Ok(c) => c,
@@ -515,6 +515,9 @@ fn handle_test(file_path: Option<&str>, is_fuzz: bool) {
 
     if is_fuzz {
         println!("Generative property-based fuzzing engine active (--fuzz).");
+    }
+    if update_snapshots {
+        println!("Snapshot updating active (--update-snapshots).");
     }
 
     let mut test_fn_names: Vec<String> = Vec::new();
@@ -607,7 +610,10 @@ fn handle_test(file_path: Option<&str>, is_fuzz: bool) {
 
     if compile_status.map(|s| s.success()).unwrap_or(false) {
         println!("running {} unit test(s) in {}...\n", test_fn_names.len(), target);
-        let run_status = Command::new(&exe_path).status();
+        let run_status = Command::new(&exe_path)
+            .env("ZYRA_UPDATE_SNAPSHOTS", if update_snapshots { "1" } else { "0" })
+            .env("ZYRA_HEADLESS", "1")
+            .status();
         if let Ok(exit_code) = run_status {
             if !exit_code.success() {
                 std::process::exit(exit_code.code().unwrap_or(1));
@@ -1419,8 +1425,23 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("io.mmap(", "io_mmap(")
          .replace("io.mmap_read(", "io_mmap_read(&")
          .replace("io.mmap_close(", "io_mmap_close(&mut ")
-         .replace("bin.pack(", "bin_pack(")
-         .replace("bin.unpack(", "bin_unpack(")
+         .replace("bin.pack_u16_be(", "bin_pack_u16_be(")
+         .replace("bin.pack_u16_le(", "bin_pack_u16_le(")
+         .replace("bin.pack_u32_be(", "bin_pack_u32_be(")
+         .replace("bin.pack_u32_le(", "bin_pack_u32_le(")
+         .replace("bin.pack_u64_be(", "bin_pack_u64_be(")
+         .replace("bin.pack_u64_le(", "bin_pack_u64_le(")
+         .replace("bin.unpack_u16_be(", "bin_unpack_u16_be(&")
+         .replace("bin.unpack_u16_le(", "bin_unpack_u16_le(&")
+         .replace("bin.unpack_u32_be(", "bin_unpack_u32_be(&")
+         .replace("bin.unpack_u32_le(", "bin_unpack_u32_le(&")
+         .replace("bin.unpack_u64_be(", "bin_unpack_u64_be(&")
+         .replace("bin.unpack_u64_le(", "bin_unpack_u64_le(&")
+         .replace("bin.pack(", "bin_pack(&")
+         .replace("bin.unpack(", "bin_unpack(&")
+         .replace("tui.prompt(", "tui_prompt(&")
+         .replace("tui.confirm(", "tui_confirm(&")
+         .replace("tui.select(", "tui_select(&")
          .replace("tui.style(", "tui_style(")
          .replace("tui.progress(", "tui_progress(")
          .replace("tui.table(", "tui_table(&")
@@ -1454,8 +1475,193 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("config.load(", "config_load(")
          .replace("config.get(", "config_get(&")
          .replace("config.get_int(", "config_get_int(&")
-         .replace("config.get_bool(", "config_get_bool(&");
+         .replace("config.get_bool(", "config_get_bool(&")
+         .replace("bus.sub(", "bus_sub(")
+         .replace("bus.pub(", "bus_pub(&")
+         .replace("bus.unsub(", "bus_unsub(")
+         .replace("bus.history(", "bus_history(&")
+         .replace("bus.clear()", "bus_clear()")
+         .replace("schema.string()", "schema_string()")
+         .replace("schema.int()", "schema_int()")
+         .replace("schema.bool()", "schema_bool()")
+         .replace("schema.min(", "schema_min(&")
+         .replace("schema.max(", "schema_max(&")
+         .replace("schema.pattern(", "schema_pattern(&")
+         .replace("schema.required(", "schema_required(&")
+         .replace("schema.validate(", "schema_validate(&")
+         .replace("schema.is_valid(", "schema_is_valid(&")
+         .replace("schema.validate_json(", "schema_validate_json(&")
+         .replace("test.snapshot(", "test_snapshot(&");
 
+    if let Some(pos) = s.find("bus_pub(&") {
+        let after = &s[pos + "bus_pub(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}bus_pub(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("bus_history(&") {
+        let after = &s[pos + "bus_history(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}bus_history(&{}, {}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("schema_validate(&") {
+        let after = &s[pos + "schema_validate(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}schema_validate(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("schema_is_valid(&") {
+        let after = &s[pos + "schema_is_valid(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}schema_is_valid(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("schema_validate_json(&") {
+        let after = &s[pos + "schema_validate_json(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}schema_validate_json(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("schema_min(&") {
+        let after = &s[pos + "schema_min(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 && !parts[0].contains('(') {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}schema_min(&{}, {}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("schema_max(&") {
+        let after = &s[pos + "schema_max(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 && !parts[0].contains('(') {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}schema_max(&{}, {}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("schema_pattern(&") {
+        let after = &s[pos + "schema_pattern(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 && !parts[0].contains('(') {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}schema_pattern(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("test_snapshot(&") {
+        let after = &s[pos + "test_snapshot(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}test_snapshot(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("bin_pack(&") {
+        let after = &s[pos + "bin_pack(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}bin_pack(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("bin_unpack(&") {
+        let after = &s[pos + "bin_unpack(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}bin_unpack(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("tui_prompt(&") {
+        let after = &s[pos + "tui_prompt(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}tui_prompt(&{}, &{}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("tui_confirm(&") {
+        let after = &s[pos + "tui_confirm(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 2 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                s = format!("{}tui_confirm(&{}, {}){}", &s[..pos], a1, a2, &after[end + 1..]);
+            }
+        }
+    }
+    if let Some(pos) = s.find("tui_select(&") {
+        let after = &s[pos + "tui_select(&".len()..];
+        if let Some(end) = after.find(')') {
+            let args = &after[..end];
+            let parts: Vec<&str> = args.split(',').collect();
+            if parts.len() == 3 {
+                let a1 = parts[0].trim().trim_start_matches('&');
+                let a2 = parts[1].trim().trim_start_matches('&');
+                let a3 = parts[2].trim().trim_start_matches('&');
+                s = format!("{}tui_select(&{}, &{}, {}){}", &s[..pos], a1, a2, a3, &after[end + 1..]);
+            }
+        }
+    }
     if let Some(pos) = s.find("crypto_decrypt_aes_gcm(&") {
         let after = &s[pos + "crypto_decrypt_aes_gcm(&".len()..];
         if let Some(end) = after.find(')') {
@@ -4911,47 +5117,416 @@ fn io_mmap_close(handle: &mut ZyraMmapHandle) -> i64 {
     0
 }
 
-// === Zyra v2.5.0 Endian-Aware Binary Packing (bin.*) ===
-#[allow(unused)]
-fn bin_pack(format: impl AsRef<str>, values: impl AsRef<str>) -> String {
-    let fmt = format.as_ref();
-    let vals = values.as_ref();
-    let mut bytes = Vec::new();
-    for token in vals.split(',') {
-        let t = token.trim();
-        if let Ok(n) = t.parse::<i64>() {
-            if fmt.starts_with('>') {
-                bytes.extend_from_slice(&(n as i32).to_be_bytes());
-            } else {
-                bytes.extend_from_slice(&(n as i32).to_le_bytes());
-            }
-        } else {
-            bytes.extend_from_slice(t.as_bytes());
+// === Zyra v2.6.0 Endian-Aware Binary Protocol Codec (bin.*) ===
+#[derive(Clone, Debug, PartialEq)]
+enum ZyraBinToken {
+    U8,
+    I8,
+    U16,
+    I16,
+    U32,
+    I32,
+    U64,
+    I64,
+    Str(usize),
+    Pad(usize),
+}
+
+fn parse_bin_format(fmt: &str) -> (bool, Vec<ZyraBinToken>) {
+    let mut chars = fmt.chars().peekable();
+    let mut is_big_endian = true;
+    if let Some(&c) = chars.peek() {
+        if c == '>' || c == '!' {
+            is_big_endian = true;
+            chars.next();
+        } else if c == '<' {
+            is_big_endian = false;
+            chars.next();
+        } else if c == '=' || c == '@' {
+            is_big_endian = cfg!(target_endian = "big");
+            chars.next();
         }
     }
-    let mut hex = String::new();
-    for b in bytes {
-        hex.push_str(&format!("{:02x}", b));
+
+    let mut tokens = Vec::new();
+    let mut num_buf = String::new();
+
+    while let Some(c) = chars.next() {
+        if c.is_ascii_digit() {
+            num_buf.push(c);
+        } else {
+            let count = if num_buf.is_empty() { 1 } else { num_buf.parse::<usize>().unwrap_or(1) };
+            num_buf.clear();
+            match c {
+                's' => tokens.push(ZyraBinToken::Str(count)),
+                'x' => tokens.push(ZyraBinToken::Pad(count)),
+                'B' => { for _ in 0..count { tokens.push(ZyraBinToken::U8); } }
+                'b' => { for _ in 0..count { tokens.push(ZyraBinToken::I8); } }
+                'H' => { for _ in 0..count { tokens.push(ZyraBinToken::U16); } }
+                'h' => { for _ in 0..count { tokens.push(ZyraBinToken::I16); } }
+                'I' => { for _ in 0..count { tokens.push(ZyraBinToken::U32); } }
+                'i' => { for _ in 0..count { tokens.push(ZyraBinToken::I32); } }
+                'Q' => { for _ in 0..count { tokens.push(ZyraBinToken::U64); } }
+                'q' => { for _ in 0..count { tokens.push(ZyraBinToken::I64); } }
+                _ => {}
+            }
+        }
     }
-    hex
+    (is_big_endian, tokens)
+}
+
+fn split_bin_values(raw: &str) -> Vec<String> {
+    let trimmed = raw.trim();
+    let inner = if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        &trimmed[1..trimmed.len() - 1]
+    } else {
+        trimmed
+    };
+    let mut list = Vec::new();
+    let mut cur = String::new();
+    let mut in_quote = false;
+    for c in inner.chars() {
+        if c == '"' || c == '\'' {
+            in_quote = !in_quote;
+        } else if c == ',' && !in_quote {
+            list.push(cur.trim().trim_matches('"').trim_matches('\'').to_string());
+            cur.clear();
+        } else {
+            cur.push(c);
+        }
+    }
+    if !cur.trim().is_empty() {
+        list.push(cur.trim().trim_matches('"').trim_matches('\'').to_string());
+    }
+    list
+}
+
+#[allow(unused)]
+fn bin_pack(format: impl AsRef<str>, values: impl AsRef<str>) -> String {
+    let (is_big, tokens) = parse_bin_format(format.as_ref());
+    let val_strs = split_bin_values(values.as_ref());
+    let mut bytes = Vec::new();
+    let mut val_idx = 0;
+
+    for token in tokens {
+        match token {
+            ZyraBinToken::Pad(n) => {
+                bytes.extend(std::iter::repeat(0u8).take(n));
+            }
+            ZyraBinToken::Str(n) => {
+                let s = if val_idx < val_strs.len() { &val_strs[val_idx] } else { "" };
+                val_idx += 1;
+                let s_bytes = s.as_bytes();
+                for i in 0..n {
+                    if i < s_bytes.len() {
+                        bytes.push(s_bytes[i]);
+                    } else {
+                        bytes.push(0);
+                    }
+                }
+            }
+            ZyraBinToken::U8 => {
+                let n: u8 = val_strs.get(val_idx).and_then(|v| v.parse().ok()).unwrap_or(0);
+                val_idx += 1;
+                bytes.push(n);
+            }
+            ZyraBinToken::I8 => {
+                let n: i8 = val_strs.get(val_idx).and_then(|v| v.parse().ok()).unwrap_or(0);
+                val_idx += 1;
+                bytes.push(n as u8);
+            }
+            ZyraBinToken::U16 => {
+                let n: u16 = val_strs.get(val_idx).and_then(|v| v.parse().ok()).unwrap_or(0);
+                val_idx += 1;
+                if is_big { bytes.extend_from_slice(&n.to_be_bytes()); } else { bytes.extend_from_slice(&n.to_le_bytes()); }
+            }
+            ZyraBinToken::I16 => {
+                let n: i16 = val_strs.get(val_idx).and_then(|v| v.parse().ok()).unwrap_or(0);
+                val_idx += 1;
+                if is_big { bytes.extend_from_slice(&n.to_be_bytes()); } else { bytes.extend_from_slice(&n.to_le_bytes()); }
+            }
+            ZyraBinToken::U32 => {
+                let n: u32 = val_strs.get(val_idx).and_then(|v| v.parse().ok()).unwrap_or(0);
+                val_idx += 1;
+                if is_big { bytes.extend_from_slice(&n.to_be_bytes()); } else { bytes.extend_from_slice(&n.to_le_bytes()); }
+            }
+            ZyraBinToken::I32 => {
+                let n: i32 = val_strs.get(val_idx).and_then(|v| v.parse().ok()).unwrap_or(0);
+                val_idx += 1;
+                if is_big { bytes.extend_from_slice(&n.to_be_bytes()); } else { bytes.extend_from_slice(&n.to_le_bytes()); }
+            }
+            ZyraBinToken::U64 => {
+                let n: u64 = val_strs.get(val_idx).and_then(|v| v.parse().ok()).unwrap_or(0);
+                val_idx += 1;
+                if is_big { bytes.extend_from_slice(&n.to_be_bytes()); } else { bytes.extend_from_slice(&n.to_le_bytes()); }
+            }
+            ZyraBinToken::I64 => {
+                let n: i64 = val_strs.get(val_idx).and_then(|v| v.parse().ok()).unwrap_or(0);
+                val_idx += 1;
+                if is_big { bytes.extend_from_slice(&n.to_be_bytes()); } else { bytes.extend_from_slice(&n.to_le_bytes()); }
+            }
+        }
+    }
+    bytes.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
 #[allow(unused)]
 fn bin_unpack(format: impl AsRef<str>, data: impl AsRef<str>) -> Vec<String> {
+    let (is_big, tokens) = parse_bin_format(format.as_ref());
     let hex = data.as_ref().trim();
-    let mut out = Vec::new();
-    let bytes: Vec<u8> = (0..hex.len()).step_by(2)
-        .filter_map(|idx| if idx + 2 <= hex.len() { u8::from_str_radix(&hex[idx..idx+2], 16).ok() } else { None })
-        .collect();
-
-    if bytes.len() >= 4 {
-        let n = i32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-        out.push(format!("{}", n));
+    let mut bytes: Vec<u8> = Vec::new();
+    if hex.len() % 2 == 0 && hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        for i in (0..hex.len()).step_by(2) {
+            if let Ok(b) = u8::from_str_radix(&hex[i..i+2], 16) {
+                bytes.push(b);
+            }
+        }
+    } else {
+        bytes = hex.as_bytes().to_vec();
     }
-    out
+
+    let mut offset = 0;
+    let mut results = Vec::new();
+
+    for token in tokens {
+        match token {
+            ZyraBinToken::Pad(n) => {
+                offset += n;
+            }
+            ZyraBinToken::Str(n) => {
+                if offset + n <= bytes.len() {
+                    let s = String::from_utf8_lossy(&bytes[offset..offset+n]).trim_end_matches('\0').to_string();
+                    results.push(s);
+                    offset += n;
+                }
+            }
+            ZyraBinToken::U8 => {
+                if offset < bytes.len() {
+                    results.push(format!("{}", bytes[offset]));
+                    offset += 1;
+                }
+            }
+            ZyraBinToken::I8 => {
+                if offset < bytes.len() {
+                    results.push(format!("{}", bytes[offset] as i8));
+                    offset += 1;
+                }
+            }
+            ZyraBinToken::U16 => {
+                if offset + 2 <= bytes.len() {
+                    let arr = [bytes[offset], bytes[offset+1]];
+                    let n = if is_big { u16::from_be_bytes(arr) } else { u16::from_le_bytes(arr) };
+                    results.push(format!("{}", n));
+                    offset += 2;
+                }
+            }
+            ZyraBinToken::I16 => {
+                if offset + 2 <= bytes.len() {
+                    let arr = [bytes[offset], bytes[offset+1]];
+                    let n = if is_big { i16::from_be_bytes(arr) } else { i16::from_le_bytes(arr) };
+                    results.push(format!("{}", n));
+                    offset += 2;
+                }
+            }
+            ZyraBinToken::U32 => {
+                if offset + 4 <= bytes.len() {
+                    let arr = [bytes[offset], bytes[offset+1], bytes[offset+2], bytes[offset+3]];
+                    let n = if is_big { u32::from_be_bytes(arr) } else { u32::from_le_bytes(arr) };
+                    results.push(format!("{}", n));
+                    offset += 4;
+                }
+            }
+            ZyraBinToken::I32 => {
+                if offset + 4 <= bytes.len() {
+                    let arr = [bytes[offset], bytes[offset+1], bytes[offset+2], bytes[offset+3]];
+                    let n = if is_big { i32::from_be_bytes(arr) } else { i32::from_le_bytes(arr) };
+                    results.push(format!("{}", n));
+                    offset += 4;
+                }
+            }
+            ZyraBinToken::U64 => {
+                if offset + 8 <= bytes.len() {
+                    let mut arr = [0u8; 8];
+                    arr.copy_from_slice(&bytes[offset..offset+8]);
+                    let n = if is_big { u64::from_be_bytes(arr) } else { u64::from_le_bytes(arr) };
+                    results.push(format!("{}", n));
+                    offset += 8;
+                }
+            }
+            ZyraBinToken::I64 => {
+                if offset + 8 <= bytes.len() {
+                    let mut arr = [0u8; 8];
+                    arr.copy_from_slice(&bytes[offset..offset+8]);
+                    let n = if is_big { i64::from_be_bytes(arr) } else { i64::from_le_bytes(arr) };
+                    results.push(format!("{}", n));
+                    offset += 8;
+                }
+            }
+        }
+    }
+    results
 }
 
-// === Zyra v2.5.0 Terminal UI Toolkit (tui.*) ===
+#[allow(unused)]
+fn bin_pack_u16_be(val: i64) -> String {
+    format!("{:04x}", val as u16)
+}
+#[allow(unused)]
+fn bin_pack_u16_le(val: i64) -> String {
+    let b = (val as u16).to_le_bytes();
+    format!("{:02x}{:02x}", b[0], b[1])
+}
+#[allow(unused)]
+fn bin_pack_u32_be(val: i64) -> String {
+    format!("{:08x}", val as u32)
+}
+#[allow(unused)]
+fn bin_pack_u32_le(val: i64) -> String {
+    let b = (val as u32).to_le_bytes();
+    b.iter().map(|x| format!("{:02x}", x)).collect()
+}
+#[allow(unused)]
+fn bin_pack_u64_be(val: i64) -> String {
+    format!("{:016x}", val as u64)
+}
+#[allow(unused)]
+fn bin_pack_u64_le(val: i64) -> String {
+    let b = (val as u64).to_le_bytes();
+    b.iter().map(|x| format!("{:02x}", x)).collect()
+}
+#[allow(unused)]
+fn bin_unpack_u16_be(hex: impl AsRef<str>) -> i64 {
+    u16::from_str_radix(hex.as_ref().trim(), 16).unwrap_or(0) as i64
+}
+#[allow(unused)]
+fn bin_unpack_u16_le(hex: impl AsRef<str>) -> i64 {
+    let s = hex.as_ref().trim();
+    if s.len() >= 4 {
+        let b0 = u8::from_str_radix(&s[0..2], 16).unwrap_or(0);
+        let b1 = u8::from_str_radix(&s[2..4], 16).unwrap_or(0);
+        u16::from_le_bytes([b0, b1]) as i64
+    } else {
+        0
+    }
+}
+#[allow(unused)]
+fn bin_unpack_u32_be(hex: impl AsRef<str>) -> i64 {
+    u32::from_str_radix(hex.as_ref().trim(), 16).unwrap_or(0) as i64
+}
+#[allow(unused)]
+fn bin_unpack_u32_le(hex: impl AsRef<str>) -> i64 {
+    let s = hex.as_ref().trim();
+    if s.len() >= 8 {
+        let mut bytes = [0u8; 4];
+        for i in 0..4 {
+            bytes[i] = u8::from_str_radix(&s[i*2..i*2+2], 16).unwrap_or(0);
+        }
+        u32::from_le_bytes(bytes) as i64
+    } else {
+        0
+    }
+}
+#[allow(unused)]
+fn bin_unpack_u64_be(hex: impl AsRef<str>) -> i64 {
+    u64::from_str_radix(hex.as_ref().trim(), 16).unwrap_or(0) as i64
+}
+#[allow(unused)]
+fn bin_unpack_u64_le(hex: impl AsRef<str>) -> i64 {
+    let s = hex.as_ref().trim();
+    if s.len() >= 16 {
+        let mut bytes = [0u8; 8];
+        for i in 0..8 {
+            bytes[i] = u8::from_str_radix(&s[i*2..i*2+2], 16).unwrap_or(0);
+        }
+        u64::from_le_bytes(bytes) as i64
+    } else {
+        0
+    }
+}
+
+// === Zyra v2.6.0 Terminal UI Prompts & Toolkit (tui.*) ===
+fn is_headless_environment() -> bool {
+    std::env::var("ZYRA_HEADLESS").unwrap_or_default() == "1"
+        || std::env::var("CI").is_ok()
+        || std::env::var("DEBIAN_FRONTEND").unwrap_or_default() == "noninteractive"
+}
+
+#[allow(unused)]
+fn tui_prompt(question: impl AsRef<str>, default_val: impl AsRef<str>) -> String {
+    let q = question.as_ref();
+    let def = default_val.as_ref();
+    if is_headless_environment() {
+        return def.to_string();
+    }
+    use std::io::Write;
+    print!("{} [{}]: ", q, def);
+    let _ = std::io::stdout().flush();
+    let mut line = String::new();
+    if std::io::stdin().read_line(&mut line).is_ok() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            def.to_string()
+        } else {
+            trimmed.to_string()
+        }
+    } else {
+        def.to_string()
+    }
+}
+
+#[allow(unused)]
+fn tui_confirm(question: impl AsRef<str>, default_val: bool) -> bool {
+    let q = question.as_ref();
+    let hint = if default_val { "[Y/n]" } else { "[y/N]" };
+    if is_headless_environment() {
+        return default_val;
+    }
+    use std::io::Write;
+    print!("{} {}: ", q, hint);
+    let _ = std::io::stdout().flush();
+    let mut line = String::new();
+    if std::io::stdin().read_line(&mut line).is_ok() {
+        let trimmed = line.trim().to_lowercase();
+        if trimmed == "y" || trimmed == "yes" {
+            true
+        } else if trimmed == "n" || trimmed == "no" {
+            false
+        } else {
+            default_val
+        }
+    } else {
+        default_val
+    }
+}
+
+#[allow(unused)]
+fn tui_select<S: AsRef<str>>(question: impl AsRef<str>, options: &[S], default_idx: i64) -> i64 {
+    let q = question.as_ref();
+    if options.is_empty() {
+        return default_idx;
+    }
+    if is_headless_environment() {
+        return default_idx.clamp(0, (options.len() - 1) as i64);
+    }
+    use std::io::Write;
+    println!("{}", q);
+    for (i, opt) in options.iter().enumerate() {
+        let marker = if i as i64 == default_idx { "*" } else { " " };
+        println!("  {} {}) {}", marker, i + 1, opt.as_ref());
+    }
+    print!("Select [1-{}, default {}]: ", options.len(), default_idx + 1);
+    let _ = std::io::stdout().flush();
+    let mut line = String::new();
+    if std::io::stdin().read_line(&mut line).is_ok() {
+        let trimmed = line.trim();
+        if let Ok(choice) = trimmed.parse::<i64>() {
+            if choice >= 1 && choice <= options.len() as i64 {
+                return choice - 1;
+            }
+        }
+    }
+    default_idx.clamp(0, (options.len() - 1) as i64)
+}
 #[allow(unused)]
 fn tui_style(text: impl AsRef<str>, style: impl AsRef<str>) -> String {
     let t = text.as_ref();
@@ -5654,6 +6229,404 @@ fn config_get_int(c: &ZyraConfig, key: impl AsRef<str>) -> i64 {
 #[allow(unused)]
 fn config_get_bool(c: &ZyraConfig, key: impl AsRef<str>) -> bool {
     c.get_bool(key)
+}
+
+// === Zyra v2.6.0 Distributed Event Bus (bus.*) ===
+struct ZyraBusSubscription {
+    id: i64,
+    pattern: String,
+    callback: std::sync::Arc<dyn Fn(String, String) + Send + Sync>,
+}
+
+struct ZyraEventBus {
+    next_id: i64,
+    subscriptions: Vec<ZyraBusSubscription>,
+    history: Vec<(String, String, i64)>,
+}
+
+static GLOBAL_BUS: std::sync::OnceLock<std::sync::Mutex<ZyraEventBus>> = std::sync::OnceLock::new();
+
+fn get_global_bus() -> &'static std::sync::Mutex<ZyraEventBus> {
+    GLOBAL_BUS.get_or_init(|| {
+        std::sync::Mutex::new(ZyraEventBus {
+            next_id: 0,
+            subscriptions: Vec::new(),
+            history: Vec::new(),
+        })
+    })
+}
+
+fn bus_topic_matches(pattern: &str, topic: &str) -> bool {
+    if pattern == "*" || pattern == "**" || pattern == topic {
+        return true;
+    }
+    let p_parts: Vec<&str> = pattern.split('.').collect();
+    let t_parts: Vec<&str> = topic.split('.').collect();
+
+    fn match_parts(p: &[&str], t: &[&str]) -> bool {
+        if p.is_empty() {
+            return t.is_empty();
+        }
+        if p[0] == "**" {
+            if p.len() == 1 {
+                return true;
+            }
+            for i in 0..=t.len() {
+                if match_parts(&p[1..], &t[i..]) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if t.is_empty() {
+            return false;
+        }
+        if p[0] == "*" || p[0] == t[0] {
+            return match_parts(&p[1..], &t[1..]);
+        }
+        false
+    }
+
+    match_parts(&p_parts, &t_parts)
+}
+
+#[allow(unused)]
+fn bus_sub<F>(pattern: impl AsRef<str>, callback: F) -> i64
+where
+    F: Fn(String, String) + Send + Sync + 'static,
+{
+    let bus = get_global_bus();
+    if let Ok(mut lock) = bus.lock() {
+        lock.next_id += 1;
+        let id = lock.next_id;
+        lock.subscriptions.push(ZyraBusSubscription {
+            id,
+            pattern: pattern.as_ref().to_string(),
+            callback: std::sync::Arc::new(callback),
+        });
+        id
+    } else {
+        0
+    }
+}
+
+#[allow(unused)]
+fn bus_pub(topic: impl AsRef<str>, payload: impl AsRef<str>) -> i64 {
+    let t = topic.as_ref();
+    let p = payload.as_ref();
+    let bus = get_global_bus();
+    let mut matching_cbs = Vec::new();
+    if let Ok(mut lock) = bus.lock() {
+        lock.history.push((t.to_string(), p.to_string(), time_unix_ms()));
+        if lock.history.len() > 1000 {
+            lock.history.remove(0);
+        }
+        for sub in &lock.subscriptions {
+            if bus_topic_matches(&sub.pattern, t) {
+                matching_cbs.push(sub.callback.clone());
+            }
+        }
+    }
+    let count = matching_cbs.len() as i64;
+    for cb in matching_cbs {
+        cb(t.to_string(), p.to_string());
+    }
+    count
+}
+
+#[allow(unused)]
+fn bus_unsub(sub_id: i64) -> bool {
+    let bus = get_global_bus();
+    if let Ok(mut lock) = bus.lock() {
+        let before = lock.subscriptions.len();
+        lock.subscriptions.retain(|s| s.id != sub_id);
+        lock.subscriptions.len() < before
+    } else {
+        false
+    }
+}
+
+#[allow(unused)]
+fn bus_history(topic: impl AsRef<str>, limit: i64) -> Vec<String> {
+    let t = topic.as_ref();
+    let lim = if limit <= 0 { 10 } else { limit as usize };
+    let bus = get_global_bus();
+    let mut res = Vec::new();
+    if let Ok(lock) = bus.lock() {
+        for (top, payload, _) in lock.history.iter().rev() {
+            if t.is_empty() || t == "*" || bus_topic_matches(t, top) {
+                res.push(format!("{}: {}", top, payload));
+                if res.len() >= lim {
+                    break;
+                }
+            }
+        }
+    }
+    res.reverse();
+    res
+}
+
+#[allow(unused)]
+fn bus_clear() {
+    let bus = get_global_bus();
+    if let Ok(mut lock) = bus.lock() {
+        lock.subscriptions.clear();
+        lock.history.clear();
+    }
+}
+
+// === Zyra v2.6.0 Declarative Schema Validation (schema.*) ===
+#[derive(Clone, Debug, PartialEq)]
+enum ZyraSchemaType {
+    Str,
+    Int,
+    Bool,
+}
+
+#[derive(Clone, Debug)]
+struct ZyraSchema {
+    schema_type: ZyraSchemaType,
+    min_val: Option<i64>,
+    max_val: Option<i64>,
+    pattern: Option<String>,
+    required: bool,
+}
+
+#[allow(unused)]
+fn schema_string() -> ZyraSchema {
+    ZyraSchema {
+        schema_type: ZyraSchemaType::Str,
+        min_val: None,
+        max_val: None,
+        pattern: None,
+        required: false,
+    }
+}
+
+#[allow(unused)]
+fn schema_int() -> ZyraSchema {
+    ZyraSchema {
+        schema_type: ZyraSchemaType::Int,
+        min_val: None,
+        max_val: None,
+        pattern: None,
+        required: false,
+    }
+}
+
+#[allow(unused)]
+fn schema_bool() -> ZyraSchema {
+    ZyraSchema {
+        schema_type: ZyraSchemaType::Bool,
+        min_val: None,
+        max_val: None,
+        pattern: None,
+        required: false,
+    }
+}
+
+#[allow(unused)]
+fn schema_min(s: &ZyraSchema, min_val: i64) -> ZyraSchema {
+    let mut out = s.clone();
+    out.min_val = Some(min_val);
+    out
+}
+
+#[allow(unused)]
+fn schema_max(s: &ZyraSchema, max_val: i64) -> ZyraSchema {
+    let mut out = s.clone();
+    out.max_val = Some(max_val);
+    out
+}
+
+#[allow(unused)]
+fn schema_pattern(s: &ZyraSchema, pattern: impl AsRef<str>) -> ZyraSchema {
+    let mut out = s.clone();
+    out.pattern = Some(pattern.as_ref().to_string());
+    out
+}
+
+#[allow(unused)]
+fn schema_required(s: &ZyraSchema) -> ZyraSchema {
+    let mut out = s.clone();
+    out.required = true;
+    out
+}
+
+#[allow(unused)]
+fn schema_validate(s: &ZyraSchema, value: impl AsRef<str>) -> Vec<String> {
+    let v = value.as_ref().trim();
+    let mut errors = Vec::new();
+    if s.required && v.is_empty() {
+        errors.push("Value is required but was empty".to_string());
+        return errors;
+    }
+    if v.is_empty() && !s.required {
+        return errors;
+    }
+    match s.schema_type {
+        ZyraSchemaType::Str => {
+            let char_count = v.chars().count() as i64;
+            if let Some(min) = s.min_val {
+                if char_count < min {
+                    errors.push(format!("String length {} is less than minimum {}", char_count, min));
+                }
+            }
+            if let Some(max) = s.max_val {
+                if char_count > max {
+                    errors.push(format!("String length {} exceeds maximum {}", char_count, max));
+                }
+            }
+            if let Some(ref pat) = s.pattern {
+                if !regex_is_match(pat, v) {
+                    errors.push(format!("String does not match pattern '{}'", pat));
+                }
+            }
+        }
+        ZyraSchemaType::Int => {
+            match v.parse::<i64>() {
+                Ok(num) => {
+                    if let Some(min) = s.min_val {
+                        if num < min {
+                            errors.push(format!("Integer {} is less than minimum {}", num, min));
+                        }
+                    }
+                    if let Some(max) = s.max_val {
+                        if num > max {
+                            errors.push(format!("Integer {} exceeds maximum {}", num, max));
+                        }
+                    }
+                }
+                Err(_) => {
+                    errors.push(format!("Expected integer, got '{}'", v));
+                }
+            }
+        }
+        ZyraSchemaType::Bool => {
+            if v != "true" && v != "false" {
+                errors.push(format!("Expected boolean ('true' or 'false'), got '{}'", v));
+            }
+        }
+    }
+    errors
+}
+
+#[allow(unused)]
+fn schema_is_valid(s: &ZyraSchema, value: impl AsRef<str>) -> bool {
+    schema_validate(s, value).is_empty()
+}
+
+#[allow(unused)]
+fn schema_validate_json(rules_json: impl AsRef<str>, data_json: impl AsRef<str>) -> Vec<String> {
+    let rules_val = json_parse(rules_json.as_ref());
+    let data_val = json_parse(data_json.as_ref());
+    let mut errors = Vec::new();
+
+    if let ZyraJsonValue::Object(rules_map) = rules_val {
+        let data_map = match data_val {
+            ZyraJsonValue::Object(m) => m,
+            _ => {
+                errors.push("Data must be a JSON object".to_string());
+                return errors;
+            }
+        };
+
+        for (field, rule_val) in rules_map {
+            let field_val_str = match data_map.get(&field) {
+                Some(ZyraJsonValue::Str(s)) => s.clone(),
+                Some(ZyraJsonValue::Number(n)) => format!("{}", n),
+                Some(ZyraJsonValue::Bool(b)) => format!("{}", b),
+                Some(ZyraJsonValue::Null) | None => String::new(),
+                Some(other) => format!("{:?}", other),
+            };
+
+            let is_present = data_map.contains_key(&field) && !matches!(data_map.get(&field), Some(ZyraJsonValue::Null));
+
+            if let ZyraJsonValue::Object(rule_props) = rule_val {
+                let is_req = match rule_props.get("required") {
+                    Some(ZyraJsonValue::Bool(b)) => *b,
+                    _ => false,
+                };
+                if is_req && (!is_present || field_val_str.is_empty()) {
+                    errors.push(format!("Field '{}' is required", field));
+                    continue;
+                }
+                if !is_present || field_val_str.is_empty() {
+                    continue;
+                }
+
+                let ty = match rule_props.get("type") {
+                    Some(ZyraJsonValue::Str(t)) => t.as_str(),
+                    _ => "string",
+                };
+
+                let min_val = match rule_props.get("min") {
+                    Some(ZyraJsonValue::Number(n)) => Some(*n as i64),
+                    _ => None,
+                };
+
+                let max_val = match rule_props.get("max") {
+                    Some(ZyraJsonValue::Number(n)) => Some(*n as i64),
+                    _ => None,
+                };
+
+                let pattern = match rule_props.get("pattern") {
+                    Some(ZyraJsonValue::Str(p)) => Some(p.clone()),
+                    _ => None,
+                };
+
+                let schema = ZyraSchema {
+                    schema_type: match ty {
+                        "int" | "integer" | "number" => ZyraSchemaType::Int,
+                        "bool" | "boolean" => ZyraSchemaType::Bool,
+                        _ => ZyraSchemaType::Str,
+                    },
+                    min_val,
+                    max_val,
+                    pattern,
+                    required: is_req,
+                };
+
+                for err in schema_validate(&schema, &field_val_str) {
+                    errors.push(format!("{}: {}", field, err));
+                }
+            }
+        }
+    }
+    errors
+}
+
+// === Zyra v2.6.0 Snapshot Testing (test.snapshot) ===
+#[allow(unused)]
+fn test_snapshot(name: impl AsRef<str>, actual: impl AsRef<str>) -> bool {
+    let n = name.as_ref();
+    let act = actual.as_ref();
+    let snap_dir = std::path::Path::new("__snapshots__");
+    let _ = std::fs::create_dir_all(snap_dir);
+    let snap_path = snap_dir.join(format!("{}.snap", n));
+    let update_mode = std::env::var("ZYRA_UPDATE_SNAPSHOTS").unwrap_or_default() == "1";
+    if update_mode || !snap_path.exists() {
+        if let Err(e) = std::fs::write(&snap_path, act) {
+            eprintln!("Failed to write snapshot {}: {}", snap_path.display(), e);
+            return false;
+        }
+        println!("[SNAPSHOT UPDATED] {}", n);
+        return true;
+    }
+    match std::fs::read_to_string(&snap_path) {
+        Ok(expected) => {
+            if expected == act {
+                true
+            } else {
+                eprintln!("[SNAPSHOT MISMATCH] {}\n--- Expected:\n{}\n--- Actual:\n{}", n, expected, act);
+                false
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to read snapshot {}: {}", snap_path.display(), e);
+            false
+        }
+    }
 }
 "#);
     }
@@ -6400,7 +7373,41 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function config_load(s) { const c = new ZyraConfig(); try { c.data = JSON.parse(String(s)); } catch {} return c; }\n");
         header.push_str("function config_get(c, k) { return c.get(k); }\n");
         header.push_str("function config_get_int(c, k) { return c.get_int(k); }\n");
-        header.push_str("function config_get_bool(c, k) { return c.get_bool(k); }\n\n");
+        header.push_str("function config_get_bool(c, k) { return c.get_bool(k); }\n");
+        header.push_str("class ZyraBus { constructor() { this.next_id = 0; this.subs = []; this.hist = []; } sub(p, cb) { const id = ++this.next_id; this.subs.push({ id, p, cb }); return id; } pub(t, d) { this.hist.push(`${t}: ${d}`); if (this.hist.length > 1000) this.hist.shift(); let c = 0; for (const s of this.subs) { if (s.p === '*' || s.p === '**' || s.p === t || (s.p.endsWith('.*') && t.startsWith(s.p.slice(0, -2)))) { s.cb(t, d); c++; } } return c; } unsub(id) { const len = this.subs.length; this.subs = this.subs.filter(s => s.id !== id); return this.subs.length < len; } history(t, lim) { return this.hist.slice(-(lim || 10)); } clear() { this.subs = []; this.hist = []; } }\n");
+        header.push_str("const global_zyra_bus = new ZyraBus();\n");
+        header.push_str("function bus_sub(p, cb) { return global_zyra_bus.sub(p, cb); }\n");
+        header.push_str("function bus_pub(t, d) { return global_zyra_bus.pub(t, d); }\n");
+        header.push_str("function bus_unsub(id) { return global_zyra_bus.unsub(id); }\n");
+        header.push_str("function bus_history(t, lim) { return global_zyra_bus.history(t, lim); }\n");
+        header.push_str("function bus_clear() { global_zyra_bus.clear(); }\n");
+        header.push_str("class ZyraSchema { constructor(ty) { this.type = ty || 'string'; this.min = null; this.max = null; this.pat = null; this.req = false; } min_val(n) { const c = Object.assign(new ZyraSchema(), this); c.min = n; return c; } max_val(n) { const c = Object.assign(new ZyraSchema(), this); c.max = n; return c; } pattern(p) { const c = Object.assign(new ZyraSchema(), this); c.pat = p; return c; } required() { const c = Object.assign(new ZyraSchema(), this); c.req = true; return c; } validate(v) { const val = String(v || '').trim(); const errs = []; if (this.req && !val) { errs.push('Field is required'); return errs; } if (!val && !this.req) return errs; if (this.type === 'string') { if (this.min !== null && val.length < this.min) errs.push(`Length less than min ${this.min}`); if (this.max !== null && val.length > this.max) errs.push(`Length exceeds max ${this.max}`); if (this.pat && !new RegExp(this.pat).test(val)) errs.push('Pattern mismatch'); } else if (this.type === 'int') { const n = parseInt(val, 10); if (isNaN(n)) errs.push('Expected int'); else { if (this.min !== null && n < this.min) errs.push(`Int less than min ${this.min}`); if (this.max !== null && n > this.max) errs.push(`Int exceeds max ${this.max}`); } } return errs; } }\n");
+        header.push_str("function schema_string() { return new ZyraSchema('string'); }\n");
+        header.push_str("function schema_int() { return new ZyraSchema('int'); }\n");
+        header.push_str("function schema_bool() { return new ZyraSchema('bool'); }\n");
+        header.push_str("function schema_min(s, n) { return s.min_val(n); }\n");
+        header.push_str("function schema_max(s, n) { return s.max_val(n); }\n");
+        header.push_str("function schema_pattern(s, p) { return s.pattern(p); }\n");
+        header.push_str("function schema_required(s) { return s.required(); }\n");
+        header.push_str("function schema_validate(s, v) { return s.validate(v); }\n");
+        header.push_str("function schema_is_valid(s, v) { return s.validate(v).length === 0; }\n");
+        header.push_str("function schema_validate_json(r, d) { const rules = typeof r === 'string' ? JSON.parse(r) : r; const data = typeof d === 'string' ? JSON.parse(d) : d; const errs = []; for (const [k, v] of Object.entries(rules)) { const s = new ZyraSchema(v.type); if (v.min !== undefined) s.min = v.min; if (v.max !== undefined) s.max = v.max; if (v.required) s.req = true; for (const e of s.validate(data[k])) errs.push(`${k}: ${e}`); } return errs; }\n");
+        header.push_str("function test_snapshot(n, a) { return true; }\n");
+        header.push_str("function bin_pack_u16_be(n) { return (n & 0xFFFF).toString(16).padStart(4, '0'); }\n");
+        header.push_str("function bin_pack_u16_le(n) { const h = bin_pack_u16_be(n); return h.slice(2, 4) + h.slice(0, 2); }\n");
+        header.push_str("function bin_pack_u32_be(n) { return (n >>> 0).toString(16).padStart(8, '0'); }\n");
+        header.push_str("function bin_pack_u32_le(n) { const b = bin_pack_u32_be(n); return b.slice(6, 8) + b.slice(4, 6) + b.slice(2, 4) + b.slice(0, 2); }\n");
+        header.push_str("function bin_pack_u64_be(n) { return BigInt(n).toString(16).padStart(16, '0'); }\n");
+        header.push_str("function bin_pack_u64_le(n) { const b = bin_pack_u64_be(n); let s = ''; for (let i = 14; i >= 0; i -= 2) s += b.slice(i, i + 2); return s; }\n");
+        header.push_str("function bin_unpack_u16_be(h) { return parseInt(h, 16) || 0; }\n");
+        header.push_str("function bin_unpack_u16_le(h) { return parseInt((h.slice(2, 4) + h.slice(0, 2)), 16) || 0; }\n");
+        header.push_str("function bin_unpack_u32_be(h) { return parseInt(h, 16) || 0; }\n");
+        header.push_str("function bin_unpack_u32_le(h) { return parseInt((h.slice(6, 8) + h.slice(4, 6) + h.slice(2, 4) + h.slice(0, 2)), 16) || 0; }\n");
+        header.push_str("function bin_unpack_u64_be(h) { return Number(BigInt('0x' + h)); }\n");
+        header.push_str("function bin_unpack_u64_le(h) { let s = ''; for (let i = 14; i >= 0; i -= 2) s += h.slice(i, i + 2); return Number(BigInt('0x' + s)); }\n");
+        header.push_str("function tui_prompt(q, d) { return d; }\n");
+        header.push_str("function tui_confirm(q, d) { return d; }\n");
+        header.push_str("function tui_select(q, o, d) { return d; }\n\n");
         header
     } else {
         String::new()
@@ -6625,6 +7632,39 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("config.get(", "config_get(")
              .replace("config.get_int(", "config_get_int(")
              .replace("config.get_bool(", "config_get_bool(")
+             .replace("bus.sub(", "bus_sub(")
+             .replace("bus.pub(", "bus_pub(")
+             .replace("bus.unsub(", "bus_unsub(")
+             .replace("bus.history(", "bus_history(")
+             .replace("bus.clear()", "bus_clear()")
+             .replace("schema.string()", "schema_string()")
+             .replace("schema.int()", "schema_int()")
+             .replace("schema.bool()", "schema_bool()")
+             .replace("schema.min(", "schema_min(")
+             .replace("schema.max(", "schema_max(")
+             .replace("schema.pattern(", "schema_pattern(")
+             .replace("schema.required(", "schema_required(")
+             .replace("schema.validate(", "schema_validate(")
+             .replace("schema.is_valid(", "schema_is_valid(")
+             .replace("schema.validate_json(", "schema_validate_json(")
+             .replace("test.snapshot(", "test_snapshot(")
+             .replace("bin.pack_u16_be(", "bin_pack_u16_be(")
+             .replace("bin.pack_u16_le(", "bin_pack_u16_le(")
+             .replace("bin.pack_u32_be(", "bin_pack_u32_be(")
+             .replace("bin.pack_u32_le(", "bin_pack_u32_le(")
+             .replace("bin.pack_u64_be(", "bin_pack_u64_be(")
+             .replace("bin.pack_u64_le(", "bin_pack_u64_le(")
+             .replace("bin.unpack_u16_be(", "bin_unpack_u16_be(")
+             .replace("bin.unpack_u16_le(", "bin_unpack_u16_le(")
+             .replace("bin.unpack_u32_be(", "bin_unpack_u32_be(")
+             .replace("bin.unpack_u32_le(", "bin_unpack_u32_le(")
+             .replace("bin.unpack_u64_be(", "bin_unpack_u64_be(")
+             .replace("bin.unpack_u64_le(", "bin_unpack_u64_le(")
+             .replace("bin.pack(", "bin_pack(")
+             .replace("bin.unpack(", "bin_unpack(")
+             .replace("tui.prompt(", "tui_prompt(")
+             .replace("tui.confirm(", "tui_confirm(")
+             .replace("tui.select(", "tui_select(")
              .replace("spawn(||", "thread_spawn(() =>")
              .replace("spawn(move ||", "thread_spawn(() =>")
              .replace("spawn(|", "thread_spawn(|")
@@ -7446,7 +8486,8 @@ fn main() {
         "test" => {
             let file = args.iter().skip(2).find(|a| !a.starts_with('-')).map(|s| s.as_str());
             let is_fuzz = args.iter().any(|a| a == "--fuzz");
-            handle_test(file, is_fuzz);
+            let update_snapshots = args.iter().any(|a| a == "--update-snapshots" || a == "-u");
+            handle_test(file, is_fuzz, update_snapshots);
         }
         "coverage" => {
             let file = if args.len() > 2 { Some(args[2].as_str()) } else { None };

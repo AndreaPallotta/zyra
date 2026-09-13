@@ -8,7 +8,7 @@ Official release notes, version history, and commit logs for the Zyra Programmin
 
 | Version | Release Date | Target | Key Highlights | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **v2.6.0** | 2026-09-13 | Native, JS ESM | ZYX declarative UI system (`.zyx`), structured task nurseries (`task.*`), zero-copy streaming buffers (`buf.*`), AES-GCM cipher suite & PBKDF2 password hashing (`crypto.*`), declarative config engine (`config.*`), standalone packaging (`zyra pack`), OpenAPI 3.1 generator (`zyra openapi`), VS Code DAP server (`zyra dap`), fuzz testing (`@fuzz`) | **Current Stable** |
+| **v2.6.0** | 2026-09-13 | Native, JS ESM | ZYX declarative UI (`.zyx`), task nurseries (`task.*`), zero-copy buffers (`buf.*`), AES-GCM & PBKDF2 (`crypto.*`), declarative config (`config.*`), event bus (`bus.*`), schema validation (`schema.*`), snapshot testing (`test.snapshot`), binary codec (`bin.pack`/`unpack`), terminal UI prompts (`tui.*`), hermetic pack (`zyra pack`), OpenAPI 3.1 (`zyra openapi`), VS Code DAP (`zyra dap`), fuzzing (`@fuzz`) | **Current Stable** |
 | **v2.5.0** | 2026-09-05 | Native, JS ESM, WASM | Closures & lambda captures, default & named arguments, spread syntax, relational SQL (`sql.*`), memory-mapped files (`io.mmap`), background task queues & cron (`cron.*`, `queue.*`) | Supported |
 | **v2.4.0** | 2026-08-30 | Native, JS ESM | Postfix `?` error operator, arbitrary expression interpolation `{expr}`, tuple destructuring & match guards, `time.*`, `crypto.uuid/jwt`, `ws.*`, `io.lines/append/pipe`, `math.clamp/lerp/dot/norm`, `zyra bench`, `zyra coverage` HTML | Supported |
 | **v2.3.0** | 2026-08-23 | Native, JS ESM | Concurrency & channels, embedded KV db, JSON AST, regex, worker pool, manifest scripts, JS minifier, in-memory map, vector utilities, URL engine, logging, HTTP interceptor client | Supported |
@@ -39,6 +39,16 @@ Official release notes, version history, and commit logs for the Zyra Programmin
 - **Declarative Configuration Engine (`config.*`)**:
   - Multi-format configuration loader (`config.load`) for JSON, TOML/INI, and `.env` files.
   - Automatic environment variable overrides (`ZYRA_<KEY>`) with type coercion getters (`config.get`, `config.get_int`, `config.get_bool`).
+- **Distributed Event Bus & Pub/Sub Engine (`bus.*`)**:
+  - Thread-safe publish/subscribe broker with hierarchical wildcard topic patterns (`*` and `**`), subscription handles, history inspection, and lock-free callback dispatch.
+- **Declarative Schema Validation Engine (`schema.*`)**:
+  - Fluent object, string, and integer constraint validation (`schema.string`, `schema.int`, `schema.min`, `schema.max`, `schema.pattern`, `schema.required`, `schema.validate`, `schema.is_valid`, `schema.validate_json`).
+- **Snapshot & Golden-File Testing (`test.snapshot` / `zyra test --update-snapshots`)**:
+  - Persistent golden-file verification in `__snapshots__/` with CLI snapshot updating flag (`--update-snapshots` / `-u`).
+- **Endian-Aware Binary Protocol Codec (`bin.pack` & `bin.unpack`)**:
+  - Python struct-compatible format string codec (`>`, `<`, `B`, `b`, `H`, `h`, `I`, `i`, `Q`, `q`, `<N>s`) and dedicated endian numeric packers (`bin.pack_u16_be`, `bin.pack_u32_be`, etc.).
+- **Interactive Terminal UI Prompts (`tui.prompt`, `tui.confirm`, `tui.select`)**:
+  - Terminal interactive input prompts with automated non-interactive headless fallback for CI and test environments.
 - **Hermetic Standalone Packaging (`zyra pack`)**:
   - Single-binary zero-dependency packaging embedding user code, components, and runtime into standalone native executables (`zyra pack <file> -o <bin>`).
 - **OpenAPI 3.1 Specification Generator (`zyra openapi`)**:

@@ -37,6 +37,18 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
   - Full DAP specification implementation over stdio supporting initialize, breakpoints, threads, stack traces, scopes, variables, stepping, and disconnect.
 - **Generative Property-Based Fuzzing Engine (`zyra test --fuzz` / `@fuzz`)**:
   - Automated randomized boundary value stress testing and invariant verification in the test runner.
+- **Snapshot & Golden-File Testing (`test.snapshot` / `zyra test --update-snapshots`)**:
+  - Automated assertions against persistent `.snap` files in `__snapshots__/` with CLI `--update-snapshots` (`-u`) flag.
+
+### Networking, Validation & Terminal Capabilities
+- **Distributed Event Bus & Pub/Sub Engine (`bus.*`)**:
+  - Thread-safe in-process and cross-worker event broker with hierarchical wildcard topic matching (`*` and `**`), bounded history tracking, subscription IDs, and lock-free callback dispatch.
+- **Declarative Schema Validation Engine (`schema.*`)**:
+  - Fluent object and primitive validation with constraints (`schema.string`, `schema.int`, `schema.min`, `schema.max`, `schema.pattern`, `schema.required`, `schema.validate`, `schema.is_valid`, `schema.validate_json`).
+- **Endian-Aware Binary Protocol Codec (`bin.pack` & `bin.unpack`)**:
+  - Format-string-based binary packing and unpacking (`>`, `<`, `B`, `b`, `H`, `h`, `I`, `i`, `Q`, `q`, `<N>s`) alongside dedicated endian numeric codecs (`bin.pack_u16_be`, `bin.pack_u32_be`, `bin.unpack_u16_be`, `bin.unpack_u32_be`, etc.).
+- **Interactive Terminal UI Prompts (`tui.prompt`, `tui.confirm`, `tui.select`)**:
+  - Full-featured interactive CLI prompts with automatic non-interactive headless fallback for test runners and CI/CD environments.
 
 ---
 
