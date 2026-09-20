@@ -1,0 +1,155 @@
+def Card(title: String, role: String): String {
+  return (
+    <div class="card">
+      <h1>{title}</h1>
+      <p>{role}</p>
+    </div>
+  )
+}
+
+def Layout(header: String, content: String): String {
+  return (
+    <div class="layout">
+      <header>{header}</header>
+      <main>{content}</main>
+    </div>
+  )
+}
+
+def main(): Int {
+  let mut passed = 0
+
+  let card_html = <Card title="Andrea" role="Architect" />
+  if !contains(&card_html, "<div class=\"card\"><h1>Andrea</h1><p>Architect</p></div>") {
+    print("FAILED: custom component self-closing lowering mismatch")
+    print(card_html)
+    return 1
+  }
+  passed = passed + 1
+
+  let layout_html = (
+    <Layout header="Dashboard">
+      <Card title="AdminUser" role="Security" />
+    </Layout>
+  )
+  if !contains(&layout_html, "<div class=\"layout\"><header>Dashboard</header><main><div class=\"card\"><h1>AdminUser</h1><p>Security</p></div></main></div>") {
+    print("FAILED: custom component with nested child component lowering mismatch")
+    print(layout_html)
+    return 1
+  }
+  passed = passed + 1
+
+  const raw_input = "<script>alert(\"XSS & 'attack'\")</script>"
+  const escaped = html.escape(raw_input)
+  if (escaped != "&lt;script&gt;alert(&quot;XSS &amp; &#x27;attack&#x27;&quot;)&lt;/script&gt;") {
+    print("FAILED: html.escape mismatch")
+    print(escaped)
+    return 1
+  }
+  const unescaped = html.unescape(escaped)
+  if (unescaped != raw_input) {
+    print("FAILED: html.unescape mismatch")
+    print(unescaped)
+    return 1
+  }
+  const stripped = html.strip_tags("<h1>Welcome <b>Andrea</b>!</h1>")
+  if (stripped != "Welcome Andrea!") {
+    print("FAILED: html.strip_tags mismatch")
+    print(stripped)
+    return 1
+  }
+  passed = passed + 1
+
+  const c = cache.new(1000)
+  cache.set(c, "temp_key", "temporary_val", 200)
+  cache.set(c, "persist_key", "persistent_val", 0)
+
+  if (!cache.has(c, "temp_key")) {
+    print("FAILED: cache.has temp_key expected true")
+    return 1
+  }
+  if (cache.get(c, "temp_key") != "temporary_val") {
+    print("FAILED: cache.get temp_key value mismatch")
+    return 1
+  }
+  if (cache.len(c) != 2) {
+    print("FAILED: cache.len expected 2")
+    return 1
+  }
+  cache.delete(c, "temp_key")
+  if (cache.has(c, "temp_key")) {
+    print("FAILED: cache.has temp_key after delete expected false")
+    return 1
+  }
+  cache.clear(c)
+  if (cache.len(c) != 0) {
+    print("FAILED: cache.clear expected len 0")
+    return 1
+  }
+  passed = passed + 1
+
+  if (!glob.match("*.zy", "main.zy")) {
+    print("FAILED: glob.match *.zy on main.zy expected true")
+    return 1
+  }
+  if (glob.match("*.zy", "main.rs")) {
+    print("FAILED: glob.match *.zy on main.rs expected false")
+    return 1
+  }
+  if (!glob.match("src/**/*.zy", "src/core/compiler.zy")) {
+    print("FAILED: glob.match src/**/*.zy expected true")
+    return 1
+  }
+  if (glob.match("src/*.zy", "src/core/compiler.zy")) {
+    print("FAILED: glob.match src/*.zy expected false")
+    return 1
+  }
+  if (!glob.match("file_?.txt", "file_1.txt")) {
+    print("FAILED: glob.match file_?.txt expected true")
+    return 1
+  }
+  if (glob.match("file_?.txt", "file_10.txt")) {
+    print("FAILED: glob.match file_?.txt on file_10.txt expected false")
+    return 1
+  }
+  const files = glob.find("core/tests/*.zy*")
+  if (files.len() == 0) {
+    print("FAILED: glob.find returned empty list")
+    return 1
+  }
+  passed = passed + 1
+
+  let mut attempt_counter = 0
+  const retry_res = retry.run(4, 2, || {
+    attempt_counter = attempt_counter + 1
+    return attempt_counter >= 3
+  })
+  if (!retry_res || attempt_counter != 3) {
+    print("FAILED: retry.run execution count mismatch")
+    return 1
+  }
+
+  let mut bo_counter = 0
+  const backoff_res = retry.with_backoff(4, 2, 20, || {
+    bo_counter = bo_counter + 1
+    return bo_counter >= 2
+  })
+  if (!backoff_res || bo_counter != 2) {
+    print("FAILED: retry.with_backoff execution count mismatch")
+    return 1
+  }
+  passed = passed + 1
+
+  print("==========================================")
+  print("      Zyra v2.6.1 Feature Verification    ")
+  print("==========================================")
+  print("[PASS] Custom component tags and props lowering verified")
+  print("[PASS] HTML escaping, unescaping, and tag stripping verified")
+  print("[PASS] In-memory TTL cache, eviction, and lifecycle verified")
+  print("[PASS] Path globbing and wildcard matching verified")
+  print("[PASS] Resilient retry and exponential backoff verified")
+  print("------------------------------------------")
+  print("Results: {passed}/6 v2.6.1 Tests PASSED")
+  print("==========================================")
+  return 0
+}

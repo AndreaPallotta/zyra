@@ -8,13 +8,44 @@ Official release notes, version history, and commit logs for the Zyra Programmin
 
 | Version | Release Date | Target | Key Highlights | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **v2.6.0** | 2026-09-13 | Native, JS ESM | ZYX declarative UI (`.zyx`), task nurseries (`task.*`), zero-copy buffers (`buf.*`), AES-GCM & PBKDF2 (`crypto.*`), declarative config (`config.*`), event bus (`bus.*`), schema validation (`schema.*`), snapshot testing (`test.snapshot`), binary codec (`bin.pack`/`unpack`), terminal UI prompts (`tui.*`), HTTP mock (`http.mock`), CSV/TSV (`csv.*`), SemVer 2.0 (`semver.*`), set algebra (`set.*`), diff & similarity (`diff.*`), UUIDv7 (`uuid.*`), hermetic pack (`zyra pack`), OpenAPI 3.1 (`zyra openapi`), VS Code DAP (`zyra dap`), fuzzing (`@fuzz`) | **Current Stable** |
+| **v2.6.1** | 2026-09-20 | Native, JS ESM | ZYX custom component lowering, HTML sanitization (`html.*`), in-memory TTL cache (`cache.*`), path globbing (`glob.*`), resilient retry (`retry.*`), VS Code `.zyx` tooling | **Current Stable** |
+| **v2.6.0** | 2026-09-13 | Native, JS ESM | ZYX declarative UI (`.zyx`), task nurseries (`task.*`), zero-copy buffers (`buf.*`), AES-GCM & PBKDF2 (`crypto.*`), declarative config (`config.*`), event bus (`bus.*`), schema validation (`schema.*`), snapshot testing (`test.snapshot`), binary codec (`bin.pack`/`unpack`), terminal UI prompts (`tui.*`), HTTP mock (`http.mock`), CSV/TSV (`csv.*`), SemVer 2.0 (`semver.*`), set algebra (`set.*`), diff & similarity (`diff.*`), UUIDv7 (`uuid.*`), hermetic pack (`zyra pack`), OpenAPI 3.1 (`zyra openapi`), VS Code DAP (`zyra dap`), fuzzing (`@fuzz`) | Supported |
 | **v2.5.0** | 2026-09-05 | Native, JS ESM, WASM | Closures & lambda captures, default & named arguments, spread syntax, relational SQL (`sql.*`), memory-mapped files (`io.mmap`), background task queues & cron (`cron.*`, `queue.*`) | Supported |
 | **v2.4.0** | 2026-08-30 | Native, JS ESM | Postfix `?` error operator, arbitrary expression interpolation `{expr}`, tuple destructuring & match guards, `time.*`, `crypto.uuid/jwt`, `ws.*`, `io.lines/append/pipe`, `math.clamp/lerp/dot/norm`, `zyra bench`, `zyra coverage` HTML | Supported |
 | **v2.3.0** | 2026-08-23 | Native, JS ESM | Concurrency & channels, embedded KV db, JSON AST, regex, worker pool, manifest scripts, JS minifier, in-memory map, vector utilities, URL engine, logging, HTTP interceptor client | Supported |
 | **v2.2.0** | 2026-08-16 | Native, JS ESM | Zero-import dot-notation namespacing, structured `zyra.env` parser, non-callback file watcher, expanded standard library | Supported |
 | **v2.1.1** | 2026-08-16 | Native, JS ESM | Multi-format I/O (`io`), native HTTP web primitives (`net`), platform crypto, system info, 28 compiler bug fixes | Supported |
 | **v2.1.0** | 2026-08-09 | Native, JS ESM | Multi-module struct return types, JS parameter type stripping, VS Code extension enhancements | Supported |
+
+---
+
+## Version 2.6.1 (2026-09-20)
+
+### Key Features & Additions
+- **First-Class ZYX Custom Component Lowering**:
+  - Direct functional invocation of UpperCamelCase component tags (such as `<Card title="Andrea" count={42} />` lowering to `Card("Andrea".to_string(), 42)`).
+  - Trailing component children slot parameter passing for nested component hierarchies.
+  - Full attribute template interpolation and expression bindings.
+- **HTML Sanitization & Security Standard Library (`html.*`)**:
+  - `html.escape`: High-performance entity encoding for XML/HTML special characters (`&`, `<`, `>`, `"`, `'`).
+  - `html.unescape`: Fast entity decoding back to raw UTF-8 string values.
+  - `html.strip_tags`: Complete markup tag stripping preserving plain inner text.
+- **In-Memory TTL Cache Engine (`cache.*`)**:
+  - `cache.new`: Sized cache allocation with configurable default time-to-live in milliseconds.
+  - `cache.set`, `cache.get`, `cache.has`, `cache.delete`: Fast concurrent key-value access with expiration enforcement.
+  - `cache.prune`: Explicit dead key compaction returning total count of removed entries.
+  - `cache.len`, `cache.clear`: Cache lifecycle and capacity queries.
+- **Path Globbing Engine (`glob.*`)**:
+  - `glob.match`: Wildcard pattern matching with 2D DP supporting `*`, `**`, and `?` against path strings.
+  - `glob.find`: Recursive directory discovery returning sorted relative matching paths.
+- **Resilient Retry with Exponential Backoff (`retry.*`)**:
+  - `retry.run`: Fixed-delay execution retry loop.
+  - `retry.with_backoff`: Jittered exponential backoff execution loop doubling delay up to configured maximum threshold.
+- **VS Code Extension & Tooling**:
+  - TextMate grammar recognition for `.zyx` tags, attributes, interpolations, and expressions.
+  - Official Zyra icon theme mappings for `.zyx` file extensions.
+  - Multi-extension workspace file watchers for `.zy` and `.zyx`.
+  - Dedicated code snippets for component and markup generation.
 
 ---
 

@@ -7,11 +7,11 @@ use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-const VERSION: &str = "2.6.0";
+const VERSION: &str = "2.6.1";
 
 fn print_help() {
     println!("==================================================");
-    println!("        Zyra CLI v2.6.0                           ");
+    println!("        Zyra CLI v2.6.1                           ");
     println!("==================================================");
     println!("Usage: zyra <command> [options]\n");
     println!("Commands:");
@@ -627,7 +627,7 @@ fn handle_test(file_path: Option<&str>, is_fuzz: bool, update_snapshots: bool) {
 
 fn handle_pack(file_path: &str, output_bin: Option<&str>) {
     println!("==================================================");
-    println!("      Zyra Hermetic Standalone Packager v2.6.0   ");
+    println!("      Zyra Hermetic Standalone Packager v2.6.1   ");
     println!("      Target: {}", file_path);
     println!("==================================================");
 
@@ -1520,7 +1520,22 @@ fn transform_zyra_line(line: &str) -> String {
          .replace("diff.similarity(", "diff_similarity(&")
          .replace("uuid.v4()", "uuid_v4()")
          .replace("uuid.v7()", "uuid_v7()")
-         .replace("uuid.is_valid(", "uuid_is_valid(&");
+         .replace("uuid.is_valid(", "uuid_is_valid(&")
+         .replace("html.escape(", "html_escape(&")
+         .replace("html.unescape(", "html_unescape(&")
+         .replace("html.strip_tags(", "html_strip_tags(&")
+         .replace("cache.new(", "cache_new(")
+         .replace("cache.set(", "cache_set(&")
+         .replace("cache.get(", "cache_get(&")
+         .replace("cache.has(", "cache_has(&")
+         .replace("cache.delete(", "cache_delete(&")
+         .replace("cache.prune(", "cache_prune(&")
+         .replace("cache.len(", "cache_len(&")
+         .replace("cache.clear(", "cache_clear(&")
+         .replace("glob.match(", "glob_match(&")
+         .replace("glob.find(", "glob_find(&")
+         .replace("retry.run(", "retry_run(")
+         .replace("retry.with_backoff(", "retry_with_backoff(");
 
     if let Some(pos) = s.find("bus_pub(&") {
         let after = &s[pos + "bus_pub(&".len()..];
@@ -2461,6 +2476,97 @@ fn normalize_jsx_text(raw: &str) -> Option<String> {
 }
 
 fn lower_elem_to_rust(elem: &JsxElem, fmt_str: &mut String, args: &mut Vec<String>) {
+    if !elem.tag.is_empty() && elem.tag.chars().next().map_or(false, |c| c.is_ascii_uppercase()) {
+        let mut call_args = Vec::new();
+        for (_name, val) in &elem.attrs {
+            match val {
+                AttrVal::Str(s) => {
+                    let chars: Vec<char> = s.chars().collect();
+                    let mut i = 0;
+                    let mut has_interp = false;
+                    let mut fmt = String::new();
+                    let mut sub_args = Vec::new();
+                    while i < chars.len() {
+                        if chars[i] == '{' {
+                            let mut j = i + 1;
+                            let mut expr = String::new();
+                            let mut depth = 1;
+                            while j < chars.len() {
+                                if chars[j] == '{' {
+                                    depth += 1;
+                                    expr.push('{');
+                                } else if chars[j] == '}' {
+                                    depth -= 1;
+                                    if depth == 0 { break; }
+                                    expr.push('}');
+                                } else {
+                                    expr.push(chars[j]);
+                                }
+                                j += 1;
+                            }
+                            if depth == 0 && !expr.trim().is_empty() {
+                                has_interp = true;
+                                fmt.push_str("{}");
+                                sub_args.push(expr.trim().to_string());
+                                i = j + 1;
+                                continue;
+                            }
+                        }
+                        if chars[i] == '"' {
+                            fmt.push_str("\\\"");
+                        } else if chars[i] == '{' {
+                            fmt.push_str("{{");
+                        } else if chars[i] == '}' {
+                            fmt.push_str("}}");
+                        } else {
+                            fmt.push(chars[i]);
+                        }
+                        i += 1;
+                    }
+                    if has_interp {
+                        call_args.push(format!("format!(\"{}\", {})", fmt, sub_args.join(", ")));
+                    } else {
+                        call_args.push(format!("\"{}\".to_string()", fmt));
+                    }
+                }
+                AttrVal::Expr(e) => {
+                    call_args.push(e.trim().to_string());
+                }
+                AttrVal::Bool => {
+                    call_args.push("true".to_string());
+                }
+            }
+        }
+        if !elem.children.is_empty() {
+            let mut child_fmt = String::new();
+            let mut child_args = Vec::new();
+            for child in &elem.children {
+                match child {
+                    JsxChild::Text(t) => {
+                        let escaped = t.replace('{', "{{").replace('}', "}}").replace('"', "\\\"");
+                        child_fmt.push_str(&escaped);
+                    }
+                    JsxChild::Expr(e) => {
+                        child_fmt.push_str("{}");
+                        child_args.push(e.trim().to_string());
+                    }
+                    JsxChild::Elem(c) => {
+                        lower_elem_to_rust(c, &mut child_fmt, &mut child_args);
+                    }
+                }
+            }
+            let children_expr = if child_args.is_empty() {
+                format!("\"{}\".to_string()", child_fmt)
+            } else {
+                format!("format!(\"{}\", {})", child_fmt, child_args.join(", "))
+            };
+            call_args.push(children_expr);
+        }
+        fmt_str.push_str("{}");
+        args.push(format!("{}({})", elem.tag, call_args.join(", ")));
+        return;
+    }
+
     if !elem.tag.is_empty() {
         fmt_str.push('<');
         fmt_str.push_str(&elem.tag);
@@ -2551,6 +2657,54 @@ fn lower_elem_to_rust(elem: &JsxElem, fmt_str: &mut String, args: &mut Vec<Strin
 }
 
 fn lower_elem_to_js(elem: &JsxElem, out_str: &mut String, has_exprs: &mut bool) {
+    if !elem.tag.is_empty() && elem.tag.chars().next().map_or(false, |c| c.is_ascii_uppercase()) {
+        let mut call_args = Vec::new();
+        for (_name, val) in &elem.attrs {
+            match val {
+                AttrVal::Str(s) => {
+                    call_args.push(format!("\"{}\"", s.replace('"', "\\\"")));
+                }
+                AttrVal::Expr(e) => {
+                    call_args.push(e.trim().to_string());
+                }
+                AttrVal::Bool => {
+                    call_args.push("true".to_string());
+                }
+            }
+        }
+        if !elem.children.is_empty() {
+            let mut child_str = String::new();
+            let mut child_has_exprs = false;
+            for child in &elem.children {
+                match child {
+                    JsxChild::Text(t) => {
+                        let escaped = t.replace('`', "\\`").replace("${", "\\${").replace('"', "\\\"");
+                        child_str.push_str(&escaped);
+                    }
+                    JsxChild::Expr(e) => {
+                        child_str.push_str("${");
+                        child_str.push_str(e.trim());
+                        child_str.push('}');
+                        child_has_exprs = true;
+                    }
+                    JsxChild::Elem(c) => {
+                        lower_elem_to_js(c, &mut child_str, &mut child_has_exprs);
+                    }
+                }
+            }
+            if child_has_exprs {
+                call_args.push(format!("`{}`", child_str));
+            } else {
+                call_args.push(format!("\"{}\"", child_str.replace('"', "\\\"")));
+            }
+        }
+        out_str.push_str("${");
+        out_str.push_str(&format!("{}({})", elem.tag, call_args.join(", ")));
+        out_str.push('}');
+        *has_exprs = true;
+        return;
+    }
+
     if !elem.tag.is_empty() {
         out_str.push('<');
         out_str.push_str(&elem.tag);
@@ -7434,6 +7588,255 @@ fn uuid_is_valid(id: impl AsRef<str>) -> bool {
     }
     true
 }
+
+// === Zyra v2.6.1 HTML Sanitization & Security (html.*) ===
+#[allow(unused)]
+fn html_escape(s: impl AsRef<str>) -> String {
+    let mut out = String::with_capacity(s.as_ref().len() + 16);
+    for c in s.as_ref().chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&#x27;"),
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+#[allow(unused)]
+fn html_unescape(s: impl AsRef<str>) -> String {
+    s.as_ref()
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#x27;", "'")
+        .replace("&#39;", "'")
+}
+
+#[allow(unused)]
+fn html_strip_tags(s: impl AsRef<str>) -> String {
+    let mut out = String::new();
+    let mut in_tag = false;
+    for c in s.as_ref().chars() {
+        if c == '<' {
+            in_tag = true;
+        } else if c == '>' {
+            in_tag = false;
+        } else if !in_tag {
+            out.push(c);
+        }
+    }
+    out
+}
+
+// === Zyra v2.6.1 In-Memory TTL Cache Engine (cache.*) ===
+#[derive(Clone)]
+struct ZyraCache {
+    default_ttl_ms: i64,
+    data: std::sync::Arc<std::sync::RwLock<std::collections::HashMap<String, (String, i64)>>>,
+}
+
+impl ZyraCache {
+    fn new(default_ttl_ms: i64) -> Self {
+        Self {
+            default_ttl_ms: if default_ttl_ms < 0 { 0 } else { default_ttl_ms },
+            data: std::sync::Arc::new(std::sync::RwLock::new(std::collections::HashMap::new())),
+        }
+    }
+}
+
+#[allow(unused)]
+fn cache_new(default_ttl_ms: i64) -> ZyraCache {
+    ZyraCache::new(default_ttl_ms)
+}
+
+#[allow(unused)]
+fn cache_set(c: &ZyraCache, key: impl AsRef<str>, val: impl AsRef<str>, ttl_ms: i64) -> bool {
+    let now = time_unix_ms();
+    let eff_ttl = if ttl_ms <= 0 { c.default_ttl_ms } else { ttl_ms };
+    let exp = if eff_ttl > 0 { now + eff_ttl } else { 0 };
+    if let Ok(mut map) = c.data.write() {
+        map.insert(key.as_ref().to_string(), (val.as_ref().to_string(), exp));
+        true
+    } else {
+        false
+    }
+}
+
+#[allow(unused)]
+fn cache_get(c: &ZyraCache, key: impl AsRef<str>) -> String {
+    let now = time_unix_ms();
+    if let Ok(map) = c.data.read() {
+        if let Some((v, exp)) = map.get(key.as_ref()) {
+            if *exp == 0 || *exp > now {
+                return v.clone();
+            }
+        }
+    }
+    String::new()
+}
+
+#[allow(unused)]
+fn cache_has(c: &ZyraCache, key: impl AsRef<str>) -> bool {
+    let now = time_unix_ms();
+    if let Ok(map) = c.data.read() {
+        if let Some((_, exp)) = map.get(key.as_ref()) {
+            return *exp == 0 || *exp > now;
+        }
+    }
+    false
+}
+
+#[allow(unused)]
+fn cache_delete(c: &ZyraCache, key: impl AsRef<str>) -> bool {
+    if let Ok(mut map) = c.data.write() {
+        map.remove(key.as_ref()).is_some()
+    } else {
+        false
+    }
+}
+
+#[allow(unused)]
+fn cache_prune(c: &ZyraCache) -> i64 {
+    let now = time_unix_ms();
+    if let Ok(mut map) = c.data.write() {
+        let before = map.len();
+        map.retain(|_, (_, exp)| *exp == 0 || *exp > now);
+        (before - map.len()) as i64
+    } else {
+        0
+    }
+}
+
+#[allow(unused)]
+fn cache_len(c: &ZyraCache) -> i64 {
+    let now = time_unix_ms();
+    if let Ok(map) = c.data.read() {
+        map.values().filter(|(_, exp)| *exp == 0 || *exp > now).count() as i64
+    } else {
+        0
+    }
+}
+
+#[allow(unused)]
+fn cache_clear(c: &ZyraCache) {
+    if let Ok(mut map) = c.data.write() {
+        map.clear();
+    }
+}
+
+// === Zyra v2.6.1 Path Globbing Engine (glob.*) ===
+#[allow(unused)]
+fn glob_match(pattern: impl AsRef<str>, path: impl AsRef<str>) -> bool {
+    let p_norm = pattern.as_ref().replace('\\', "/");
+    let t_norm = path.as_ref().replace('\\', "/");
+    let p_parts: Vec<&str> = p_norm.split('/').filter(|s| !s.is_empty()).collect();
+    let t_parts: Vec<&str> = t_norm.split('/').filter(|s| !s.is_empty()).collect();
+
+    fn match_parts(p: &[&str], t: &[&str]) -> bool {
+        if p.is_empty() { return t.is_empty(); }
+        if p[0] == "**" {
+            if p.len() == 1 { return true; }
+            for i in 0..=t.len() {
+                if match_parts(&p[1..], &t[i..]) { return true; }
+            }
+            return false;
+        }
+        if t.is_empty() { return false; }
+        fn match_comp(pat: &str, s: &str) -> bool {
+            if pat == "*" { return true; }
+            let p_chars: Vec<char> = pat.chars().collect();
+            let s_chars: Vec<char> = s.chars().collect();
+            let mut dp = vec![vec![false; s_chars.len() + 1]; p_chars.len() + 1];
+            dp[0][0] = true;
+            for i in 1..=p_chars.len() {
+                if p_chars[i - 1] == '*' {
+                    dp[i][0] = dp[i - 1][0];
+                }
+            }
+            for i in 1..=p_chars.len() {
+                for j in 1..=s_chars.len() {
+                    if p_chars[i - 1] == '*' {
+                        dp[i][j] = dp[i - 1][j] || dp[i][j - 1];
+                    } else if p_chars[i - 1] == '?' || p_chars[i - 1] == s_chars[j - 1] {
+                        dp[i][j] = dp[i - 1][j - 1];
+                    }
+                }
+            }
+            dp[p_chars.len()][s_chars.len()]
+        }
+        if match_comp(p[0], t[0]) {
+            match_parts(&p[1..], &t[1..])
+        } else {
+            false
+        }
+    }
+    match_parts(&p_parts, &t_parts)
+}
+
+#[allow(unused)]
+fn glob_find(pattern: impl AsRef<str>) -> Vec<String> {
+    let pat = pattern.as_ref();
+    let root_dir = if pat.starts_with("./") || pat.starts_with(".\\") {
+        "."
+    } else if let Some(slash_idx) = pat.find(|c| c == '/' || c == '\\') {
+        let prefix = &pat[..slash_idx];
+        if !prefix.contains('*') && !prefix.contains('?') { prefix } else { "." }
+    } else {
+        "."
+    };
+
+    let all_files = io_walk(root_dir);
+    let mut matched: Vec<String> = all_files
+        .into_iter()
+        .map(|f| f.replace('\\', "/"))
+        .filter(|f| glob_match(pat, f))
+        .collect();
+    matched.sort();
+    matched
+}
+
+// === Zyra v2.6.1 Resilient Retry Engine (retry.*) ===
+#[allow(unused)]
+fn retry_run<F>(attempts: i64, delay_ms: i64, mut f: F) -> bool
+where
+    F: FnMut() -> bool,
+{
+    let max_att = attempts.max(1);
+    for i in 0..max_att {
+        if f() {
+            return true;
+        }
+        if i + 1 < max_att && delay_ms > 0 {
+            std::thread::sleep(std::time::Duration::from_millis(delay_ms as u64));
+        }
+    }
+    false
+}
+
+#[allow(unused)]
+fn retry_with_backoff<F>(attempts: i64, base_delay_ms: i64, max_delay_ms: i64, mut f: F) -> bool
+where
+    F: FnMut() -> bool,
+{
+    let max_att = attempts.max(1);
+    let mut delay = base_delay_ms.max(1);
+    let cap = max_delay_ms.max(delay);
+    for i in 0..max_att {
+        if f() {
+            return true;
+        }
+        if i + 1 < max_att {
+            std::thread::sleep(std::time::Duration::from_millis(delay as u64));
+            delay = (delay * 2).min(cap);
+        }
+    }
+    false
+}
 "#);
     }
 
@@ -8249,7 +8652,23 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
         header.push_str("function diff_lines(a, b) { const l1 = String(a).split('\\n'); const l2 = String(b).split('\\n'); const m = l1.length; const n = l2.length; const lcs = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0)); for (let i = 0; i < m; i++) { for (let j = 0; j < n; j++) { lcs[i + 1][j + 1] = l1[i] === l2[j] ? lcs[i][j] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]); } } const diff = []; let i = m, j = n; while (i > 0 || j > 0) { if (i > 0 && j > 0 && l1[i - 1] === l2[j - 1]) { diff.push(' ' + l1[i - 1]); i--; j--; } else if (j > 0 && (i === 0 || lcs[i][j - 1] >= lcs[i - 1][j])) { diff.push('+' + l2[j - 1]); j--; } else if (i > 0) { diff.push('-' + l1[i - 1]); i--; } } diff.reverse(); return diff; }\n");
         header.push_str("function uuid_v4() { return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16); }); }\n");
         header.push_str("function uuid_v7() { const now = Date.now(); const hexTime = now.toString(16).padStart(12, '0'); const bytes = crypto.randomBytes ? crypto.randomBytes(10) : Array.from({length: 10}, () => Math.floor(Math.random() * 256)); bytes[0] = (bytes[0] & 0x0f) | 0x70; bytes[2] = (bytes[2] & 0x3f) | 0x80; const hexRest = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(''); return `${hexTime.slice(0, 8)}-${hexTime.slice(8, 12)}-${hexRest.slice(0, 4)}-${hexRest.slice(4, 8)}-${hexRest.slice(8, 20)}`; }\n");
-        header.push_str("function uuid_is_valid(id) { return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(id)); }\n\n");
+        header.push_str("function uuid_is_valid(id) { return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(id)); }\n");
+        header.push_str("function html_escape(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&#x27;'); }\n");
+        header.push_str("function html_unescape(s) { return String(s).replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '\"').replace(/&#x27;/g, \"'\").replace(/&#39;/g, \"'\"); }\n");
+        header.push_str("function html_strip_tags(s) { return String(s).replace(/<[^>]*>/g, ''); }\n");
+        header.push_str("class ZyraCache { constructor(ttl) { this.defaultTtl = ttl > 0 ? Number(ttl) : 0; this.store = new Map(); } set(k, v, ttl) { const eff = ttl > 0 ? Number(ttl) : this.defaultTtl; const exp = eff > 0 ? Date.now() + eff : 0; this.store.set(String(k), { val: String(v), exp }); return true; } get(k) { const e = this.store.get(String(k)); if (!e) return ''; if (e.exp === 0 || e.exp > Date.now()) return e.val; this.store.delete(String(k)); return ''; } has(k) { const e = this.store.get(String(k)); if (!e) return false; if (e.exp === 0 || e.exp > Date.now()) return true; this.store.delete(String(k)); return false; } delete(k) { return this.store.delete(String(k)); } prune() { const now = Date.now(); let count = 0; for (const [k, e] of this.store.entries()) { if (e.exp > 0 && e.exp <= now) { this.store.delete(k); count++; } } return count; } len() { const now = Date.now(); let count = 0; for (const e of this.store.values()) { if (e.exp === 0 || e.exp > now) count++; } return count; } clear() { this.store.clear(); } }\n");
+        header.push_str("function cache_new(ttl) { return new ZyraCache(ttl); }\n");
+        header.push_str("function cache_set(c, k, v, ttl) { return c.set(k, v, ttl); }\n");
+        header.push_str("function cache_get(c, k) { return c.get(k); }\n");
+        header.push_str("function cache_has(c, k) { return c.has(k); }\n");
+        header.push_str("function cache_delete(c, k) { return c.delete(k); }\n");
+        header.push_str("function cache_prune(c) { return c.prune(); }\n");
+        header.push_str("function cache_len(c) { return c.len(); }\n");
+        header.push_str("function cache_clear(c) { c.clear(); }\n");
+        header.push_str("function glob_match(pattern, text) { const p = String(pattern).replace(/\\\\/g, '/'); const t = String(text).replace(/\\\\/g, '/'); const regexStr = '^' + p.replace(/\\./g, '\\\\.').replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*').replace(/\\?/g, '.') + '$'; return new RegExp(regexStr).test(t); }\n");
+        header.push_str("function glob_find(pattern) { return io_glob(pattern).sort(); }\n");
+        header.push_str("function retry_run(attempts, delayMs, f) { const att = Math.max(1, Number(attempts)); for (let i = 0; i < att; i++) { if (f()) return true; if (i + 1 < att && delayMs > 0) { const start = Date.now(); while (Date.now() - start < delayMs) {} } } return false; }\n");
+        header.push_str("function retry_with_backoff(attempts, baseDelay, maxDelay, f) { const att = Math.max(1, Number(attempts)); let delay = Math.max(1, Number(baseDelay)); const cap = Math.max(delay, Number(maxDelay)); for (let i = 0; i < att; i++) { if (f()) return true; if (i + 1 < att) { const start = Date.now(); while (Date.now() - start < delay) {} delay = Math.min(cap, delay * 2); } } return false; }\n\n");
         header
     } else {
         String::new()
@@ -8536,6 +8955,21 @@ fn transpile_zyra_to_js_internal(file_path: &str, content: &str, is_root: bool) 
              .replace("uuid.v4()", "uuid_v4()")
              .replace("uuid.v7()", "uuid_v7()")
              .replace("uuid.is_valid(", "uuid_is_valid(")
+             .replace("html.escape(", "html_escape(")
+             .replace("html.unescape(", "html_unescape(")
+             .replace("html.strip_tags(", "html_strip_tags(")
+             .replace("cache.new(", "cache_new(")
+             .replace("cache.set(", "cache_set(")
+             .replace("cache.get(", "cache_get(")
+             .replace("cache.has(", "cache_has(")
+             .replace("cache.delete(", "cache_delete(")
+             .replace("cache.prune(", "cache_prune(")
+             .replace("cache.len(", "cache_len(")
+             .replace("cache.clear(", "cache_clear(")
+             .replace("glob.match(", "glob_match(")
+             .replace("glob.find(", "glob_find(")
+             .replace("retry.run(", "retry_run(")
+             .replace("retry.with_backoff(", "retry_with_backoff(")
              .replace("spawn(||", "thread_spawn(() =>")
              .replace("spawn(move ||", "thread_spawn(() =>")
              .replace("spawn(|", "thread_spawn(|")

@@ -2,13 +2,17 @@
 
 All notable changes to the **Zyra Programming Language & Toolchain** will be documented in this file.
 
-## [v2.7.0] - 2026-09-20
+## [v2.6.1] - 2026-09-20
 
-### Declarative UI & VS Code Tooling
-- **First-Class ZYX Syntax Highlighting & Language Support**:
-  - TextMate grammar integration recognizing XML and HTML declarative markup (`.zyx`).
+### Declarative UI & Custom Component Lowering
+- **First-Class ZYX Custom Component Invocations**:
+  - UpperCamelCase tag invocation lowering: transforms `<Card title="Andrea" count={42} />` into functional component calls `Card("Andrea".to_string(), 42)`.
+  - Component children slot passing: nested child elements lower into deterministic formatted markup strings and are passed as trailing arguments.
+  - Full attribute expression and template string support across self-closing and paired component elements.
+- **VS Code Extension & Tooling**:
+  - TextMate grammar integration recognizing XML and HTML declarative markup (`.zyx`) in both standalone VSIX and LSP extension packages.
   - Scoped tokenization for opening tags, closing tags, self-closing elements, and tag identifiers (`entity.name.tag.zyra`).
-  - Attribute key-value highlighting (`entity.other.attribute-name.zyra`), boolean valueless attributes, and quote delimited values.
+  - Attribute key-value highlighting (`entity.other.attribute-name.zyra`), boolean valueless attributes, and quote-delimited values.
   - Dynamic string template interpolation inside attribute values (`<button class="btn btn-{variant}">`).
   - Embedded expression block highlighting (`={expr}`) and text node expression bindings (`{items.len()}`).
   - File association mappings for `.zyx` under `contributes.languages` with alias entries for Zyra UI and ZYX.
@@ -16,16 +20,31 @@ All notable changes to the **Zyra Programming Language & Toolchain** will be doc
   - Extended workspace file watchers monitoring both `.zy` and `.zyx` source files.
   - Dedicated code snippets for functional components (`zyxcomponent`), elements (`zyxelement`), and self-closing tags (`zyxselfclosing`).
 
-### Component Composition & Static Rendering
-- **Multi-Component Hierarchy Lowering**:
-  - Zero-overhead lowering of nested component trees into deterministic string builder operations.
-  - Ergonomic component props passing with type validation and default value handling.
-  - Headless static HTML template rendering and static bundle export.
+### Security & Sanitization Standard Library (`html.*`)
+- **Built-in HTML Sanitization & Entity Codec**:
+  - `html.escape(s)`: Zero-allocation string entity encoding for `&`, `<`, `>`, `"`, and `'`.
+  - `html.unescape(s)`: Fast entity decoding back to raw UTF-8 strings.
+  - `html.strip_tags(s)`: Safe XML/HTML tag stripping preserving inner text content.
 
-### Diagnostics & Toolchain Polish
-- **Compiler Diagnostic Polish for UI Markup**:
-  - Precise diagnostic locations for mismatched tags, unclosed element hierarchies, and malformed attribute syntax.
-  - Enhanced error messages and recovery during interactive editing sessions.
+### In-Memory TTL Cache Engine (`cache.*`)
+- **Thread-Safe Key-Value Expiration Cache**:
+  - `cache.new(default_ttl_ms)`: Sized in-memory cache constructor with configurable default time-to-live.
+  - `cache.set(c, key, val, ttl_ms)`: Key-value insertion with optional per-entry TTL override.
+  - `cache.get(c, key)`: Instant lookup returning value or empty string on expiration.
+  - `cache.has(c, key)`: Active validity check taking expiry timestamps into account.
+  - `cache.delete(c, key)`: Explicit entry eviction.
+  - `cache.prune(c)`: Active compaction removing all expired keys and returning total pruned count.
+  - `cache.len(c)` and `cache.clear(c)`: Cache sizing and reset controls.
+
+### Path Globbing Engine (`glob.*`)
+- **Zero-Dependency Wildcard Matching & Discovery**:
+  - `glob.match(pattern, path)`: Pure string wildcard pattern matcher with 2D DP algorithm supporting single-star (`*`), double-star recursive (`**`), and single-character wildcard (`?`).
+  - `glob.find(pattern)`: Recursive filesystem directory walk returning sorted relative file paths matching the wildcard expression.
+
+### Resilient Retry Engine (`retry.*`)
+- **Fault-Tolerant Execution & Backoff**:
+  - `retry.run(attempts, delay_ms, || { ... })`: Fixed-delay execution retry loop.
+  - `retry.with_backoff(attempts, base_delay_ms, max_delay_ms, || { ... })`: Exponential backoff loop doubling retry delay up to configured maximum cap.
 
 ## [v2.6.0] - 2026-09-13
 
