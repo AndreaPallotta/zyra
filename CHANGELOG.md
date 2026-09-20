@@ -2,6 +2,31 @@
 
 All notable changes to the **Zyra Programming Language & Toolchain** will be documented in this file.
 
+## [v2.7.0] - 2026-09-20
+
+### Declarative UI & VS Code Tooling
+- **First-Class ZYX Syntax Highlighting & Language Support**:
+  - TextMate grammar integration recognizing XML and HTML declarative markup (`.zyx`).
+  - Scoped tokenization for opening tags, closing tags, self-closing elements, and tag identifiers (`entity.name.tag.zyra`).
+  - Attribute key-value highlighting (`entity.other.attribute-name.zyra`), boolean valueless attributes, and quote delimited values.
+  - Dynamic string template interpolation inside attribute values (`<button class="btn btn-{variant}">`).
+  - Embedded expression block highlighting (`={expr}`) and text node expression bindings (`{items.len()}`).
+  - File association mappings for `.zyx` under `contributes.languages` with alias entries for Zyra UI and ZYX.
+  - Official Zyra icon theme association for `.zyx` file extensions in file explorer trees.
+  - Extended workspace file watchers monitoring both `.zy` and `.zyx` source files.
+  - Dedicated code snippets for functional components (`zyxcomponent`), elements (`zyxelement`), and self-closing tags (`zyxselfclosing`).
+
+### Component Composition & Static Rendering
+- **Multi-Component Hierarchy Lowering**:
+  - Zero-overhead lowering of nested component trees into deterministic string builder operations.
+  - Ergonomic component props passing with type validation and default value handling.
+  - Headless static HTML template rendering and static bundle export.
+
+### Diagnostics & Toolchain Polish
+- **Compiler Diagnostic Polish for UI Markup**:
+  - Precise diagnostic locations for mismatched tags, unclosed element hierarchies, and malformed attribute syntax.
+  - Enhanced error messages and recovery during interactive editing sessions.
+
 ## [v2.6.0] - 2026-09-13
 
 ### Declarative UI & Front-End Systems
