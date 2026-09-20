@@ -18,10 +18,13 @@
       {
         "id": "zyra",
         "extensions": [
-          ".zy"
+          ".zy",
+          ".zyx"
         ],
         "aliases": [
-          "Zyra"
+          "Zyra",
+          "Zyra UI",
+          "ZYX"
         ],
         "configuration": "./language-configuration.json"
       }

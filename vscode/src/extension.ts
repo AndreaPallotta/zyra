@@ -32,8 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Register the server for Zyra files
     documentSelector: [{ scheme: 'file', language: 'zyra' }],
     synchronize: {
-      // Notify the server about file changes to '.zy' files contained in the workspace
-      fileEvents: vscode.workspace.createFileSystemWatcher('**/*.zy')
+      fileEvents: vscode.workspace.createFileSystemWatcher('**/*.{zy,zyx}')
     }
   };
 

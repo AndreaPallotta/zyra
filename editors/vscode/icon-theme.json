@@ -5,7 +5,8 @@
     }
   },
   "fileExtensions": {
-    "zy": "_zyra"
+    "zy": "_zyra",
+    "zyx": "_zyra"
   },
   "languageIds": {
     "zyra": "_zyra"

@@ -24,7 +24,7 @@
     "languages": [
       {
         "id": "zyra",
-        "aliases": ["Zyra", "zyra"],
+        "aliases": ["Zyra", "zyra", "Zyra UI", "ZYX"],
         "extensions": [".zy", ".zyx"],
         "configuration": "./language-configuration.json",
         "icon": {

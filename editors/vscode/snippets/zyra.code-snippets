@@ -87,5 +87,34 @@
       "print(\"${1:Value is} {${2:var_name}}\")"
     ],
     "description": "Zyra print statement with string interpolation"
+  },
+  "ZYX Component": {
+    "prefix": "zyxcomponent",
+    "body": [
+      "def ${1:ComponentName}(${2:props}): String {",
+      "  return (",
+      "    <${3:div} class=\"${4:container}\">",
+      "      $0",
+      "    </${3:div}>",
+      "  )",
+      "}"
+    ],
+    "description": "Zyra UI functional component returning declarative ZYX markup"
+  },
+  "ZYX Element": {
+    "prefix": "zyxelement",
+    "body": [
+      "<${1:div} class=\"${2:class-name}\">",
+      "  $0",
+      "</${1:div}>"
+    ],
+    "description": "Zyra UI declarative markup element"
+  },
+  "ZYX Self-Closing Element": {
+    "prefix": "zyxselfclosing",
+    "body": [
+      "<${1:input} type=\"${2:text}\" class=\"${3:input}\" $0/>"
+    ],
+    "description": "Zyra UI self-closing markup element"
   }
 }
