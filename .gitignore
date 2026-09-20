@@ -25,3 +25,9 @@ test_store.db
 *.tmp
 TARGET.md
 openapi.json
+CODEBASE.md
+DECISIONS.md
+AGENT.md
+CLAUDE.md
+GEMINI.md
+DEPS.md
